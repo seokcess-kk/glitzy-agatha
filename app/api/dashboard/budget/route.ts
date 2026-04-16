@@ -2,6 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, apiSuccess, apiError } from '@/lib/api-middleware'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
+import { isDemoViewer, getDemoBudget } from '@/lib/demo-data'
 
 const logger = createLogger('DashboardBudget')
 
@@ -10,6 +11,8 @@ const logger = createLogger('DashboardBudget')
  * GET: client_id 기준 현재 월 예산, 소진 금액, 소진율, 예상 월말 지출
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoBudget())
+
   if (!clientId) {
     return apiSuccess({ monthlyBudget: 0, spentAmount: 0, burnRate: 0, projectedSpend: 0 })
   }

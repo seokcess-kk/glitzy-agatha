@@ -3,6 +3,7 @@ import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSucces
 import { SupabaseClient } from '@supabase/supabase-js'
 import { getKstDateString, getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
+import { isDemoViewer, getDemoKpi } from '@/lib/demo-data'
 
 const logger = createLogger('DashboardKpi')
 
@@ -128,6 +129,9 @@ async function fetchTodaySummary(
 }
 
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  // 데모 뷰어: fixture 데이터 반환
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoKpi())
+
   try {
     // agency_staff 배정 클라이언트 0개 → 빈 결과
     if (assignedClientIds !== null && assignedClientIds.length === 0) {

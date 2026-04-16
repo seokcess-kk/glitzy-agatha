@@ -1,10 +1,13 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { getKstDateString } from '@/lib/date'
+import { isDemoViewer, getDemoTrend } from '@/lib/demo-data'
 
 const DAYS = 28 // 최근 4주
 
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoTrend())
+
   const supabase = serverSupabase()
   const url = new URL(req.url)
 

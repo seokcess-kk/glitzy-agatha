@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   LayoutDashboard, Users, BarChart3, LogOut, Activity, Calendar, Film, Link2, Scan, Newspaper,
   ChevronUp, User, ClipboardList, LucideIcon, Building2, UserCog, FileText, Image as ImageIcon,
-  Megaphone, TrendingUp, Shield, KeyRound, ShieldCheck, Receipt, Settings, ChevronLeft, ChevronRight,
+  Megaphone, TrendingUp, Shield, KeyRound, ShieldCheck, Receipt, Settings, Pin, PinOff,
 } from 'lucide-react'
 import { useClient } from './ClientContext'
 import { Button } from '@/components/ui/button'
@@ -63,7 +63,7 @@ const ROLE_LEVEL: Record<string, number> = {
   demo_viewer: 3,
 }
 
-const STORAGE_KEY = 'agatha_sidebar_collapsed'
+const PINNED_KEY = 'agatha_sidebar_pinned'
 
 // 일반 메뉴 그룹
 const generalMenuGroups: MenuGroup[] = [
@@ -88,6 +88,11 @@ const generalMenuGroups: MenuGroup[] = [
       { href: '/monitoring', label: '순위 모니터링', icon: TrendingUp, minRole: 2, menuKey: 'monitoring' },
     ]
   },
+  {
+    items: [
+      { href: '/erp-documents', label: '견적/계산서', icon: Receipt, minRole: 2, menuKey: 'erp-documents' },
+    ]
+  },
 ]
 
 // 관리 메뉴 (superadmin 전용)
@@ -104,10 +109,11 @@ const adminMenuItems: MenuItem[] = [
 import PasswordChangeDialog from '@/components/PasswordChangeDialog'
 import ThemeToggle from '@/components/ThemeToggle'
 
-export default function Sidebar({ onClose, collapsed: controlledCollapsed, onToggle }: {
+export default function Sidebar({ onClose, collapsed: controlledCollapsed, pinned: controlledPinned, onTogglePin }: {
   onClose?: () => void
   collapsed?: boolean
-  onToggle?: () => void
+  pinned?: boolean
+  onTogglePin?: () => void
 }) {
   const pathname = usePathname()
   const { data: session } = useSession()
@@ -123,30 +129,31 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, onTog
   const { selectedClientId, setSelectedClientId, clients } = useClient()
   const selectedClient = clients.find(c => c.id === selectedClientId)
 
-  // 내부 collapsed 상태 (controlledCollapsed가 없으면 내부 관리)
-  const [internalCollapsed, setInternalCollapsed] = useState(false)
-  const collapsed = controlledCollapsed ?? internalCollapsed
+  // 내부 상태 (외부 제어가 없을 때 사용)
+  const [internalPinned, setInternalPinned] = useState(false)
+  const pinned = controlledPinned ?? internalPinned
+  const collapsed = controlledCollapsed ?? !pinned
 
   useEffect(() => {
-    if (controlledCollapsed === undefined) {
+    if (controlledPinned === undefined) {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY)
-        if (saved === 'true') setInternalCollapsed(true)
+        const saved = localStorage.getItem(PINNED_KEY)
+        if (saved === 'true') setInternalPinned(true)
       } catch {}
     }
-  }, [controlledCollapsed])
+  }, [controlledPinned])
 
-  const toggleCollapsed = useCallback(() => {
-    if (onToggle) {
-      onToggle()
+  const togglePin = useCallback(() => {
+    if (onTogglePin) {
+      onTogglePin()
     } else {
-      setInternalCollapsed(prev => {
+      setInternalPinned(prev => {
         const next = !prev
-        try { localStorage.setItem(STORAGE_KEY, String(next)) } catch {}
+        try { localStorage.setItem(PINNED_KEY, String(next)) } catch {}
         return next
       })
     }
-  }, [onToggle])
+  }, [onTogglePin])
 
   // agency_staff 메뉴 권한
   const [menuPermissions, setMenuPermissions] = useState<string[]>([])
@@ -249,13 +256,24 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, onTog
                 <p className="text-sm font-bold text-foreground">Agatha</p>
                 <p className="text-[10px] text-muted-foreground">Marketing Intelligence</p>
               </div>
-              <button
-                onClick={toggleCollapsed}
-                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                aria-label="사이드바 접기"
-              >
-                <ChevronLeft size={16} />
-              </button>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={togglePin}
+                    className={`p-1 rounded transition-colors cursor-pointer ${
+                      pinned
+                        ? 'text-brand-600 hover:bg-brand-600/10'
+                        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                    aria-label={pinned ? '사이드바 고정 해제' : '사이드바 고정'}
+                  >
+                    {pinned ? <PinOff size={15} /> : <Pin size={15} />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  {pinned ? '고정 해제' : '고정'}
+                </TooltipContent>
+              </Tooltip>
             </>
           )}
         </div>
@@ -362,16 +380,9 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, onTog
           )}
         </nav>
 
-        {/* 하단: 축소 시 토글 버튼 */}
+        {/* 하단: 축소 시 테마 토글 */}
         {collapsed && (
           <div className="px-2 py-2 border-t border-border">
-            <button
-              onClick={toggleCollapsed}
-              className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              aria-label="사이드바 펼치기"
-            >
-              <ChevronRight size={16} />
-            </button>
             <ThemeToggle />
           </div>
         )}

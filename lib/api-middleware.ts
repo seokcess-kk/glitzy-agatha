@@ -12,6 +12,7 @@ import { authOptions } from './auth'
 import { getClientId } from './session'
 import { SessionUser } from './security'
 import { serverSupabase } from './supabase'
+import { isDemoViewer } from './demo-data'
 
 // AuthUser를 SessionUser의 별칭으로 export (하위 호환성)
 export type AuthUser = SessionUser
@@ -47,6 +48,9 @@ async function getAuthUser(): Promise<AuthUser | null> {
   if (!session?.user) return null
 
   const user = session.user as AuthUser
+
+  // demo_viewer: DB에 실제 유저가 없으므로 password_version 검증 스킵
+  if (user.role === 'demo_viewer') return user
 
   // password_version 검증: 비밀번호 변경 시 기존 세션 무효화
   // 토큰에 password_version이 있는 경우에만 검증 (레거시 세션은 통과)
@@ -123,7 +127,10 @@ export function withSuperAdmin(handler: SuperAdminHandler) {
   return async (req: Request): Promise<NextResponse> => {
     const user = await getAuthUser()
     if (!user) return UNAUTHORIZED()
-    if (user.role !== 'superadmin') return FORBIDDEN_SUPERADMIN()
+    if (user.role !== 'superadmin' && user.role !== 'demo_viewer') return FORBIDDEN_SUPERADMIN()
+    // demo_viewer: GET만 허용
+    const demoBlock = blockDemoWrite(req, user)
+    if (demoBlock) return demoBlock
     return handler(req, { user })
   }
 }
@@ -208,6 +215,22 @@ export function withExternalAuth(handler: ExternalHandler) {
 
     return handler(req)
   }
+}
+
+/**
+ * demo_viewer의 쓰기 요청(POST/PUT/PATCH/DELETE) 차단
+ * GET 이외의 메서드일 때 true 반환 → 403 응답 필요
+ */
+export function blockDemoWrite(req: Request, user: AuthUser): NextResponse | null {
+  if (!isDemoViewer(user.role)) return null
+  const method = req.method.toUpperCase()
+  if (method !== 'GET') {
+    return NextResponse.json(
+      { error: '데모 모드에서는 데이터를 수정할 수 없습니다.' },
+      { status: 403 }
+    )
+  }
+  return null
 }
 
 /**

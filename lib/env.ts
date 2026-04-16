@@ -62,6 +62,11 @@ const ENV_GROUPS: EnvGroup[] = [
       'QSTASH_NEXT_SIGNING_KEY',
     ],
   },
+  {
+    name: 'ERP (glitzy-web)',
+    required: [],
+    optional: ['ERP_API_URL', 'ERP_SERVICE_KEY'],
+  },
 ]
 
 export interface EnvValidationResult {

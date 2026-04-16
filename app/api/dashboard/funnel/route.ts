@@ -2,6 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
+import { isDemoViewer, getDemoFunnel } from '@/lib/demo-data'
 
 
 /**
@@ -10,6 +11,8 @@ import { getKstDateString } from '@/lib/date'
  * 하단에 보류 건수(%), 미전환 건수(%) 표시
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoFunnel())
+
   const url = new URL(req.url)
   const startParam = url.searchParams.get('startDate')
   const endParam = url.searchParams.get('endDate')

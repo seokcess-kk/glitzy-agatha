@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { serverSupabase } from './supabase'
 import { checkRateLimit, recordFailedAttempt, resetRateLimit } from './rate-limit'
 import { createLogger } from './logger'
+import { DEMO_PHONE, DEMO_PASSWORD, DEMO_USER } from './demo-data'
 
 const logger = createLogger('Auth')
 
@@ -68,6 +69,20 @@ export const authOptions: NextAuthOptions = {
         const ip = _requestIp
         const ua = _requestUa
         const phoneNumber = credentials.phone_number
+
+        // 데모 계정: DB 조회 없이 하드코딩 유저 반환
+        if (phoneNumber === DEMO_PHONE && credentials.password === DEMO_PASSWORD) {
+          logger.info('데모 로그인', { ip })
+          return {
+            id: DEMO_USER.id,
+            name: DEMO_USER.name,
+            email: 'demo@agatha.local',
+            role: DEMO_USER.role,
+            client_id: DEMO_USER.client_id,
+            phone_number: DEMO_USER.phone_number,
+            password_version: DEMO_USER.password_version,
+          }
+        }
 
         // Rate limit 체크
         const rateCheck = checkRateLimit(ip, phoneNumber)

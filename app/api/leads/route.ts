@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess, blockDemoWrite } from '@/lib/api-middleware'
 import { getKstDateString } from '@/lib/date'
+import { isDemoViewer, getDemoLeads } from '@/lib/demo-data'
 
 /**
  * 고객 기준 리드 조회 API (하이브리드 방식)
@@ -9,6 +10,8 @@ import { getKstDateString } from '@/lib/date'
  * - startDate 파라미터로 기간 필터링 가능
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoLeads())
+
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

@@ -1,8 +1,12 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withSuperAdmin, apiError, apiSuccess, blockDemoWrite } from '@/lib/api-middleware'
 import { sanitizeString } from '@/lib/security'
+import { isDemoViewer, DEMO_CLIENTS } from '@/lib/demo-data'
 
 export const GET = withSuperAdmin(async (_req, { user }) => {
+  // 데모 뷰어: fixture 클라이언트 반환
+  if (isDemoViewer(user.role)) return apiSuccess(DEMO_CLIENTS)
+
   const supabase = serverSupabase()
   const { data, error } = await supabase
     .from('clients')

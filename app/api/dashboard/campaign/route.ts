@@ -2,12 +2,15 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, applyDateRange, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
+import { isDemoViewer, getDemoCampaigns } from '@/lib/demo-data'
 
 /**
  * 캠페인별 KPI 분석 API
  * Phase 2: leads.utm_campaign 기반 캠페인 성과 분석
  */
-export const GET = withClientFilter(async (req: Request, { clientId, assignedClientIds }: ClientContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoCampaigns())
+
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startParam = url.searchParams.get('startDate')

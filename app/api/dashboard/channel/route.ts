@@ -3,6 +3,7 @@ import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '
 import { normalizeChannel } from '@/lib/channel'
 import { sourceToChannel } from '@/lib/platform'
 import { getKstDateString } from '@/lib/date'
+import { isDemoViewer, getDemoChannel } from '@/lib/demo-data'
 
 /**
  * 채널별 KPI 분석 API
@@ -11,6 +12,8 @@ import { getKstDateString } from '@/lib/date'
  * 추가 컬럼: 전환율, 거부율, 보류율, 노쇼율
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoChannel())
+
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startParam = url.searchParams.get('startDate')

@@ -62,7 +62,7 @@ export default function LoginPage() {
                 type="text"
                 value={phoneNumber}
                 onChange={e => setPhoneNumber(e.target.value)}
-                placeholder="010-0000-0000"
+                placeholder="01012345678"
                 required
                 autoComplete="tel"
                 className="border-slate-200 dark:border-slate-700 rounded-lg"

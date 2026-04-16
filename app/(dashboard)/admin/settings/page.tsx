@@ -12,16 +12,10 @@ import { PageHeader } from '@/components/common'
 
 const MENU_OPTIONS = [
   { key: 'dashboard', label: '대시보드' },
-  { key: 'campaigns', label: '캠페인 리드' },
-  { key: 'leads', label: '고객(CDP)' },
-  { key: 'patients', label: '예약/결제' },
+  { key: 'campaigns', label: '캠페인' },
+  { key: 'leads', label: '고객관리' },
   { key: 'ads', label: '광고 성과' },
-  { key: 'content', label: '콘텐츠 분석' },
-  { key: 'monitor', label: '콘텐츠 모니터링' },
-  { key: 'press', label: '언론보도' },
-  { key: 'monitoring', label: '순위 현황' },
-  { key: 'medichecker', label: '원고 검수' },
-  { key: 'erp-documents', label: '견적/계산서' },
+  { key: 'monitoring', label: '순위 모니터링' },
 ]
 
 export default function SettingsPage() {

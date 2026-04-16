@@ -105,7 +105,7 @@ export default function MonitoringPage() {
   const canEdit = user?.role === 'superadmin' || user?.role === 'agency_staff' || user?.role === 'client_admin'
 
   useEffect(() => {
-    if (user?.role === 'client_staff') router.replace('/patients')
+    if (user?.role === 'client_staff') router.replace('/customers')
   }, [user, router])
 
   useEffect(() => {

@@ -52,15 +52,15 @@ KPI 그리드 gap: gap-2 md:gap-3
 카드 내부: p-4 md:p-5 (기본), p-5 md:p-6 (강조)
 ```
 
-## ClinicContext (병원 선택)
+## ClientContext (클라이언트 선택)
 
 ```typescript
-import { useClinic } from '@/components/ClinicContext'
-const { selectedClinicId, clinics, setSelectedClinicId } = useClinic()
+import { useClient } from '@/components/ClientContext'
+const { selectedClientId, clients, setSelectedClientId } = useClient()
 ```
-- `ClinicProvider`가 대시보드 레이아웃을 감싸고 있음
-- `localStorage` 키 `samantha_selected_clinic`에 선택된 병원 ID 저장
-- agency_staff에게 배정 병원이 1개면 자동 선택
+- `ClientProvider`가 대시보드 레이아웃을 감싸고 있음
+- `localStorage` 키 `agatha_selected_client`에 선택된 클라이언트 ID 저장
+- agency_staff에게 배정 클라이언트가 1개면 자동 선택
 - 활성화 토글: `Switch` 컴포넌트 사용 (Badge/아이콘 버튼 대신 통일)
 
 ## 페이지 역할 가드
@@ -72,8 +72,8 @@ useEffect(() => {
 }, [user, router])
 if (user?.role !== 'superadmin') return null
 
-// clinic_admin 이상
+// client_admin 이상
 useEffect(() => {
-  if (user?.role === 'clinic_staff') router.replace('/patients')
+  if (user?.role === 'client_staff') router.replace('/customers')
 }, [user, router])
 ```

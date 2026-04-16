@@ -27,7 +27,7 @@ export default function AdsPage() {
 
   // Role guard — client_staff cannot access ads
   useEffect(() => {
-    if (user?.role === 'client_staff') router.replace('/patients')
+    if (user?.role === 'client_staff') router.replace('/customers')
   }, [user, router])
 
   const { selectedClientId } = useClient()

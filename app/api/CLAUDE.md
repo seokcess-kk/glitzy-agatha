@@ -5,27 +5,27 @@
 | 래퍼 | 용도 | 제공 컨텍스트 |
 |------|------|--------------|
 | `withAuth` | 인증만 필요 | `{ user }` |
-| `withClinicFilter` | clinic_id 필터링 (대부분의 API) | `{ user, clinicId, assignedClinicIds }` |
-| `withClinicAdmin` | clinic_admin 이상 (clinic_staff 차단) | `{ user, clinicId }` |
+| `withClientFilter` | client_id 필터링 (대부분의 API) | `{ user, clientId, assignedClientIds }` |
+| `withClientAdmin` | client_admin 이상 (client_staff 차단) | `{ user, clientId }` |
 | `withSuperAdmin` | superadmin 전용 | `{ user }` |
 
 - 래퍼 없이 직접 export 금지. 반드시 위 중 하나로 감싸야 함
-- `import { withClinicFilter, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'`
+- `import { withClientFilter, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'`
 
 ## 멀티테넌트 필터링 (필수)
 
 ```typescript
-// SELECT: applyClinicFilter 사용
+// SELECT: applyClientFilter 사용
 let query = supabase.from('table').select('*')
-const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
-if (!filtered) return apiSuccess([])  // agency_staff 배정 병원 0개
+const filtered = applyClientFilter(query, { clientId, assignedClientIds })
+if (!filtered) return apiSuccess([])  // agency_staff 배정 클라이언트 0개
 
-// INSERT: clinic_id 명시적 포함
-await supabase.from('table').insert({ clinic_id: clinicId, ...data })
+// INSERT: client_id 명시적 포함
+await supabase.from('table').insert({ client_id: clientId, ...data })
 ```
 
-- `applyClinicFilter`는 agency_staff의 `assignedClinicIds` IN 필터도 자동 처리
-- clinic_id 필터 없는 쿼리는 데이터 유출 사고로 이어짐
+- `applyClientFilter`는 agency_staff의 `assignedClientIds` IN 필터도 자동 처리
+- client_id 필터 없는 쿼리는 데이터 유출 사고로 이어짐
 
 ## 응답 형식
 
@@ -48,9 +48,9 @@ const safeText = sanitizeString(body.text, 1000)  // XSS 방지, 길이 제한
 
 ## 활동 추적 (데이터 변경 API)
 
-bookings/payments/consultations/leads를 INSERT/UPDATE하는 API는:
+bookings/payments/leads를 INSERT/UPDATE하는 API는:
 1. `created_by` 또는 `updated_by`에 `user.id` 설정
-2. `logActivity(supabase, { userId, clinicId, action, targetTable, targetId, detail })` 호출
+2. `logActivity(supabase, { userId, clientId, action, targetTable, targetId, detail })` 호출
 
 ## 에러 처리
 
@@ -58,7 +58,7 @@ bookings/payments/consultations/leads를 INSERT/UPDATE하는 API는:
 try {
   // ...
 } catch (error) {
-  logger.error('설명', error, { clinicId })
+  logger.error('설명', error, { clientId })
   return apiError('서버 오류가 발생했습니다.', 500)
 }
 ```

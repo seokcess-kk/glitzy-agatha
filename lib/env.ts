@@ -49,6 +49,11 @@ const ENV_GROUPS: EnvGroup[] = [
     optional: ['TIKTOK_APP_ID', 'TIKTOK_APP_SECRET', 'TIKTOK_ADVERTISER_ID', 'TIKTOK_ACCESS_TOKEN'],
   },
   {
+    name: 'SMS (Solapi)',
+    required: [],
+    optional: ['SOLAPI_API_KEY', 'SOLAPI_API_SECRET', 'SOLAPI_SENDER_NUMBER'],
+  },
+  {
     name: 'QStash',
     required: [],
     optional: [
@@ -56,32 +61,6 @@ const ENV_GROUPS: EnvGroup[] = [
       'QSTASH_CURRENT_SIGNING_KEY',
       'QSTASH_NEXT_SIGNING_KEY',
     ],
-  },
-  {
-    name: 'Kakao',
-    required: [],
-    optional: [
-      'KAKAO_API_KEY',
-      'KAKAO_SENDER_KEY',
-      'KAKAO_USER_ID',
-      'KAKAO_TEMPLATE_CODE',
-      'KAKAO_SENDER_NUMBER',
-    ],
-  },
-  {
-    name: 'ERP (glitzy-web)',
-    required: [],
-    optional: ['ERP_API_URL', 'ERP_SERVICE_KEY'],
-  },
-  {
-    name: 'External API (inbound)',
-    required: [],
-    optional: ['EXTERNAL_SERVICE_KEY'],
-  },
-  {
-    name: 'AI',
-    required: [],
-    optional: ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'],
   },
 ]
 

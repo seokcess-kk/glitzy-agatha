@@ -1,6 +1,17 @@
-# 변경 이력 (CLAUDE.md)
+# 변경 이력 (Agatha)
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
+
+## Agatha 전환 (2026-04-16)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-04-16 | Samantha → Agatha 전환 완료: 브랜드명, 도메인 용어(Clinic→Client, Customer→Contact), 컬러(Blue→Slate+Violet), 폰트(Inter→Pretendard+Geist Mono), 라이트모드 기본 |
+| 2026-04-16 | 삭제된 기능: MediChecker(의료광고 검증), 언론보도(press), ERP 연동, 챗봇, 예약/결제 관리(patients), 상담(consultations) |
+| 2026-04-16 | 환경변수 정리: ANTHROPIC_API_KEY, OPENAI_API_KEY, NAVER_NEWS_*, ERP_*, EXTERNAL_SERVICE_KEY, Kakao 메시징 제거 |
+| 2026-04-16 | CLAUDE.md 전면 재작성 (Agatha 기준), 하위 CLAUDE.md 업데이트, docs/BRAND.md Agatha 브랜드 가이드로 변경 |
+
+## Samantha 이력
 
 | 날짜 | 내용 |
 |------|------|

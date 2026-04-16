@@ -79,7 +79,7 @@ export function KpiSection({ data, loading, onNavigate }: KpiSectionProps) {
         ? { value: Math.abs(data.comparison.totalRevenue), isPositive: data.comparison.totalRevenue > 0 }
         : undefined,
       subtitleColor: 'default',
-      path: '/patients',
+      path: '/customers',
     },
     {
       label: 'ROAS',

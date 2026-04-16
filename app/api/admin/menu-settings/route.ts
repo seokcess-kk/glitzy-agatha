@@ -6,9 +6,7 @@ const logger = createLogger('AdminMenuSettings')
 
 // 전체 메뉴 키 화이트리스트
 const VALID_MENU_KEYS = [
-  'dashboard', 'campaigns', 'leads', 'patients', 'chatbot',
-  'ads', 'content', 'monitor', 'press', 'monitoring',
-  'medichecker', 'erp-documents',
+  'dashboard', 'campaigns', 'leads', 'ads', 'monitoring',
 ]
 
 /** 숨김 메뉴 목록 조회 */

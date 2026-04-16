@@ -1,21 +1,10 @@
-<!--
-팀 공유 학습 시스템
-이 파일은 Git으로 관리됩니다. 규칙 추가/수정 시 PR을 통해 팀원 리뷰를 받아주세요.
-누군가 발견한 AI의 실수 패턴은 팀 전체가 공유하여 같은 실수를 반복하지 않도록 합니다.
--->
-<!--
-이 파일은 점진적으로 개선됩니다.
-클로드가 실수하거나 의도와 다른 결과를 낼 때마다,
-해당 케이스를 방지하는 규칙을 한 줄씩 추가해 주세요.
-예: "API 응답 타입을 변경할 때 프론트엔드 타입도 반드시 함께 수정할 것"
--->
+# Agatha — Marketing Intelligence
 
-# Samantha — Medical Marketing Intelligence
-
-병원 마케팅 인텔리전스 멀티테넌트 SaaS 대시보드. 슈퍼어드민이 여러 병원 고객사를 통합 관리.
+업종 무관 범용 마케팅 인텔리전스 멀티테넌트 SaaS 대시보드. 에이전시가 여러 클라이언트를 통합 관리.
 
 **기술 스택**: Next.js 14 (App Router) · NextAuth.js (JWT) · Supabase (PostgreSQL) · Tailwind + shadcn/ui · Recharts · Sonner · Upstash QStash
-**컬러**: Blue 기반 (`brand-500: #3b82f6`) — 다크모드 기본 · 브랜드 가이드: [docs/BRAND.md](docs/BRAND.md)
+**컬러**: Slate 모노톤 + Deep Violet (`brand-600: #7C3AED`) — 라이트모드 기본
+**폰트**: Pretendard(본문) + Geist Mono(KPI 숫자)
 
 ## 빌드 & 실행
 
@@ -26,20 +15,18 @@ npm run build        # 프로덕션 빌드 (타입 체크 포함)
 npm run lint         # ESLint
 npm run test:e2e     # Playwright E2E 테스트
 npm run test         # Jest 단위 테스트
-npm run analyze      # 번들 크기 분석
 ```
 
 ## 디렉토리 구조
 
 | 디렉토리 | 용도 | 하위 규칙 |
 |---------|------|----------|
-| `app/(dashboard)/` | 인증된 대시보드 페이지 (17개: admin, ads, bookings, campaigns, chatbot, content, erp-documents, lead-form, leads, medichecker, monitor, monitoring, patients, press, staff, utm) | |
+| `app/(dashboard)/` | 인증된 대시보드 페이지 (admin, ads, campaigns, customers, lead-form, monitoring, utm) | |
 | `app/api/` | REST API 라우트 | `app/api/CLAUDE.md` |
-| `app/login/`, `app/lp/`, `app/privacy/`, `app/terms/` | 공개 페이지 | |
-| `components/` | UI 컴포넌트 (ads, attribution, charts, common, dashboard, erp-documents, medichecker, ui, admin) | `components/CLAUDE.md` |
+| `app/login/`, `app/signup/`, `app/lp/`, `app/privacy/`, `app/terms/` | 공개 페이지 | |
+| `components/` | UI 컴포넌트 (ads, admin, charts, common, customers, dashboard, ui) | `components/CLAUDE.md` |
 | `lib/` | 핵심 유틸리티 (auth, security, logger, date 등) | `lib/CLAUDE.md` |
-| `lib/services/` | 외부 API 동기화 (metaAds, tiktokAds, googleAds, pressSync, erpClient, metaCapi) | |
-| `lib/medichecker/` | 의료광고 검증 7단계 AI 파이프라인 (RAG, 온톨로지) | |
+| `lib/services/` | 외부 API 동기화 (metaAds, tiktokAds, googleAds, adSyncManager, metaCapi) | |
 | `supabase/migrations/` | DB 마이그레이션 (`YYYYMMDD_설명.sql`) | |
 | `e2e/` | Playwright E2E (fixtures, pages, tests, utils) | |
 | `hooks/` | React 커스텀 훅 | |
@@ -49,27 +36,24 @@ npm run analyze      # 번들 크기 분석
 
 | 용어 | 정의 | 혼동 주의 |
 |------|------|-----------|
-| `Clinic` | 병원 고객사 (테넌트 단위). `clinics` 테이블 | `User`(시스템 사용자)와 구분 |
-| `User` | 시스템 로그인 계정. 역할별 4종 | `Customer`와 구분 — User만 로그인 가능 |
-| `Customer` | 환자/고객. `phone_number`로 식별 | 시스템 로그인 불가. CDP에서 관리 |
-| `Lead` | 리드/문의. UTM + 랜딩페이지 추적 | `Customer`와 1:N. 유입 시점 데이터 |
-| `Booking` | 예약. `created_by`/`updated_by` 추적 | `Consultation`(상담 기록)과 구분 |
-| `Payment` | 결제. `created_by` 추적 | Booking/Consultation과 별도 테이블 |
-| `Campaign` | 광고 캠페인 (Meta/Google/Naver/TikTok) | `AdSet`/`AdGroup`은 하위 타겟팅 그룹 |
+| `Client` | 클라이언트 고객사 (테넌트 단위). `clients` 테이블 | `User`(시스템 사용자)와 구분 |
+| `User` | 시스템 로그인 계정. 역할별 4종 | `Contact`와 구분 — User만 로그인 가능 |
+| `Contact` | 고객/연락처. `phone_number`로 식별 | 시스템 로그인 불가. CDP에서 관리 |
+| `Lead` | 리드/문의. UTM + 랜딩페이지 추적 | `Contact`와 1:N. 유입 시점 데이터 |
+| `Campaign` | 광고 캠페인 (Meta/Google/TikTok/Naver/Kakao/Dable) | `AdSet`/`AdGroup`은 하위 타겟팅 그룹 |
 | `LandingPage` | 리드 수집 랜딩페이지. 8자리 랜덤 ID | |
-| `MediChecker` | 의료광고법 AI 위반 검증 도구 | 7단계: 키워드→분류→RAG→온톨로지→판단→검증 |
-| `superadmin` | 전체 병원 접근. `?clinic_id=X`로 조회 | |
-| `agency_staff` | 다중 병원 배정. 메뉴 권한 제한 | 배정된 병원만 접근 |
-| `clinic_admin` | 자기 병원 전체 데이터 + 담당자 관리 | |
-| `clinic_staff` | 예약/결제/고객/리드/언론보도만 | 광고/KPI 차단 |
+| `superadmin` | 전체 클라이언트 접근. `?client_id=X`로 조회 | |
+| `agency_staff` | 다중 클라이언트 배정. 메뉴 권한 제한 | 배정된 클라이언트만 접근 |
+| `client_admin` | 자기 클라이언트 전체 데이터 + 담당자 관리 | |
+| `client_staff` | 리드/전환 결과 입력만 | 광고/KPI 차단 |
 
 ## 코딩 규칙
 
 ### 필수 (위반 시 버그/보안 이슈)
-1. **멀티테넌트 격리**: 모든 DB 쿼리에 `clinic_id` 필터. INSERT 시 `clinic_id` 포함. 예외 없음
-2. **역할 검증**: API → `withSuperAdmin`/`withClinicAdmin`/`withClinicFilter` 래퍼. 페이지 → `useEffect` 역할 가드
+1. **멀티테넌트 격리**: 모든 DB 쿼리에 `client_id` 필터. INSERT 시 `client_id` 포함. 예외 없음
+2. **역할 검증**: API → `withSuperAdmin`/`withClientAdmin`/`withClientFilter` 래퍼. 페이지 → `useEffect` 역할 가드
 3. **보안**: 사용자 입력 → `sanitizeString()`. ID → `parseId()`. 상태값 → 화이트리스트. URL → `sanitizeUrl()`
-4. **활동 추적**: bookings/payments/consultations/leads 변경 시 `created_by`/`updated_by` + `logActivity()`
+4. **활동 추적**: bookings/payments/leads 변경 시 `created_by`/`updated_by` + `logActivity()`
 5. **삭제 보관**: `archiveBeforeDelete()` → `deleted_records`에 스냅샷
 6. **인증 타입**: `types/next-auth.d.ts` 수정 시 `password_version` 필드 유지
 7. **KST 타임존**: 날짜는 항상 KST 기준. `getKstDateString()` 사용 (상세: `lib/CLAUDE.md`)
@@ -104,8 +88,8 @@ npm run analyze      # 번들 크기 분석
 4. **영향 범위**: API 타입 변경 → 프론트 수정. DB 스키마 → `supabase/migrations/`. `lib/` → 호출처 확인
 
 ### 조건부 실행
-- **DB 쿼리 변경**: `clinic_id` 필터 + `applyClinicFilter()` + `assignedClinicIds` 확인
-- **UI 변경**: `npm run dev` 후 확인 — 카드 높이 균일, 범례 5~6개 이내, 모바일(375px), 다크 테마 대비
+- **DB 쿼리 변경**: `client_id` 필터 + `applyClientFilter()` + `assignedClientIds` 확인
+- **UI 변경**: `npm run dev` 후 확인 — 카드 높이 균일, 범례 5~6개 이내, 모바일(375px)
 - **주요 기능**: `npm run test:e2e` — 기존 테스트 통과. 새 기능이면 테스트 추가 검토
 
 ### 반복 수정 루프
@@ -124,7 +108,7 @@ npm run analyze      # 번들 크기 분석
 | DB 테이블/마이그레이션 | `lib/CLAUDE.md`, `docs/WORK_LOG.md` |
 | 유틸리티/서비스/환경변수 | `lib/CLAUDE.md` |
 
-**CLAUDE.md 200줄 유지 정책**: 메인 CLAUDE.md는 **구조적 변경**(새 디렉토리, 새 도메인 개념)이 있을 때만 수정. 기능 추가/버그 수정의 이력은 `docs/CHANGELOG.md`에만 기록. 변경 이력은 **최근 5건 고정** — 새 항목 추가 시 가장 오래된 항목 삭제.
+**CLAUDE.md 200줄 유지 정책**: 메인 CLAUDE.md는 **구조적 변경**(새 디렉토리, 새 도메인 개념)이 있을 때만 수정. 기능 추가/버그 수정의 이력은 `docs/CHANGELOG.md`에만 기록.
 
 ## 환경 분리
 
@@ -140,34 +124,20 @@ npm run analyze      # 번들 크기 분석
 
 | 경로 | 스케줄 | 용도 |
 |------|--------|------|
-| `/api/cron/sync-ads` | 매일 03:00 | 광고 데이터 동기화 |
-| `/api/cron/sync-press` | 매일 00:00 | 언론보도 동기화 |
-| `/api/cron/weekly-report` | 매주 월 09:00 KST | 주간 성과 리포트 SMS |
+| `/api/cron/sync-ads` | 매일 06:00 KST (UTC 21:00) | 광고 데이터 동기화 |
+| `/api/cron/send-reports` | 매일 08:00 KST (UTC 23:00) | 성과 리포트 SMS |
 
 ## 참조 문서
 
 | 문서 | 내용 |
 |------|------|
 | `app/api/CLAUDE.md` | API 라우트 작성 규칙 (미들웨어, 멀티테넌트, 응답, 입력 검증) |
-| `components/CLAUDE.md` | UI 컴포넌트 규칙 (임포트, 레이아웃 밸런스, ClinicContext, 역할 가드) |
+| `components/CLAUDE.md` | UI 컴포넌트 규칙 (임포트, 레이아웃 밸런스, ClientContext, 역할 가드) |
 | `lib/CLAUDE.md` | 인증 흐름, 환경변수, DB 스키마, KST 타임존, 유틸리티 모듈 |
 | [docs/SPEC.md](docs/SPEC.md) | 프로젝트 요구사항 명세 |
+| [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Agatha 디자인 시스템 |
 | [docs/API.md](docs/API.md) | REST API 엔드포인트 상세 |
 | [docs/COMPONENTS.md](docs/COMPONENTS.md) | UI 컴포넌트 사용 가이드 |
-| [docs/BRAND.md](docs/BRAND.md) | Samantha 브랜드 가이드 |
+| [docs/BRAND.md](docs/BRAND.md) | Agatha 브랜드 가이드 |
 | [docs/WORK_LOG.md](docs/WORK_LOG.md) | 작업 로그 인덱스 |
-| [docs/INTEGRATION.md](docs/INTEGRATION.md) | glitzy-web ERP 연동 가이드 |
-| [docs/MEDICHECKER.md](docs/MEDICHECKER.md) | MediChecker 의료광고 검증 모듈 |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | 전체 변경 이력 |
-
-## 변경 이력 (최근)
-
-전체 이력: [docs/CHANGELOG.md](docs/CHANGELOG.md)
-
-| 날짜 | 내용 |
-|------|------|
-| 2026-04-07 | 광고 플랫폼 2계층 구조: `lib/platform.ts` 중앙 상수, campaign_type 컬럼, platform 값 통일, Naver/Kakao/Dable 신규 |
-| 2026-04-07 | 시술별 매출 비중 KPI 불일치 수정, capi_events FK CASCADE |
-| 2026-04-01 | 캘린더 UX 개선: 일간 10분 슬롯, 현재 시간 구분선, 전체 예약 표시, 취소/노쇼 취소선 시각 구분 |
-| 2026-04-01 | 예약/결제 관리 캘린더 드래그앤드롭 (`@dnd-kit/core`), DateRangePicker 도트 표시, 미래 날짜 허용 |
-| 2026-03-30 | CLAUDE.md 재설계: 200줄 이내 압축, 변경 이력 분리, 디렉토리 구조 압축 |

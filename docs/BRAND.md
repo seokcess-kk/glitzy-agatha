@@ -1,99 +1,89 @@
-# Samantha Brand Guide
+# Agatha Brand Guide
 
 ## 서비스 정보
 
 | 항목 | 값 |
 |------|---|
-| 서비스명 | **Samantha** |
-| 정식 명칭 | Samantha — Medical Marketing Intelligence |
-| 약칭 | Samantha (내부/코드 동일) |
-| 대상 | 병원 마케팅 담당자, 에이전시, 병원 관리자 |
-| 성격 | B2B SaaS 대시보드, 데이터 인텔리전스 |
-| 톤앤매너 | 전문적 + 따뜻함 (Samantha라는 이름의 인간적 느낌) |
+| 서비스명 | **Agatha** |
+| 정식 명칭 | Agatha — Marketing Intelligence |
+| 약칭 | Agatha (내부/코드 동일) |
+| 대상 | 마케팅 에이전시, 클라이언트 관리자 |
+| 성격 | B2B SaaS 대시보드, 마케팅 인텔리전스 |
+| 톤앤매너 | 전문적 + 미니멀 (Slate 모노톤 기반 절제된 디자인) |
 
 ## 컬러 시스템
 
 ### Core Palette
 
 ```
-Primary (Blue) — 신뢰, 전문성
-  50:  #eff6ff
-  100: #dbeafe
-  400: #60a5fa
-  500: #3b82f6  ← 메인
-  600: #2563eb
-  700: #1d4ed8
+Base (Slate) — 모노톤
+  50:  #F8FAFC  (페이지 배경)
+  200: #E2E8F0  (카드 보더)
+  500: #64748B  (보조 텍스트)
+  700: #334155  (본문 텍스트)
+  900: #0F172A  (제목, 강조)
 
-Secondary (Violet) — 인텔리전스, 프리미엄
-  50:  #f5f3ff
-  100: #ede9fe
-  400: #a78bfa
-  500: #8b5cf6  ← 보조
-  600: #7c3aed
-  700: #6d28d9
-
-Accent (Emerald) — 성장, 긍정 지표
-  50:  #ecfdf5
-  100: #d1fae5
-  400: #34d399
-  500: #10b981  ← 강조/CTA
-  600: #059669
+Point (Deep Violet) — 인텔리전스, 프리미엄
+  50:  #F5F3FF  (선택 행 배경)
+  100: #EDE9FE  (차트 영역 채우기)
+  500: #8B5CF6  (호버)
+  600: #7C3AED  ← 메인 포인트
+  700: #6D28D9  (버튼 호버)
 ```
 
 ### Semantic Colors
 
 | 용도 | 컬러 | 코드 |
 |------|------|------|
-| 긍정 지표 (매출↑, ROAS↑) | Emerald | `#10b981` |
-| 부정 지표 (이탈↑, 비용↑) | Rose | `#f43f5e` |
-| 경고 | Amber | `#f59e0b` |
-| 정보 | Sky | `#0ea5e9` |
+| 긍정 지표 (전환율↑, ROAS↑) | Emerald | `#059669` |
+| 부정 지표 (이탈↑, 비용↑) | Rose | `#E11D48` |
+| 경고 | Amber | `#D97706` |
+| 정보 | Sky | `#0EA5E9` |
 
-### 다크모드 배경
+### 차트 팔레트 (다중 시리즈)
 
-- Background: `hsl(228, 12%, 8%)`
-- 글로우 효과: `brand-600/10` + `violet-500/5` 그라디언트
+| 순서 | 컬러 | 코드 |
+|------|------|------|
+| 1 | Violet | `#7C3AED` |
+| 2 | Cyan | `#06B6D4` |
+| 3 | Amber | `#D97706` |
+| 4 | Teal | `#0D9488` |
+| 5 | Rose | `#E11D48` |
+| 6 | Slate | `#64748B` |
 
-## 로고
+- 단일 시리즈: Violet-600 단색 + Violet-100 영역
+- 비교 (2개): Violet-600 vs Slate-400
+- 다중 시리즈: 위 팔레트 순서대로
 
-### 심볼 컨셉
+### 모드
 
-- **A안 확정**: S자 곡선 = 데이터 흐름 + 성장 그래프
-- 두 줄기가 수렴하는 S 형태 (인사이트 수렴 의미)
-- 심볼 단독(파비콘) + 심볼+워드마크(사이드바/로그인) 조합
-
-### 심볼 제작 가이드
-
-- 최소 크기: 16x16px에서 식별 가능해야 함
-- 단색 버전 필요 (흰색, 검정, 브랜드 블루)
-- 라운드 사각형 배경 (borderRadius: 22%)
-- Primary Blue (#3b82f6) → Secondary Violet (#8b5cf6) 그라디언트 배경
-- S 심볼: White (#ffffff)
-
-### 워드마크
-
-- 폰트: Inter 또는 유사한 Geometric Sans-Serif
-- 웨이트: SemiBold (600)
-- 자간: -0.02em (약간 타이트)
-- "Samantha" 전체 또는 "samantha" 소문자
+- **기본: 라이트** + 다크모드 지원 (토글)
 
 ## 타이포그래피
 
-- Primary: Inter (Google Fonts)
-- Fallback: system-ui, -apple-system, sans-serif
-- Weights: 400 (body), 500 (label), 600 (heading), 700 (emphasis)
+| 용도 | 폰트 | 비고 |
+|------|------|------|
+| 본문/제목/라벨 | **Pretendard** | 한글 최적화, Inter 기반 |
+| KPI 숫자 | **Geist Mono** | 숫자 가독성 특화 |
 
-## 적용 계획
+### Weight
 
-### 즉시 적용 (로고 무관)
-- [x] 페이지별 브라우저 탭 제목
+| Weight | 용도 |
+|--------|------|
+| 400 (Regular) | 본문, 설명 텍스트 |
+| 500 (Medium) | 라벨, 테이블 헤더 |
+| 600 (SemiBold) | 제목, KPI 숫자 |
+| 700 (Bold) | 강조 |
 
-### 로고 확정 후 적용
-- [ ] 파비콘 (icon.tsx) → 심볼 기반 재생성
-- [ ] Apple 아이콘 (apple-icon.tsx) → 심볼 기반
-- [ ] 사이드바 로고 (Sidebar.tsx) → 심볼 + 워드마크
-- [ ] 로그인 페이지 로고
-- [ ] 컬러 마이그레이션 (Indigo → Blue 기반)
-  - tailwind.config.ts brand 색상
-  - globals.css CSS 변수 (--primary, --ring)
-  - 하드코딩 색상 업데이트
+## 로고
+
+### 워드마크
+- 폰트: Pretendard 또는 유사한 Geometric Sans-Serif
+- 웨이트: SemiBold (600)
+- 자간: -0.02em (약간 타이트)
+- "Agatha" 또는 "agatha" 소문자
+
+### 심볼
+- Violet-600 (#7C3AED) 기반
+- 최소 크기: 16x16px에서 식별 가능
+- 라운드 사각형 배경 (borderRadius: 22%)

@@ -2,6 +2,18 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 운영 배포 완료 — 견적/계산서 복원 및 거래처 동기화 (2026-04-16)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-04-16 | feat: 견적/계산서(ERP) 기능 복원 — glitzy-web 연동, 견적서/계산서 탭 목록 조회, Sheet 상세, 승인/반려(사유 입력), `lib/services/erpClient.ts` 프록시 |
+| 2026-04-16 | feat: 거래처 양방향 동기화 — webhook 수신(`/api/webhook/erp-client`), pull 조회(`/api/admin/erp-clients`), 일괄 동기화(`/api/admin/erp-clients/sync`) |
+| 2026-04-16 | feat: `erp_client_id` TEXT(UUID) 타입 — clients 테이블에 glitzy-web 거래처 UUID 매핑 컬럼 추가 |
+| 2026-04-16 | feat: `branch_name` 지점명 표시 — 거래처 목록/드롭다운에 지점명 표기 |
+| 2026-04-16 | feat: 거래처 드롭다운 선택 + 자동채움 — 클라이언트 관리 페이지에서 ERP 거래처 검색·선택 시 정보 자동 입력 |
+| 2026-04-16 | feat: 로그인 placeholder `01012345678` (하이픈 없음)으로 변경 |
+| 2026-04-16 | Phase 0~6 구현 완료, 운영 가능 상태로 배포 |
+
 ## Demo Viewer 구현 (2026-04-16)
 
 | 날짜 | 내용 |

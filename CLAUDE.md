@@ -21,12 +21,12 @@ npm run test         # Jest 단위 테스트
 
 | 디렉토리 | 용도 | 하위 규칙 |
 |---------|------|----------|
-| `app/(dashboard)/` | 인증된 대시보드 페이지 (admin, ads, campaigns, customers, lead-form, monitoring, utm) | |
+| `app/(dashboard)/` | 인증된 대시보드 페이지 (admin, ads, campaigns, customers, erp-documents, lead-form, monitoring, utm) | |
 | `app/api/` | REST API 라우트 | `app/api/CLAUDE.md` |
 | `app/login/`, `app/signup/`, `app/lp/`, `app/privacy/`, `app/terms/` | 공개 페이지 | |
-| `components/` | UI 컴포넌트 (ads, admin, charts, common, customers, dashboard, ui) | `components/CLAUDE.md` |
+| `components/` | UI 컴포넌트 (ads, admin, charts, common, customers, dashboard, erp-documents, ui) | `components/CLAUDE.md` |
 | `lib/` | 핵심 유틸리티 (auth, security, logger, date 등) | `lib/CLAUDE.md` |
-| `lib/services/` | 외부 API 동기화 (metaAds, tiktokAds, googleAds, adSyncManager, metaCapi) | |
+| `lib/services/` | 외부 API 동기화 (metaAds, tiktokAds, googleAds, adSyncManager, metaCapi, erpClient) | |
 | `supabase/migrations/` | DB 마이그레이션 (`YYYYMMDD_설명.sql`) | |
 | `e2e/` | Playwright E2E (fixtures, pages, tests, utils) | |
 | `hooks/` | React 커스텀 훅 | |
@@ -46,6 +46,7 @@ npm run test         # Jest 단위 테스트
 | `agency_staff` | 다중 클라이언트 배정. 메뉴 권한 제한 | 배정된 클라이언트만 접근 |
 | `client_admin` | 자기 클라이언트 전체 데이터 + 담당자 관리 | |
 | `client_staff` | 리드/전환 결과 입력만 | 광고/KPI 차단 |
+| `erp_client_id` | clients 테이블의 glitzy-web ERP 거래처 UUID (TEXT) | webhook/pull/일괄 동기화로 매핑 |
 
 ## 코딩 규칙
 
@@ -141,3 +142,6 @@ npm run test         # Jest 단위 테스트
 | [docs/BRAND.md](docs/BRAND.md) | Agatha 브랜드 가이드 |
 | [docs/WORK_LOG.md](docs/WORK_LOG.md) | 작업 로그 인덱스 |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | 전체 변경 이력 |
+| [docs/ERP_SYNC_SPEC.md](docs/ERP_SYNC_SPEC.md) | ERP 거래처 동기화 명세 |
+| [docs/INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) | glitzy-web 연동 가이드 |
+| [docs/SAMANTHA_ERP_CLIENT_GUIDE.md](docs/SAMANTHA_ERP_CLIENT_GUIDE.md) | ERP 거래처 매핑 가이드 |

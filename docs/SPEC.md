@@ -512,6 +512,7 @@ New(유입) → In Progress(진행) → Converted(전환)
 | 예산 관리 | O | 배정된 클라이언트 | 자사만 (조회) | - |
 | 리포트 설정 | O | 배정된 클라이언트 | - | - |
 | 알림 설정 | O | 배정된 클라이언트 | 자사만 | - |
+| 견적/계산서 | O | 배정된 클라이언트 | 자사만 | - |
 | 초대 관리 | O | - | 자사 내 client_staff만 | - |
 
 ### 6.12 계정 관리 (초대 기반 회원가입)
@@ -564,6 +565,24 @@ New(유입) → In Progress(진행) → Converted(전환)
 - 읽기 전용 (데이터 수정 불가)
 - 제한된 페이지 접근 (핵심 기능만)
 
+### 6.14 견적/계산서 (ERP 연동)
+
+**목적**: glitzy-web ERP 시스템의 견적서/계산서를 Agatha 내에서 조회·승인·반려
+
+**기능:**
+- 견적서/계산서 목록 조회 (탭 분리)
+- 견적서/계산서 상세 보기 (Sheet)
+- 견적서 승인/반려 (반려 시 사유 입력)
+- glitzy-web ERP API 프록시 방식 연동 (`lib/services/erpClient.ts`)
+
+**거래처 동기화:**
+- `erp_client_id` (TEXT/UUID): clients 테이블에 glitzy-web 거래처 ID 매핑
+- Webhook 수신 (`/api/webhook/erp-client`): glitzy-web에서 거래처 생성/수정 시 자동 동기화
+- Pull 동기화 (`/api/admin/erp-clients`): Agatha에서 glitzy-web 거래처 목록 조회
+- 일괄 동기화 (`/api/admin/erp-clients/sync`): 기존 클라이언트에 erp_client_id 일괄 매핑
+- 거래처 드롭다운 선택 + 자동채움 (클라이언트 관리 페이지)
+- `branch_name` 지점명 표시
+
 ---
 
 ## 7. 데이터 모델
@@ -600,6 +619,7 @@ CREATE TABLE clients (
   name VARCHAR(100) NOT NULL,
   slug VARCHAR(50) UNIQUE,
   monthly_budget DECIMAL(12,2),            -- 월 광고 예산
+  erp_client_id TEXT,                      -- glitzy-web ERP 거래처 UUID
   is_active BOOLEAN DEFAULT TRUE,
   notify_phones TEXT[],                    -- 알림 수신 전화번호 목록
   created_at TIMESTAMP DEFAULT NOW()
@@ -814,6 +834,7 @@ CREATE INDEX idx_ad_stats_client ON ad_campaign_stats(client_id);
 | 캠페인 | `/campaigns` | 캠페인 목록 및 상세 | 전체 (client_staff 제외) |
 | 고객관리 | `/customers` | 리드 탭 + 고객DB 탭 | 전체 |
 | 순위 모니터링 | `/monitoring` | 키워드 순위 추적 | 전체 (client_staff 제외) |
+| 견적/계산서 | `/erp-documents` | ERP 견적서·계산서 조회/승인/반려 | 전체 (client_staff 제외) |
 | 클라이언트 관리 | `/admin/clients` | 클라이언트 CRUD, 예산, API 설정 | superadmin |
 | 계정 관리 | `/admin/users` | 사용자/초대 관리 | superadmin |
 | 광고 소재 | `/admin/ad-creatives` | 소재 등록/성과 분석 | superadmin |
@@ -879,6 +900,11 @@ SPEC 구현 완료 시 체크리스트:
 - [ ] 초대 링크로 회원가입 시 클라이언트 + 역할 자동 매핑 가능
 - [ ] client_admin이 자기 클라이언트 내 client_staff 초대 가능
 - [ ] 데모 모드에서 샘플 대시보드 확인 가능
+- [ ] 견적서/계산서 목록 조회 및 상세 보기 가능
+- [ ] 견적서 승인/반려(사유 입력) 가능
+- [ ] 거래처 webhook 수신으로 erp_client_id 자동 매핑 동작
+- [ ] 거래처 일괄 동기화(erp_client_id 매핑) 가능
+- [ ] 클라이언트 관리에서 거래처 드롭다운 선택 + 자동채움 동작
 
 ---
 
@@ -894,4 +920,4 @@ SPEC 구현 완료 시 체크리스트:
 *이 문서는 Agatha 프로젝트의 기능 명세서입니다. 구현 진행에 따라 업데이트됩니다.*
 
 **마지막 업데이트**: 2026-04-16
-**버전**: 1.4
+**버전**: 1.5

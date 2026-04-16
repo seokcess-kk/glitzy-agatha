@@ -31,13 +31,10 @@
 
 | 테이블 | 용도 | 비고 |
 |--------|------|------|
-| `clients` | 클라이언트 고객사 | `notify_phones TEXT[]` 최대 3개 |
+| `clients` | 클라이언트 고객사 | `notify_phones TEXT[]` 최대 3개, `erp_client_id TEXT` (glitzy-web UUID) |
 | `users` | 로그인 계정 | role: superadmin/agency_staff/client_admin/client_staff |
 | `contacts` | 고객 (CDP) | `phone_number`로 식별 |
 | `leads` | 리드/문의 | UTM, `landing_page_id`, `updated_by` |
-| `bookings` | 예약 | `created_by`, `updated_by` |
-| `consultations` | 상담 | `created_by`, `updated_by` |
-| `payments` | 결제 | `created_by` |
 | `ad_campaign_stats` | 캠페인 레벨 광고 통계 | 일별 집계 |
 | `ad_stats` | 광고(ad) 레벨 성과 | Meta: utm_content 매핑, TikTok: ad_id 기준 |
 | `client_api_configs` | 클라이언트별 광고 API 키 | |
@@ -53,6 +50,9 @@
 | `deleted_records` | 삭제 데이터 스냅샷 보관 | 감사/복구용 |
 | `capi_events` | Meta CAPI 전송 로그 | status: pending/success/fail |
 | `oauth_states` | OAuth CSRF state 임시 저장 | 10분 만료, 일회용 |
+| `invitations` | 초대 링크 (토큰 기반 회원가입) | token UNIQUE, status: pending/completed/expired/cancelled |
+| `budget_history` | 예산 변경 이력 | client_id, 변경일, 변경 금액, 사유 |
+| `client_notify_settings` | 클라이언트별 알림 설정 | 알림 유형별 활성/비활성 |
 | `system_settings` | 시스템 전역 설정 (공용) | key(PK) + value(JSONB) |
 
 ## SMS 발송 (lib/solapi.ts)
@@ -83,6 +83,7 @@
 | `services/metaAds.ts` | `fetchMetaAds`, `fetchMetaAdStats` | Meta 캠페인 + ad 레벨 수집 |
 | `services/tiktokAds.ts` | `fetchTikTokAds`, `fetchTikTokAdStats` | TikTok 캠페인 + ad 레벨 수집 |
 | `services/metaCapi.ts` | Meta CAPI 전송 | 리드 유입 시 서버사이드 전환 이벤트 전송 |
+| `services/erpClient.ts` | `fetchErpClients`, `createErpClient`, `fetchQuotes`, `fetchQuoteDetail`, `fetchInvoices`, `fetchInvoiceDetail`, `respondToQuote` | glitzy-web ERP API 프록시 (거래처/견적서/계산서) |
 
 ## KST 타임존 규칙 (필수)
 

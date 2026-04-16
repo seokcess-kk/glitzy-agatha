@@ -65,3 +65,23 @@ try {
 
 - 사용자에게 내부 에러 상세를 노출하지 않음
 - `createLogger('RouteName')`으로 서버 로그에만 상세 기록
+
+## ERP 관련 API 엔드포인트
+
+| 경로 | 메서드 | 용도 | 인증 |
+|------|--------|------|------|
+| `/api/erp-documents` | GET | 견적서/계산서 목록 조회 | withClientFilter |
+| `/api/erp-documents/[id]` | GET | 견적서/계산서 상세 조회 | withClientFilter |
+| `/api/erp-documents/[id]/respond` | PATCH | 견적서 승인/반려 | withClientAdmin |
+| `/api/admin/erp-clients` | GET | glitzy-web 거래처 목록 조회 (pull) | withSuperAdmin |
+| `/api/admin/erp-clients/sync` | POST | 거래처 erp_client_id 일괄 동기화 | withSuperAdmin |
+| `/api/webhook/erp-client` | POST | glitzy-web 거래처 webhook 수신 | ERP_SERVICE_KEY 인증 |
+
+## 인증/초대 관련 API 엔드포인트
+
+| 경로 | 메서드 | 용도 | 인증 |
+|------|--------|------|------|
+| `/api/auth/signup` | POST | 초대 토큰 기반 회원가입 | 공개 |
+| `/api/auth/signup/validate` | GET | 초대 토큰 유효성 검증 | 공개 |
+| `/api/admin/invitations` | GET, POST | 초대 목록 조회 / 초대 생성 | withSuperAdmin 또는 withClientAdmin |
+| `/api/admin/invitations/[id]` | DELETE, POST | 초대 취소 / 초대 재발송 | withSuperAdmin 또는 withClientAdmin |

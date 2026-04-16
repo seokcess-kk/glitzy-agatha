@@ -9,7 +9,7 @@ CREATE TABLE clients (
   name VARCHAR(100) NOT NULL,
   slug VARCHAR(50) UNIQUE,
   monthly_budget DECIMAL(12,2),
-  erp_client_id INTEGER,  -- glitzy-web 거래처 ID (견적/계산서 연동용)
+  erp_client_id TEXT,  -- glitzy-web 거래처 ID (UUID, 견적/계산서 연동용)
   is_active BOOLEAN DEFAULT TRUE,
   notify_phones TEXT[],
   created_at TIMESTAMP DEFAULT NOW()

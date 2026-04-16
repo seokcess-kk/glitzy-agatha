@@ -45,7 +45,7 @@ Authorization: Bearer {SERVICE_KEY}
   "success": true,
   "data": [
     {
-      "id": 47,
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "name": "A렌트카",
       "business_number": "123-45-67890",
       "contact_name": "홍길동",
@@ -176,7 +176,7 @@ Agatha와 동일한 패턴을 Samantha에도 적용합니다.
 
 ```sql
 -- clinics 테이블에 erp_client_id 추가
-ALTER TABLE clinics ADD COLUMN IF NOT EXISTS erp_client_id INTEGER;
+ALTER TABLE clinics ADD COLUMN IF NOT EXISTS erp_client_id TEXT;
 ```
 
 현재 Samantha `clinics.id`가 glitzy-web `clinic_id`와 직접 매핑되어 있다면, 기존 데이터 마이그레이션 필요:

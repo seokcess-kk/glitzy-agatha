@@ -35,7 +35,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
     return apiError('슬러그는 영문 소문자, 숫자, 하이픈만 사용 가능합니다. (2-50자)', 400)
   }
 
-  let finalErpClientId: number | null = erp_client_id != null ? Number(erp_client_id) : null
+  let finalErpClientId: string | null = erp_client_id != null ? String(erp_client_id) : null
 
   // glitzy-web에 거래처 생성 요청
   if (create_erp_client && !finalErpClientId) {

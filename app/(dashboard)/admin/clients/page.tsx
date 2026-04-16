@@ -35,7 +35,7 @@ type Platform = ApiPlatform
 type ErpLinkMode = 'search' | 'create' | 'later'
 
 interface ErpSearchResult {
-  id: number
+  id: string
   name: string
   business_number?: string
 }
@@ -272,7 +272,7 @@ export default function ClientsPage() {
         body: JSON.stringify({
           notify_phones: filtered,
           notify_enabled: notifyEnabled,
-          erp_client_id: erpClientId ? Number(erpClientId) : null,
+          erp_client_id: erpClientId || null,
         }),
       })
       if (!res.ok) {
@@ -498,10 +498,10 @@ export default function ClientsPage() {
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">glitzy-web 거래처 ID</Label>
               <Input
-                type="number"
+                type="text"
                 value={erpClientId}
                 onChange={e => setErpClientId(e.target.value)}
-                placeholder="선택 입력"
+                placeholder="UUID 입력"
               />
               <p className="text-xs text-muted-foreground">견적/계산서 연동을 위한 glitzy-web 거래처 ID</p>
             </div>

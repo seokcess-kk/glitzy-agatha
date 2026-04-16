@@ -29,7 +29,7 @@ export default function ErpDocumentsPage() {
   const [activeTab, setActiveTab] = useState('quotes')
 
   // 선택된 클라이언트의 erp_client_id 확인
-  const selectedClient = clients.find((c) => c.id === selectedClientId) as (typeof clients[number] & { erp_client_id?: number | null }) | undefined
+  const selectedClient = clients.find((c) => c.id === selectedClientId) as (typeof clients[number] & { erp_client_id?: string | null }) | undefined
   const hasErpClientId = selectedClient?.erp_client_id != null
 
   // Restore tab from URL on mount

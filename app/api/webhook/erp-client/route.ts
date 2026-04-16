@@ -25,7 +25,7 @@ type EventType = 'client.created' | 'client.updated' | 'client.deleted'
 interface WebhookBody {
   event: EventType
   data: {
-    id: number
+    id: string
     name: string
     business_number?: string
     contact_name?: string

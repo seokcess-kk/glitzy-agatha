@@ -62,8 +62,8 @@ export async function createErpClient(data: {
   contact_name?: string
   contact_phone?: string
   contact_email?: string
-}): Promise<{ id: number; name: string }> {
-  return erpFetch<{ success: boolean; data: { id: number; name: string } }>('/clients', {
+}): Promise<{ id: string; name: string }> {
+  return erpFetch<{ success: boolean; data: { id: string; name: string } }>('/clients', {
     method: 'POST',
     body: JSON.stringify(data),
   }).then(res => res.data)
@@ -72,7 +72,7 @@ export async function createErpClient(data: {
 // glitzy-web 거래처 목록 조회
 export async function fetchErpClients(params?: {
   search?: string; page?: number; limit?: number
-}): Promise<{ data: Array<{ id: number; name: string; business_number?: string }>; pagination: ERPPagination }> {
+}): Promise<{ data: Array<{ id: string; name: string; business_number?: string }>; pagination: ERPPagination }> {
   const sp = new URLSearchParams()
   if (params?.search) sp.set('search', params.search)
   if (params?.page) sp.set('page', String(params.page))
@@ -80,7 +80,7 @@ export async function fetchErpClients(params?: {
   return erpFetch(`/clients?${sp}`)
 }
 
-export async function fetchQuotes(erpClientId: number, params?: {
+export async function fetchQuotes(erpClientId: string, params?: {
   status?: string; page?: number; limit?: number
 }): Promise<ERPListResponse<ERPQuote>> {
   // glitzy-web API는 clinic_id 파라미터를 기대 (외부 API 인터페이스 유지)
@@ -91,11 +91,11 @@ export async function fetchQuotes(erpClientId: number, params?: {
   return erpFetch<ERPListResponse<ERPQuote>>(`/quotes?${sp}`)
 }
 
-export async function fetchQuoteDetail(erpClientId: number, id: string): Promise<ERPDetailResponse<ERPQuoteDetail>> {
+export async function fetchQuoteDetail(erpClientId: string, id: string): Promise<ERPDetailResponse<ERPQuoteDetail>> {
   return erpFetch<ERPDetailResponse<ERPQuoteDetail>>(`/quotes/${id}?clinic_id=${erpClientId}`)
 }
 
-export async function fetchInvoices(erpClientId: number, params?: {
+export async function fetchInvoices(erpClientId: string, params?: {
   status?: string; page?: number; limit?: number
 }): Promise<ERPListResponse<ERPInvoice>> {
   const sp = new URLSearchParams({ clinic_id: String(erpClientId) })
@@ -105,12 +105,12 @@ export async function fetchInvoices(erpClientId: number, params?: {
   return erpFetch<ERPListResponse<ERPInvoice>>(`/invoices?${sp}`)
 }
 
-export async function fetchInvoiceDetail(erpClientId: number, id: string): Promise<ERPDetailResponse<ERPInvoice>> {
+export async function fetchInvoiceDetail(erpClientId: string, id: string): Promise<ERPDetailResponse<ERPInvoice>> {
   return erpFetch<ERPDetailResponse<ERPInvoice>>(`/invoices/${id}?clinic_id=${erpClientId}`)
 }
 
 export async function respondToQuote(
-  erpClientId: number,
+  erpClientId: string,
   quoteId: string,
   action: 'approve' | 'reject',
   reason?: string,

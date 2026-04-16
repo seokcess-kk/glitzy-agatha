@@ -9,7 +9,7 @@ Agatha → glitzy-web 외부 API
          (기존 Samantha와 동일한 API 사용)
 
 요청 예시:
-GET /api/external/quotes?clinic_id=47
+GET /api/external/quotes?clinic_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890
 Authorization: Bearer {SERVICE_KEY}
 ```
 
@@ -72,10 +72,10 @@ GET /api/external/quotes?clinic_id={clinics.id}
 
 ```
 glitzy-web 거래처:
-├── ID: 12 (B병원)     → Samantha clinics.id=12로 사용
-├── ID: 47 (A렌트카)   → Agatha clients.erp_client_id=47로 사용
-├── ID: 53 (C학원)     → Agatha clients.erp_client_id=53으로 사용
-└── ID: 8  (D의원)     → Samantha clinics.id=8로 사용
+├── ID: "b1c2d3e4-..." (B병원)     → Samantha clinics.erp_client_id="b1c2d3e4-..."로 사용
+├── ID: "a1b2c3d4-..." (A렌트카)   → Agatha clients.erp_client_id="a1b2c3d4-..."로 사용
+├── ID: "c3d4e5f6-..." (C학원)     → Agatha clients.erp_client_id="c3d4e5f6-..."로 사용
+└── ID: "d4e5f6a7-..." (D의원)     → Samantha clinics.erp_client_id="d4e5f6a7-..."로 사용
 ```
 
 - 병원 거래처: Samantha에서 관리

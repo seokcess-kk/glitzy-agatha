@@ -14,12 +14,6 @@ const logger = createLogger('AdsPlatformSummary')
  * - payments를 customer→channel 매핑을 통해 채널별 매출 집계
  */
 export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
-  if (user.role === 'demo_viewer') {
-    const { demoPlatformSummary } = await import('@/lib/demo/fixtures/aggregates')
-    const url = new URL(req.url)
-    return apiSuccess(demoPlatformSummary(clinicId, url.searchParams.get('startDate'), url.searchParams.get('endDate')))
-  }
-
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

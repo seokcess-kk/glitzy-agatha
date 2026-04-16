@@ -129,17 +129,6 @@ async function fetchTodaySummary(
 
 export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
   try {
-    if (user.role === 'demo_viewer') {
-      const { demoKpi } = await import('@/lib/demo/fixtures/aggregates')
-      const url = new URL(req.url)
-      return apiSuccess(demoKpi(
-        clinicId,
-        url.searchParams.get('startDate'),
-        url.searchParams.get('endDate'),
-        url.searchParams.get('compare') === 'true'
-      ))
-    }
-
     // agency_staff 배정 병원 0개 → 빈 결과
     if (assignedClinicIds !== null && assignedClinicIds.length === 0) {
       return apiSuccess({

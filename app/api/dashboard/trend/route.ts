@@ -5,12 +5,6 @@ import { getKstDateString } from '@/lib/date'
 const DAYS = 28 // 최근 4주
 
 export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
-  if (user.role === 'demo_viewer') {
-    const { demoTrend } = await import('@/lib/demo/fixtures/aggregates')
-    const url = new URL(req.url)
-    return apiSuccess(demoTrend(clinicId, url.searchParams.get('startDate')))
-  }
-
   const supabase = serverSupabase()
   const url = new URL(req.url)
 

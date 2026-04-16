@@ -13,12 +13,6 @@ const logger = createLogger('AdsLandingPageAnalysis')
  * - channelBreakdown: LP별 UTM source 채널 분석
  */
 export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
-  if (user.role === 'demo_viewer') {
-    const { demoLandingPageAnalysis } = await import('@/lib/demo/fixtures/extras')
-    const url = new URL(req.url)
-    return apiSuccess(demoLandingPageAnalysis(clinicId, url.searchParams.get('startDate'), url.searchParams.get('endDate')))
-  }
-
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

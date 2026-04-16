@@ -12,14 +12,12 @@ import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/common'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 import { getKstDateString } from '@/lib/date'
-import AttributionView from '@/components/attribution/AttributionView'
 import AdsOverviewTab from '@/components/ads/ads-overview-tab'
 import AdsCampaignTab from '@/components/ads/ads-campaign-tab'
 
 const TABS = [
   { key: 'overview', label: '성과 개요' },
   { key: 'campaigns', label: '캠페인 분석' },
-  { key: 'attribution', label: '매출 귀속' },
 ]
 
 export default function AdsPage() {
@@ -53,7 +51,7 @@ export default function AdsPage() {
   // Restore tab from URL on mount (avoids hydration mismatch)
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get('tab')
-    if (tab === 'campaigns' || tab === 'attribution') setActiveTab(tab)
+    if (tab === 'campaigns') setActiveTab(tab)
   }, [])
 
   // Sync tab selection to URL
@@ -94,11 +92,7 @@ export default function AdsPage() {
     <>
       <PageHeader
         title="광고 성과"
-        description={
-          activeTab === 'attribution'
-            ? '채널/캠페인별 실제 결제 매출 귀속 분석'
-            : 'Meta / Google / TikTok 광고 지출 및 성과 데이터.'
-        }
+        description="Meta / Google / TikTok 광고 지출 및 성과 데이터."
         actions={
           showActions ? (
             <>
@@ -145,7 +139,6 @@ export default function AdsPage() {
       {activeTab === 'campaigns' && (
         <AdsCampaignTab key={`campaigns-${startDate}-${endDate}-${refreshKey}`} startDate={startDate} endDate={endDate} days={String(daysDiff)} />
       )}
-      {activeTab === 'attribution' && <AttributionView />}
     </>
   )
 }

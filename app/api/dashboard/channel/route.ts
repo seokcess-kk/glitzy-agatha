@@ -10,12 +10,6 @@ import { getKstDateString } from '@/lib/date'
  * 광고 지출은 platform(meta_ads) 기준 → sourceToChannel로 채널 매칭
  */
 export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
-  if (user.role === 'demo_viewer') {
-    const { demoChannel } = await import('@/lib/demo/fixtures/aggregates')
-    const url = new URL(req.url)
-    return apiSuccess(demoChannel(clinicId, url.searchParams.get('startDate'), url.searchParams.get('endDate')))
-  }
-
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startParam = url.searchParams.get('startDate')

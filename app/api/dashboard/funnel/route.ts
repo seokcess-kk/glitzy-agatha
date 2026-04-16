@@ -14,11 +14,6 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
   const endParam = url.searchParams.get('endDate')
   const groupBy = url.searchParams.get('groupBy') || 'total' // total | channel | campaign
 
-  if (user.role === 'demo_viewer') {
-    const { demoFunnel } = await import('@/lib/demo/fixtures/aggregates')
-    return apiSuccess(demoFunnel(clinicId, startParam, endParam, groupBy))
-  }
-
   const supabase = serverSupabase()
 
   // agency_staff 배정 병원 0개 → 빈 결과

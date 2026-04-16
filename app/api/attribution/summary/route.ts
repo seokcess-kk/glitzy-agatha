@@ -13,12 +13,6 @@ const logger = createLogger('AttributionSummary')
  * model=time-decay: 시간 가중 (최근 터치에 높은 가중치)
  */
 export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
-  if (user.role === 'demo_viewer') {
-    const { demoAttributionSummary } = await import('@/lib/demo/fixtures/extras')
-    const url = new URL(req.url)
-    return apiSuccess(demoAttributionSummary(clinicId, url.searchParams.get('startDate'), url.searchParams.get('endDate')))
-  }
-
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

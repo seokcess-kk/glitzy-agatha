@@ -1,13 +1,8 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import { sanitizeString } from '@/lib/security'
-import { demoClinicsApiShape } from '@/lib/demo/fixtures/clinics'
 
 export const GET = withSuperAdmin(async (_req, { user }) => {
-  if (user.role === 'demo_viewer') {
-    return apiSuccess(demoClinicsApiShape())
-  }
-
   const supabase = serverSupabase()
   const { data, error } = await supabase
     .from('clinics')

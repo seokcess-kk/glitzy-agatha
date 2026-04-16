@@ -15,7 +15,6 @@ import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 // 섹션 컴포넌트
 import { KpiSection } from '@/components/dashboard/kpi-section'
 import { SpendLeadTrend } from '@/components/dashboard/spend-lead-trend'
-import { TreatmentPie } from '@/components/dashboard/treatment-pie'
 import { FunnelSection } from '@/components/dashboard/funnel-section'
 import { RecentLeads } from '@/components/dashboard/recent-leads'
 import { ChannelTable } from '@/components/dashboard/channel-table'
@@ -95,12 +94,9 @@ export default function DashboardPage() {
       {/* Row 1: KPI 카드 5개 */}
       <KpiSection data={kpi.data} loading={kpi.loading} onNavigate={handleNavigate} />
 
-      {/* Row 2: 광고비·리드 추이 + 시술별 매출 비중 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6 md:mb-8">
-        <div className="lg:col-span-2">
-          <SpendLeadTrend data={trendData.trend} loading={trendData.loading} periodLabel={trendPeriodLabel} />
-        </div>
-        <TreatmentPie data={funnelChannel.treatmentData} loading={funnelChannel.loading} />
+      {/* Row 2: 광고비·리드 추이 */}
+      <div className="mb-6 md:mb-8">
+        <SpendLeadTrend data={trendData.trend} loading={trendData.loading} periodLabel={trendPeriodLabel} />
       </div>
 
       {/* Row 3: 전환 퍼널 + 최근 리드 */}

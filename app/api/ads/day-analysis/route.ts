@@ -15,12 +15,6 @@ const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'] as const
  * - day: 0(일) ~ 6(토), dayLabel: "일"~"토"
  */
 export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
-  if (user.role === 'demo_viewer') {
-    const { demoDayAnalysis } = await import('@/lib/demo/fixtures/aggregates')
-    const url = new URL(req.url)
-    return apiSuccess(demoDayAnalysis(clinicId, url.searchParams.get('startDate'), url.searchParams.get('endDate')))
-  }
-
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

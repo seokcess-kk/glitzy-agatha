@@ -8,12 +8,6 @@ import { getKstDateString } from '@/lib/date'
  * 결제한 고객의 전체 여정(리드→예약→상담→결제)을 반환
  */
 export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
-  if (user.role === 'demo_viewer') {
-    const { demoAttributionCustomers } = await import('@/lib/demo/fixtures/extras')
-    const url = new URL(req.url)
-    return apiSuccess(demoAttributionCustomers(clinicId, url.searchParams.get('startDate'), url.searchParams.get('endDate')))
-  }
-
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

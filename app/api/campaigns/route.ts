@@ -10,11 +10,6 @@ import { normalizeChannel } from '@/lib/channel'
  * - ?campaign=xxx 시 해당 캠페인 리드 상세 목록 반환
  */
 export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
-  if (user.role === 'demo_viewer') {
-    const { demoCampaigns } = await import('@/lib/demo/fixtures/extras')
-    return apiSuccess(demoCampaigns(clinicId))
-  }
-
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const campaign = url.searchParams.get('campaign')

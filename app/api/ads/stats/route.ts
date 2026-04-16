@@ -18,11 +18,6 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
   const days = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 30
   const platform = url.searchParams.get('platform')
 
-  if (user.role === 'demo_viewer') {
-    const { demoAdStats } = await import('@/lib/demo/fixtures/aggregates')
-    return apiSuccess(demoAdStats(clinicId, days, platform))
-  }
-
   const supabase = serverSupabase()
 
   const sinceDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)

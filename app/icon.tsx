@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const size = { width: 1024, height: 1024 }
+export const size = { width: 32, height: 32 }
 export const contentType = 'image/png'
 
 export default function Icon() {
@@ -14,23 +14,20 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%)',
-          borderRadius: '224px',
+          backgroundColor: '#050505',
+          borderRadius: '6px',
         }}
       >
-        {/* Activity icon (pulse/heartbeat line) */}
-        <svg
-          width="560"
-          height="560"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+        <span
+          style={{
+            fontSize: '22px',
+            fontWeight: 700,
+            color: '#7C3AED',
+            letterSpacing: '-0.02em',
+          }}
         >
-          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-        </svg>
+          A
+        </span>
       </div>
     ),
     { ...size }

@@ -1,0 +1,1002 @@
+[
+  {
+    "id": 1,
+    "sourceType": "procedure",
+    "sourceId": 1,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "보톡스 전후사진 비교 광고 흔함"}
+  },
+  {
+    "id": 2,
+    "sourceType": "procedure",
+    "sourceId": 1,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "보톡스 부작용(멍, 두통 등) 미고지 흔함"}
+  },
+  {
+    "id": 3,
+    "sourceType": "procedure",
+    "sourceId": 1,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 8,
+    "weight": 1.0,
+    "metadata": {"note": "보톡스 효과 과장 표현 흔함"}
+  },
+  {
+    "id": 4,
+    "sourceType": "procedure",
+    "sourceId": 2,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "필러 전후사진 비교 광고 흔함"}
+  },
+  {
+    "id": 5,
+    "sourceType": "procedure",
+    "sourceId": 2,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "필러 부작용(혈관폐색, 괴사) 미고지 흔함"}
+  },
+  {
+    "id": 6,
+    "sourceType": "procedure",
+    "sourceId": 2,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 8,
+    "weight": 1.0,
+    "metadata": {"note": "필러 효과 과장 표현 흔함"}
+  },
+  {
+    "id": 7,
+    "sourceType": "procedure",
+    "sourceId": 3,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "리프팅 환자 경험담 인용 흔함"}
+  },
+  {
+    "id": 8,
+    "sourceType": "procedure",
+    "sourceId": 3,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "리프팅 부작용(통증, 감각이상) 미고지"}
+  },
+  {
+    "id": 9,
+    "sourceType": "procedure",
+    "sourceId": 4,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "쌍꺼풀 전후사진 비교 가장 흔함"}
+  },
+  {
+    "id": 10,
+    "sourceType": "procedure",
+    "sourceId": 4,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 4,
+    "weight": 0.8,
+    "metadata": {"note": "타 병원 결과와 비교"}
+  },
+  {
+    "id": 11,
+    "sourceType": "procedure",
+    "sourceId": 5,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "코성형 전후사진 흔함"}
+  },
+  {
+    "id": 12,
+    "sourceType": "procedure",
+    "sourceId": 5,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "코성형 부작용(구축, 호흡장애) 미고지"}
+  },
+  {
+    "id": 13,
+    "sourceType": "procedure",
+    "sourceId": 6,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "지방흡입 전후사진 흔함"}
+  },
+  {
+    "id": 14,
+    "sourceType": "procedure",
+    "sourceId": 6,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "지방흡입 부작용(혈전, 감염) 미고지"}
+  },
+  {
+    "id": 15,
+    "sourceType": "procedure",
+    "sourceId": 7,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "레이저 전후사진 흔함"}
+  },
+  {
+    "id": 16,
+    "sourceType": "procedure",
+    "sourceId": 7,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "레이저 부작용(화상, 색소침착) 미고지"}
+  },
+  {
+    "id": 17,
+    "sourceType": "procedure",
+    "sourceId": 9,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "임플란트 환자 경험담 인용"}
+  },
+  {
+    "id": 18,
+    "sourceType": "procedure",
+    "sourceId": 9,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "임플란트 부작용(골유착실패) 미고지"}
+  },
+  {
+    "id": 19,
+    "sourceType": "procedure",
+    "sourceId": 9,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 13,
+    "weight": 1.0,
+    "metadata": {"note": "임플란트 할인 광고 흔함"}
+  },
+  {
+    "id": 20,
+    "sourceType": "procedure",
+    "sourceId": 10,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "치아교정 전후사진 흔함"}
+  },
+  {
+    "id": 21,
+    "sourceType": "procedure",
+    "sourceId": 10,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 8,
+    "weight": 1.0,
+    "metadata": {"note": "치아교정 효과 과장 흔함"}
+  },
+  {
+    "id": 22,
+    "sourceType": "procedure",
+    "sourceId": 14,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "한방다이어트 환자 경험담 흔함"}
+  },
+  {
+    "id": 23,
+    "sourceType": "procedure",
+    "sourceId": 14,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 1.0,
+    "metadata": {"note": "한방다이어트 효과 거짓 주장"}
+  },
+  {
+    "id": 24,
+    "sourceType": "procedure",
+    "sourceId": 14,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 8,
+    "weight": 1.0,
+    "metadata": {"note": "한방다이어트 효과 과장"}
+  },
+  {
+    "id": 25,
+    "sourceType": "article",
+    "sourceId": 2,
+    "relationType": "similarTo",
+    "targetType": "article",
+    "targetId": 8,
+    "weight": 0.7,
+    "metadata": {"note": "치료경험담은 종종 과장 표현과 함께 나타남"}
+  },
+  {
+    "id": 26,
+    "sourceType": "article",
+    "sourceId": 3,
+    "relationType": "similarTo",
+    "targetType": "article",
+    "targetId": 8,
+    "weight": 0.8,
+    "metadata": {"note": "거짓 광고와 과장 광고는 경계가 모호함"}
+  },
+  {
+    "id": 27,
+    "sourceType": "article",
+    "sourceId": 4,
+    "relationType": "similarTo",
+    "targetType": "article",
+    "targetId": 5,
+    "weight": 0.6,
+    "metadata": {"note": "비교 광고가 비방으로 이어지는 경우"}
+  },
+  {
+    "id": 28,
+    "sourceType": "article",
+    "sourceId": 7,
+    "relationType": "similarTo",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.5,
+    "metadata": {"note": "부작용 누락은 거짓 광고와 유사"}
+  },
+  {
+    "id": 29,
+    "sourceType": "article",
+    "sourceId": 9,
+    "relationType": "similarTo",
+    "targetType": "article",
+    "targetId": 14,
+    "weight": 0.7,
+    "metadata": {"note": "무자격 표방과 비공인 인증은 유사한 위반"}
+  },
+  {
+    "id": 30,
+    "sourceType": "article",
+    "sourceId": 13,
+    "relationType": "appliesTo",
+    "targetType": "article",
+    "targetId": 15,
+    "weight": 0.5,
+    "metadata": {"note": "할인 광고의 긴급성 유발은 15호에도 해당 가능"}
+  },
+  {
+    "id": 31,
+    "sourceType": "procedure",
+    "sourceId": 16,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "안면윤곽 전후사진 흔함"}
+  },
+  {
+    "id": 32,
+    "sourceType": "procedure",
+    "sourceId": 16,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "안면윤곽 부작용(신경손상) 미고지"}
+  },
+  {
+    "id": 33,
+    "sourceType": "procedure",
+    "sourceId": 18,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "가슴성형 전후사진 흔함"}
+  },
+  {
+    "id": 34,
+    "sourceType": "procedure",
+    "sourceId": 18,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "가슴성형 부작용(구축, 파열) 미고지"}
+  },
+  {
+    "id": 35,
+    "sourceType": "procedure",
+    "sourceId": 19,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "탈모치료 전후사진 흔함"}
+  },
+  {
+    "id": 36,
+    "sourceType": "procedure",
+    "sourceId": 19,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.9,
+    "metadata": {"note": "탈모치료 효과 거짓 주장"}
+  },
+  {
+    "id": 37,
+    "sourceType": "article",
+    "sourceId": 1,
+    "relationType": "parentOf",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.4,
+    "metadata": {"note": "신의료기술 광고는 거짓에 해당할 수 있음"}
+  },
+  {
+    "id": 38,
+    "sourceType": "procedure",
+    "sourceId": 21,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "라식 전후사진 비교 흔함"}
+  },
+  {
+    "id": 39,
+    "sourceType": "procedure",
+    "sourceId": 21,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.9,
+    "metadata": {"note": "라식 100% 성공률 등 거짓 주장"}
+  },
+  {
+    "id": 40,
+    "sourceType": "procedure",
+    "sourceId": 21,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 8,
+    "weight": 1.0,
+    "metadata": {"note": "라식 효과 과장 흔함"}
+  },
+  {
+    "id": 41,
+    "sourceType": "procedure",
+    "sourceId": 22,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "라섹 전후사진 비교 흔함"}
+  },
+  {
+    "id": 42,
+    "sourceType": "procedure",
+    "sourceId": 22,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "라섹 부작용(통증, 회복기간) 미고지"}
+  },
+  {
+    "id": 43,
+    "sourceType": "procedure",
+    "sourceId": 23,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "스마일라식 전후사진 흔함"}
+  },
+  {
+    "id": 44,
+    "sourceType": "procedure",
+    "sourceId": 23,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 4,
+    "weight": 0.9,
+    "metadata": {"note": "스마일라식 타 시술 대비 비교 광고"}
+  },
+  {
+    "id": 45,
+    "sourceType": "procedure",
+    "sourceId": 24,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "백내장 환자 경험담 흔함"}
+  },
+  {
+    "id": 46,
+    "sourceType": "procedure",
+    "sourceId": 24,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 13,
+    "weight": 1.0,
+    "metadata": {"note": "백내장 다초점렌즈 할인 광고 흔함"}
+  },
+  {
+    "id": 47,
+    "sourceType": "procedure",
+    "sourceId": 25,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "ICL 전후사진 흔함"}
+  },
+  {
+    "id": 48,
+    "sourceType": "procedure",
+    "sourceId": 25,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "ICL 부작용(백내장, 녹내장) 미고지"}
+  },
+  {
+    "id": 49,
+    "sourceType": "procedure",
+    "sourceId": 26,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "인공관절 환자 경험담 흔함"}
+  },
+  {
+    "id": 50,
+    "sourceType": "procedure",
+    "sourceId": 26,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "인공관절 부작용(감염, 탈구) 미고지"}
+  },
+  {
+    "id": 51,
+    "sourceType": "procedure",
+    "sourceId": 27,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "척추수술 환자 경험담 흔함"}
+  },
+  {
+    "id": 52,
+    "sourceType": "procedure",
+    "sourceId": 27,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.9,
+    "metadata": {"note": "척추수술 완치 등 거짓 주장"}
+  },
+  {
+    "id": 53,
+    "sourceType": "procedure",
+    "sourceId": 28,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "관절경 환자 경험담 흔함"}
+  },
+  {
+    "id": 54,
+    "sourceType": "procedure",
+    "sourceId": 28,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "관절경 부작용 미고지"}
+  },
+  {
+    "id": 55,
+    "sourceType": "procedure",
+    "sourceId": 29,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "도수치료 환자 경험담 흔함"}
+  },
+  {
+    "id": 56,
+    "sourceType": "procedure",
+    "sourceId": 29,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 9,
+    "weight": 0.8,
+    "metadata": {"note": "도수치료 무자격 표방"}
+  },
+  {
+    "id": 57,
+    "sourceType": "procedure",
+    "sourceId": 30,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "비만수술 환자 경험담 흔함"}
+  },
+  {
+    "id": 58,
+    "sourceType": "procedure",
+    "sourceId": 30,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 1.0,
+    "metadata": {"note": "비만수술 효과 거짓 주장"}
+  },
+  {
+    "id": 59,
+    "sourceType": "procedure",
+    "sourceId": 31,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 8,
+    "weight": 1.0,
+    "metadata": {"note": "건강검진 효과 과장"}
+  },
+  {
+    "id": 60,
+    "sourceType": "procedure",
+    "sourceId": 31,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 13,
+    "weight": 1.0,
+    "metadata": {"note": "건강검진 할인 광고 흔함"}
+  },
+  {
+    "id": 61,
+    "sourceType": "procedure",
+    "sourceId": 32,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.8,
+    "metadata": {"note": "예방접종 효과 거짓 주장"}
+  },
+  {
+    "id": 62,
+    "sourceType": "procedure",
+    "sourceId": 32,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "예방접종 부작용 미고지"}
+  },
+  {
+    "id": 63,
+    "sourceType": "procedure",
+    "sourceId": 33,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.8,
+    "metadata": {"note": "HPV백신 효과 과대 주장"}
+  },
+  {
+    "id": 64,
+    "sourceType": "procedure",
+    "sourceId": 33,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "HPV백신 부작용 미고지"}
+  },
+  {
+    "id": 65,
+    "sourceType": "procedure",
+    "sourceId": 34,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "여성성형 전후사진 흔함"}
+  },
+  {
+    "id": 66,
+    "sourceType": "procedure",
+    "sourceId": 34,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "여성성형 부작용 미고지"}
+  },
+  {
+    "id": 67,
+    "sourceType": "procedure",
+    "sourceId": 35,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "비뇨기과 환자 경험담 흔함"}
+  },
+  {
+    "id": 68,
+    "sourceType": "procedure",
+    "sourceId": 35,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "비뇨기과 부작용 미고지"}
+  },
+  {
+    "id": 69,
+    "sourceType": "procedure",
+    "sourceId": 36,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "귀성형 전후사진 흔함"}
+  },
+  {
+    "id": 70,
+    "sourceType": "procedure",
+    "sourceId": 37,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "입술성형 전후사진 흔함"}
+  },
+  {
+    "id": 71,
+    "sourceType": "procedure",
+    "sourceId": 38,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "엉덩이성형 전후사진 흔함"}
+  },
+  {
+    "id": 72,
+    "sourceType": "procedure",
+    "sourceId": 38,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "엉덩이성형 색전증 등 부작용 미고지"}
+  },
+  {
+    "id": 73,
+    "sourceType": "procedure",
+    "sourceId": 39,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "하체지방흡입 전후사진 흔함"}
+  },
+  {
+    "id": 74,
+    "sourceType": "procedure",
+    "sourceId": 40,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "팔지방흡입 전후사진 흔함"}
+  },
+  {
+    "id": 75,
+    "sourceType": "procedure",
+    "sourceId": 41,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "색소치료 전후사진 흔함"}
+  },
+  {
+    "id": 76,
+    "sourceType": "procedure",
+    "sourceId": 41,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.9,
+    "metadata": {"note": "색소치료 완치 등 거짓 주장"}
+  },
+  {
+    "id": 77,
+    "sourceType": "procedure",
+    "sourceId": 42,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "흉터치료 전후사진 흔함"}
+  },
+  {
+    "id": 78,
+    "sourceType": "procedure",
+    "sourceId": 42,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.9,
+    "metadata": {"note": "흉터 완전 제거 등 거짓 주장"}
+  },
+  {
+    "id": 79,
+    "sourceType": "procedure",
+    "sourceId": 43,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 1.0,
+    "metadata": {"note": "제모 영구적 효과 거짓 주장 흔함"}
+  },
+  {
+    "id": 80,
+    "sourceType": "procedure",
+    "sourceId": 43,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 13,
+    "weight": 1.0,
+    "metadata": {"note": "제모 할인 광고 흔함"}
+  },
+  {
+    "id": 81,
+    "sourceType": "procedure",
+    "sourceId": 44,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "다한증 환자 경험담 흔함"}
+  },
+  {
+    "id": 82,
+    "sourceType": "procedure",
+    "sourceId": 44,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "다한증 보상성 다한증 미고지"}
+  },
+  {
+    "id": 83,
+    "sourceType": "procedure",
+    "sourceId": 45,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "치아성형 전후사진 흔함"}
+  },
+  {
+    "id": 84,
+    "sourceType": "procedure",
+    "sourceId": 45,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 1.0,
+    "metadata": {"note": "치아성형 비가역성 미고지"}
+  },
+  {
+    "id": 85,
+    "sourceType": "procedure",
+    "sourceId": 46,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "잇몸치료 환자 경험담 흔함"}
+  },
+  {
+    "id": 86,
+    "sourceType": "procedure",
+    "sourceId": 46,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 13,
+    "weight": 0.9,
+    "metadata": {"note": "잇몸치료 할인 광고"}
+  },
+  {
+    "id": 87,
+    "sourceType": "procedure",
+    "sourceId": 47,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "한약 환자 경험담 흔함"}
+  },
+  {
+    "id": 88,
+    "sourceType": "procedure",
+    "sourceId": 47,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 1.0,
+    "metadata": {"note": "한약 효과 거짓 주장"}
+  },
+  {
+    "id": 89,
+    "sourceType": "procedure",
+    "sourceId": 48,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "한방피부 환자 경험담 흔함"}
+  },
+  {
+    "id": 90,
+    "sourceType": "procedure",
+    "sourceId": 48,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 1.0,
+    "metadata": {"note": "한방피부 효과 거짓 주장"}
+  },
+  {
+    "id": 91,
+    "sourceType": "procedure",
+    "sourceId": 49,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "통증치료 환자 경험담 흔함"}
+  },
+  {
+    "id": 92,
+    "sourceType": "procedure",
+    "sourceId": 49,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 9,
+    "weight": 0.8,
+    "metadata": {"note": "통증치료 무자격 표방"}
+  },
+  {
+    "id": 93,
+    "sourceType": "procedure",
+    "sourceId": 50,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 1.0,
+    "metadata": {"note": "체형관리 환자 경험담 흔함"}
+  },
+  {
+    "id": 94,
+    "sourceType": "procedure",
+    "sourceId": 50,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.9,
+    "metadata": {"note": "체형관리 효과 거짓 주장"}
+  },
+  {
+    "id": 95,
+    "sourceType": "procedure",
+    "sourceId": 50,
+    "relationType": "commonViolation",
+    "targetType": "article",
+    "targetId": 13,
+    "weight": 1.0,
+    "metadata": {"note": "체형관리 할인 광고 흔함"}
+  },
+  {
+    "id": 96,
+    "sourceType": "article",
+    "sourceId": 2,
+    "relationType": "appliesTo",
+    "targetType": "article",
+    "targetId": 7,
+    "weight": 0.6,
+    "metadata": {"note": "전후사진 광고는 종종 부작용 누락과 함께"}
+  },
+  {
+    "id": 97,
+    "sourceType": "article",
+    "sourceId": 13,
+    "relationType": "similarTo",
+    "targetType": "article",
+    "targetId": 3,
+    "weight": 0.7,
+    "metadata": {"note": "허위 할인 광고는 거짓 광고와 유사"}
+  },
+  {
+    "id": 98,
+    "sourceType": "article",
+    "sourceId": 8,
+    "relationType": "similarTo",
+    "targetType": "article",
+    "targetId": 9,
+    "weight": 0.5,
+    "metadata": {"note": "과장 표현이 무자격 표방으로 이어지기도"}
+  },
+  {
+    "id": 99,
+    "sourceType": "article",
+    "sourceId": 10,
+    "relationType": "similarTo",
+    "targetType": "article",
+    "targetId": 14,
+    "weight": 0.6,
+    "metadata": {"note": "기사형 광고에 비공인 인증 포함되기도"}
+  },
+  {
+    "id": 100,
+    "sourceType": "article",
+    "sourceId": 6,
+    "relationType": "appliesTo",
+    "targetType": "article",
+    "targetId": 2,
+    "weight": 0.5,
+    "metadata": {"note": "수술장면 노출은 전후사진과 함께 나타남"}
+  }
+]

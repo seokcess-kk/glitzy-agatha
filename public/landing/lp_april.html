@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>신사 프리미엄 세레아의원 - 시크릿 특가</title>
+
+    <!-- SVG 파비콘 (첨부해주신 블랙 심볼 로고로 완벽 적용) -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='%23231f20'%3E%3Cpath d='M20,1 C7.5,1 1.5,9.5 1.5,20 C1.5,30.5 7.5,39 20,39 C32.5,39 38.5,30.5 38.5,20 C38.5,9.5 32.5,1 20,1 Z M21,3.5 C30.5,3.5 35.5,11 35.5,20 C35.5,29 30.5,36.5 21,36.5 C10.5,36.5 5.5,29 5.5,20 C5.5,11 10.5,3.5 21,3.5 Z'/%3E%3Cpath d='M25.5,10 C18.5,7 10.5,10.5 8.5,18 C6.5,25.5 16,26.5 19.5,29.5 C23,32.5 17.5,35.5 11,33 C14.5,37 25,38 28.5,30 C32,22 22,20.5 18.5,17 C15,13.5 21,9.5 25.5,10 Z'/%3E%3C/g%3E%3C/svg%3E">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
+        rel="stylesheet" type="text/css" />
+    <style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        /* 앰비언트 글로우 (배경 빛무리 효과) */
+        .ambient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+            background-color: #f8fafc;
+        }
+
+        .ambient-blob-1 {
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(108, 181, 249, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
+            filter: blur(40px);
+        }
+
+        .ambient-blob-2 {
+            position: absolute;
+            bottom: -10%;
+            right: -10%;
+            width: 60vw;
+            height: 60vw;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(41, 119, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+            filter: blur(40px);
+        }
+
+        /* 글래스모피즘 헤더 */
+        #top-progress-container {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.02);
+        }
+
+        .step-enter {
+            animation: floatUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes floatUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.99);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        input[type="radio"],
+        input[type="checkbox"] {
+            display: none;
+        }
+
+        /* 프리미엄 버튼 스타일 */
+        .option-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 1.25rem 1.5rem;
+            border-radius: 1rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #475569;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            word-break: keep-all;
+            text-align: center;
+        }
+
+        @media (min-width: 768px) {
+            .option-btn {
+                padding: 1.5rem;
+                font-size: 1.25rem;
+            }
+        }
+
+        .option-btn:hover {
+            border-color: #6cb5f9;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(108, 181, 249, 0.2);
+        }
+
+        .option-btn:active {
+            transform: scale(0.98) translateY(0);
+        }
+
+        .option-btn.selected {
+            background: linear-gradient(135deg, #2977ff, #0d65ff);
+            color: #ffffff;
+            border-color: transparent;
+            box-shadow: 0 12px 30px -8px rgba(13, 101, 255, 0.4);
+            transform: scale(1.02);
+        }
+
+        /* 시그니처 버튼 내부 텍스트 컬러 전환 */
+        .option-btn.selected .option-title,
+        .option-btn.selected .option-desc {
+            color: #ffffff !important;
+        }
+
+        /* 얇은 라인 프로그레스 바 */
+        #top-progress-bar {
+            height: 3px;
+            background: linear-gradient(90deg, #6cb5f9, #0d65ff);
+            transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+        }
+
+        #top-progress-bar::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -2px;
+            width: 10px;
+            height: 7px;
+            background-color: #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px 4px rgba(41, 119, 255, 0.6);
+        }
+
+        .modern-loader {
+            width: 56px;
+            height: 56px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #2977ff;
+            border-radius: 50%;
+            animation: spin 0.8s ease-in-out infinite;
+            box-shadow: 0 0 20px rgba(41, 119, 255, 0.1);
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .custom-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #cbd5e1;
+            border-radius: 0.375rem;
+            background-color: #ffffff;
+            display: inline-block;
+            transition: all 0.2s;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .custom-checkbox:checked {
+            background-color: #2977ff;
+            border-color: #2977ff;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='white'%3E%3Cpath fill-rule='evenodd' d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-size: 100% 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body class="antialiased">
+
+    <!-- 앰비언트 글로우 배경 -->
+    <div class="ambient-bg">
+        <div class="ambient-blob-1"></div>
+        <div class="ambient-blob-2"></div>
+    </div>
+
+    <!-- 상단 네비게이션 -->
+    <div id="top-progress-container">
+        <div class="max-w-4xl mx-auto px-5 py-3.5 flex justify-between items-center">
+            <a href="https://www.serea.co.kr/" target="_blank"
+                class="flex-shrink-0 transition-transform active:scale-95 hover:opacity-80 pt-1">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 40"
+                    class="h-[1.15rem] md:h-[1.35rem] w-auto object-contain">
+                    <!-- 첨부해주신 이미지 기반의 정교한 벡터 심볼 -->
+                    <g fill="#231f20">
+                        <path
+                            d="M20,1 C7.5,1 1.5,9.5 1.5,20 C1.5,30.5 7.5,39 20,39 C32.5,39 38.5,30.5 38.5,20 C38.5,9.5 32.5,1 20,1 Z M21,3.5 C30.5,3.5 35.5,11 35.5,20 C35.5,29 30.5,36.5 21,36.5 C10.5,36.5 5.5,29 5.5,20 C5.5,11 10.5,3.5 21,3.5 Z" />
+                        <path
+                            d="M25.5,10 C18.5,7 10.5,10.5 8.5,18 C6.5,25.5 16,26.5 19.5,29.5 C23,32.5 17.5,35.5 11,33 C14.5,37 25,38 28.5,30 C32,22 22,20.5 18.5,17 C15,13.5 21,9.5 25.5,10 Z" />
+                    </g>
+                    <!-- 첨부해주신 이미지의 폰트 자간(Tracking)과 두께를 맞춘 텍스트 -->
+                    <text x="52" y="27.5" font-family="'Pretendard', sans-serif" font-size="21.5" font-weight="500"
+                        letter-spacing="5" fill="#231f20">SEREA CLINIC</text>
+                </svg>
+            </a>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="https://naver.me/G5PgEDoB" target="_blank"
+                    class="flex items-center text-gray-500 hover:text-[#2977ff] transition-colors text-[11px] sm:text-xs font-semibold whitespace-nowrap">
+                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-0.5 sm:mr-1" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    신사역 1번출구
+                </a>
+                <div class="flex gap-1.5 sm:gap-2">
+                    <a href="tel:02-6956-5731"
+                        class="w-7 h-7 sm:w-8 sm:h-8 bg-white border border-gray-200 text-gray-600 rounded-full flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-[#2977ff] hover:text-[#2977ff] transition-all">
+                        <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                                d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z">
+                            </path>
+                        </svg>
+                    </a>
+                    <!--
+                <a href="https://pf.kakao.com/_tAxdgn" target="_blank" class="w-7 h-7 sm:w-8 sm:h-8 bg-[#FEE500] text-[#3C1E1E] rounded-full flex items-center justify-center shadow-[0_2px_8px_rgba(254,229,0,0.3)] hover:brightness-95 transition-all">
+                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 4c-4.97 0-9 3.185-9 7.115 0 2.557 1.707 4.8 4.27 6.054-.188.702-.682 2.545-.78 2.936-.123.492.176.48.375.352.155-.1.494-.33 1.956-1.313 1.01.28 2.073.428 3.179.428 4.97 0 9-3.185 9-7.115S16.97 4 12 4z"/>
+                    </svg>
+                </a>
+				-->
+                </div>
+            </div>
+        </div>
+        <div class="w-full bg-gray-100/50 h-[3px]">
+            <div id="top-progress-bar" style="width: 20%;"></div>
+        </div>
+    </div>
+
+    <div id="app-container" class="flex flex-col w-full min-h-[75vh] relative z-10">
+        <!-- 플로팅 혜택 배너 -->
+        <div class="w-full max-w-3xl mx-auto px-5 pt-8 pb-2 md:pt-12" id="benefit-banner">
+            <div
+                class="bg-white/60 backdrop-blur-md rounded-2xl p-4 md:p-5 flex items-center justify-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+                <div class="text-center">
+                    <span
+                        class="inline-block bg-[#2977ff] text-white text-[10px] md:text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider mb-2 shadow-sm">Premium
+                        Benefit</span>
+                    <p class="text-[15px] md:text-[17px] font-semibold text-[#1e293b]">설문 완료 시 <span
+                            class="text-[#2977ff] font-bold">프리미엄 맞춤 정보</span> 즉시 안내</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 컨텐츠 영역 -->
+        <main class="w-full max-w-3xl mx-auto flex-grow px-5 pb-8 pt-4 flex flex-col relative justify-center">
+
+            <!-- Step 1: 시그니처 시술 선택 (완전 개편됨) -->
+            <div id="step-1"
+                class="step-container step-enter w-full bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-14 shadow-[0_20px_60px_-15px_rgba(41,119,255,0.08)] border border-white">
+                <div class="text-center mb-8 md:mb-12">
+                    <div class="flex items-center justify-center gap-3 mb-4">
+                        <div class="h-[2px] w-8 bg-blue-100 rounded-full"></div>
+                        <span class="text-[#2977ff] font-extrabold text-[15px] tracking-widest uppercase">Q.01</span>
+                        <div class="h-[2px] w-8 bg-blue-100 rounded-full"></div>
+                    </div>
+                    <h2 class="text-[1.5rem] md:text-[1.8rem] font-bold leading-snug break-keep text-[#0f172a]">
+                        현재 가장 관심 있으신<br><span
+                            class="text-transparent bg-clip-text bg-gradient-to-r from-[#2977ff] to-[#0d65ff]">세레아 시그니처
+                            시술</span>은 무엇인가요?
+                    </h2>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                    <!-- 1. 프리미엄 안티에이징 -->
+                    <button class="option-btn !block !text-left !px-6 !py-5 h-auto group"
+                        onclick="nextStep(1, '프리미엄 안티에이징')">
+                        <span
+                            class="block font-bold text-lg md:text-xl mb-1.5 text-[#0f172a] option-title transition-colors">프리미엄
+                            안티에이징 리프팅</span>
+                        <span
+                            class="block text-[13.5px] md:text-[15px] font-normal text-[#64748b] option-desc transition-colors">울쎄라피프라임/써마지리프팅,<br>티타늄,
+                            슈링크, 온다, 인모드</span>
+                    </button>
+                    <!-- 2. 시그니처성형주사 -->
+                    <button class="option-btn !block !text-left !px-6 !py-5 h-auto group"
+                        onclick="nextStep(1, '시그니처성형주사')">
+                        <span
+                            class="block font-bold text-lg md:text-xl mb-1.5 text-[#0f172a] option-title transition-colors">시그니처성형주사</span>
+                        <span
+                            class="block text-[13.5px] md:text-[15px] font-normal text-[#64748b] option-desc transition-colors">쌍꺼풀필러,
+                            요정귀필러,<br>눈두덩이필러, 하트애교필러, 직각어깨주사</span>
+                    </button>
+                    <!-- 3. 하이엔드 피부재생 -->
+                    <button class="option-btn !block !text-left !px-6 !py-5 h-auto group"
+                        onclick="nextStep(1, '하이엔드 피부재생')">
+                        <span
+                            class="block font-bold text-lg md:text-xl mb-1.5 text-[#0f172a] option-title transition-colors">하이엔드 피부재생</span>
+                        <span
+                            class="block text-[13.5px] md:text-[15px] font-normal text-[#64748b] option-desc transition-colors">줄기세포주사, 피부광채스킨부스터,<br>고압산소치료</span>
+                    </button>
+                    <!-- 4. 확실한 윤곽 교정 -->
+                    <button class="option-btn !block !text-left !px-6 !py-5 h-auto group"
+                        onclick="nextStep(1, '윤곽디자인 실리프팅')">
+                        <span
+                            class="block font-bold text-lg md:text-xl mb-1.5 text-[#0f172a] option-title transition-colors">윤곽디자인 실리프팅</span>
+                        <span
+                            class="block text-[13.5px] md:text-[15px] font-normal text-[#64748b] option-desc transition-colors">눈매개선, 이중턱라인개선</span>
+                    </button>
+					<!-- 5. 확실한 윤곽 교정 -->
+                    <button class="option-btn !block !text-left !px-6 !py-5 h-auto group"
+                        onclick="nextStep(1, '하이엔드 스킨트리트먼트')">
+                        <span
+                            class="block font-bold text-lg md:text-xl mb-1.5 text-[#0f172a] option-title transition-colors">하이엔드 스킨트리트먼트</span>
+                        <span
+                            class="block text-[13.5px] md:text-[15px] font-normal text-[#64748b] option-desc transition-colors">아쿠아필, 라라필,<br>토닝프로그램, 제모프로그램</span>
+                    </button>
+					<!-- 6. 기타 상담 후 결정 -->
+                    <button class="option-btn !block !text-left !px-6 !py-5 h-auto group"
+                        onclick="nextStep(1, '기타 상담 후 결정')">
+                        <span class="block font-bold text-lg md:text-xl mb-1.5 text-[#0f172a] option-title transition-colors">기타 상담 후 결정</span>                        
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: 시술 시기 -->
+            <div id="step-2"
+                class="step-container hidden w-full bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-14 shadow-[0_20px_60px_-15px_rgba(41,119,255,0.08)] border border-white">
+                <div class="text-center mb-10 md:mb-12">
+                    <div class="flex items-center justify-center gap-3 mb-4">
+                        <div class="h-[2px] w-8 bg-blue-100 rounded-full"></div>
+                        <span class="text-[#2977ff] font-extrabold text-[15px] tracking-widest uppercase">Q.02</span>
+                        <div class="h-[2px] w-8 bg-blue-100 rounded-full"></div>
+                    </div>
+                    <h2 class="text-[1.6rem] md:text-3xl font-bold leading-tight break-keep text-[#0f172a]">
+                        시술을 원하시는<br><span
+                            class="text-transparent bg-clip-text bg-gradient-to-r from-[#2977ff] to-[#0d65ff]">예상
+                            시기</span>를 알려주세요.
+                    </h2>
+                </div>
+                <div class="grid grid-cols-1 gap-3 md:gap-4 max-w-lg mx-auto">
+                    <button class="option-btn" onclick="nextStep(2, '1주일 이내')">1주일 이내 (빠를수록 좋음)</button>
+                    <button class="option-btn" onclick="nextStep(2, '1개월 이내')">1개월 이내</button>
+                    <button class="option-btn" onclick="nextStep(2, '상담 후 결정')">상담 후 결정할게요</button>
+                </div>
+            </div>
+
+            <!-- Step 3: 시술 경험 -->
+            <div id="step-3"
+                class="step-container hidden w-full bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-14 shadow-[0_20px_60px_-15px_rgba(41,119,255,0.08)] border border-white">
+                <div class="text-center mb-10 md:mb-12">
+                    <div class="flex items-center justify-center gap-3 mb-4">
+                        <div class="h-[2px] w-8 bg-blue-100 rounded-full"></div>
+                        <span class="text-[#2977ff] font-extrabold text-[15px] tracking-widest uppercase">Q.03</span>
+                        <div class="h-[2px] w-8 bg-blue-100 rounded-full"></div>
+                    </div>
+                    <h2 class="text-[1.6rem] md:text-3xl font-bold leading-tight break-keep text-[#0f172a]">
+                        이전에 피부과 시술을<br>받아보신 <span
+                            class="text-transparent bg-clip-text bg-gradient-to-r from-[#2977ff] to-[#0d65ff]">경험</span>이
+                        있으신가요?
+                    </h2>
+                </div>
+                <div class="grid grid-cols-1 gap-3 md:gap-4 max-w-lg mx-auto">
+                    <button class="option-btn" onclick="nextStep(3, '주기적으로 받음')">네, 주기적으로 받고 있어요</button>
+                    <button class="option-btn" onclick="nextStep(3, '1~2번 경험 있음')">1~2번 정도 받아봤어요</button>
+                    <button class="option-btn" onclick="nextStep(3, '이번이 처음')">아니요, 이번이 처음이에요</button>
+                </div>
+            </div>
+
+            <!-- Step 4: 성별 -->
+            <div id="step-4"
+                class="step-container hidden w-full bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-14 shadow-[0_20px_60px_-15px_rgba(41,119,255,0.08)] border border-white">
+                <div class="text-center mb-10 md:mb-12">
+                    <div class="flex items-center justify-center gap-3 mb-4">
+                        <div class="h-[2px] w-8 bg-blue-100 rounded-full"></div>
+                        <span class="text-[#2977ff] font-extrabold text-[15px] tracking-widest uppercase">Q.04</span>
+                        <div class="h-[2px] w-8 bg-blue-100 rounded-full"></div>
+                    </div>
+                    <h2 class="text-[1.6rem] md:text-3xl font-bold leading-tight break-keep text-[#0f172a]">
+                        맞춤 안내를 위해<br>고객님의 <span
+                            class="text-transparent bg-clip-text bg-gradient-to-r from-[#2977ff] to-[#0d65ff]">성별</span>을
+                        선택해 주세요.
+                    </h2>
+                </div>
+                <div class="grid grid-cols-2 gap-3 md:gap-5 max-w-sm mx-auto">
+                    <button class="option-btn !py-8 md:!py-10" onclick="nextStep(4, '여성')">
+                        <div class="flex flex-col items-center">
+                            <span class="text-4xl mb-3">👩🏻</span>
+                            <span>여성</span>
+                        </div>
+                    </button>
+                    <button class="option-btn !py-8 md:!py-10" onclick="nextStep(4, '남성')">
+                        <div class="flex flex-col items-center">
+                            <span class="text-4xl mb-3">🧑🏻</span>
+                            <span>남성</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 5: 연령대 -->
+            <div id="step-5"
+                class="step-container hidden w-full bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-14 shadow-[0_20px_60px_-15px_rgba(41,119,255,0.08)] border border-white">
+                <div class="text-center mb-10 md:mb-12">
+                    <div class="flex items-center justify-center gap-3 mb-4">
+                        <div class="h-[2px] w-8 bg-blue-100 rounded-full"></div>
+                        <span class="text-[#2977ff] font-extrabold text-[15px] tracking-widest uppercase">Q.05</span>
+                        <div class="h-[2px] w-8 bg-blue-100 rounded-full"></div>
+                    </div>
+                    <h2 class="text-[1.6rem] md:text-3xl font-bold leading-tight break-keep text-[#0f172a]">
+                        마지막으로 고객님의<br><span
+                            class="text-transparent bg-clip-text bg-gradient-to-r from-[#2977ff] to-[#0d65ff]">연령대</span>를
+                        선택해 주세요.
+                    </h2>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+                    <button class="option-btn" onclick="nextStep(5, '20대')">20대</button>
+                    <button class="option-btn" onclick="nextStep(5, '30대')">30대</button>
+                    <button class="option-btn" onclick="nextStep(5, '40대')">40대</button>
+                    <button class="option-btn" onclick="nextStep(5, '50대 이상')">50대 이상</button>
+                </div>
+            </div>
+
+            <!-- 로딩 화면 -->
+            <div id="step-loading"
+                class="step-container hidden w-full h-full flex-grow flex flex-col items-center justify-center text-center py-20">
+                <div class="modern-loader mb-8"></div>
+                <h2 id="loading-title" class="text-2xl md:text-3xl font-bold text-[#0f172a] mb-3">맞춤 혜택 매칭 중...</h2>
+                <p id="loading-desc" class="text-[#64748b] text-lg">응답해주신 내용을 바탕으로<br>최적의 혜택을 구성하고 있습니다.</p>
+            </div>
+
+            <!-- 최종 Step: DB 수집 폼 (호기심 유발 카피 및 신뢰도 배지 적용) -->
+            <div id="step-final" class="step-container hidden w-full">
+                <div class="text-center mb-8 md:mb-12 pt-2 md:pt-4">
+                    <h2 class="text-3xl md:text-4xl font-extrabold leading-tight break-keep text-[#0f172a]">
+                        4월 리뉴얼 오픈 한정<br>
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#2977ff] to-[#0d65ff]">프리미엄
+                            시크릿 특가</span>
+                    </h2>
+                    <p
+                        class="text-[#475569] mt-4 md:mt-5 text-[15px] md:text-[17px] font-medium leading-relaxed break-keep">
+                        입력하신 정보로 세레아의원의<br>프리미엄 맞춤 정보로<br class="hidden sm:block"> 곧 연락드리도록 하겠습니다.
+                    </p>
+                </div>
+
+                <form id="lead-form"
+                    class="bg-white/90 backdrop-blur-xl p-6 md:p-12 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(41,119,255,0.08)] border border-white"
+                    onsubmit="submitForm(event)">
+                    <div class="space-y-5 mb-8">
+                        <div>
+                            <label class="block text-sm font-bold text-[#334155] mb-2 ml-1">이름</label>
+                            <input type="text" id="userName" required placeholder="홍길동"
+                                class="w-full px-5 py-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl focus:outline-none focus:border-[#2977ff] focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all text-lg font-medium text-gray-800 placeholder-gray-400">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-[#334155] mb-2 ml-1">연락처</label>
+                            <input type="tel" id="userPhone" required placeholder="010-0000-0000" maxlength="13"
+                                oninput="autoHyphen(this)"
+                                class="w-full px-5 py-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl focus:outline-none focus:border-[#2977ff] focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all text-lg font-medium text-gray-800 placeholder-gray-400">
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50/80 rounded-2xl p-5 mb-8 border border-gray-100">
+                        <div class="flex items-center mb-5 cursor-pointer"
+                            onclick="document.getElementById('agreeAll').click();">
+                            <input id="agreeAll" type="checkbox" onchange="toggleAll(this)"
+                                onclick="event.stopPropagation()" class="custom-checkbox" style="display:block;">
+                            <label for="agreeAll"
+                                class="ml-3 text-[14px] md:text-[15px] font-bold text-[#1e293b] cursor-pointer">
+                                [전체 동의] 필수 및 선택 약관에 모두 동의합니다.
+                            </label>
+                        </div>
+                        <hr class="border-gray-200 mb-5">
+                        <div class="flex items-start mb-4 pl-1">
+                            <input id="privacy" type="checkbox" required onchange="checkIndividual()"
+                                class="custom-checkbox mt-0.5" style="display:block;">
+                            <div class="ml-3 flex-grow flex justify-between items-start">
+                                <label for="privacy" class="text-[13px] text-[#64748b] leading-snug cursor-pointer">
+                                    [필수] 개인정보 수집 및 이용 동의
+                                </label>
+                                <button type="button" onclick="openModal('modal-privacy')"
+                                    class="text-xs text-[#94a3b8] hover:text-[#2977ff] underline ml-2 transition-colors">전문보기</button>
+                            </div>
+                        </div>
+                        <div class="flex items-start pl-1">
+                            <input id="marketing" type="checkbox" onchange="checkIndividual()"
+                                class="custom-checkbox mt-0.5" style="display:block;">
+                            <div class="ml-3 flex-grow flex justify-between items-start">
+                                <label for="marketing" class="text-[13px] text-[#64748b] leading-snug cursor-pointer">
+                                    [선택] 마케팅 활용 및 정보 수신 동의
+                                </label>
+                                <button type="button" onclick="openModal('modal-marketing')"
+                                    class="text-xs text-[#94a3b8] hover:text-[#2977ff] underline ml-2 transition-colors">전문보기</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-gradient-to-r from-[#2977ff] to-[#0d65ff] hover:from-[#0d65ff] hover:to-[#0047cc] text-white font-bold text-xl py-5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(41,119,255,0.4)] transform transition-all hover:-translate-y-1 active:scale-95">
+                        설문 제출 완료
+                    </button>
+                    <p class="text-center text-xs text-[#94a3b8] mt-5 flex items-center justify-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                        입력하신 정보는 안전하게 보호됩니다.
+                    </p>
+
+                    <!-- 프리미엄 신뢰도 배지 (Trust Indicator) -->
+                    <div class="mt-8 bg-blue-50/60 border border-blue-100 rounded-2xl p-4 md:p-5 text-center shadow-sm">
+                        <p
+                            class="text-[#2977ff] font-bold text-[13px] md:text-[14px] mb-1.5 flex justify-center items-center gap-1.5 tracking-tight">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            신사 프리미엄 세레아의원
+                        </p>
+                        <p class="text-[#475569] text-[11px] md:text-[12px] font-medium break-keep">
+                            최신 장비 보유 | 맞춤형 피부 진단
+                        </p>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- 하단 푸터 -->
+    <div class="w-full bg-[#f8fafc] border-t border-gray-200 relative z-20 mt-2">
+        <div class="max-w-4xl mx-auto px-5 pt-8 pb-10 md:pt-10 md:pb-12">
+            <div class="mb-6 bg-gray-100/80 rounded-2xl p-5 md:p-6 border border-gray-200 shadow-sm">
+                <h3 class="font-bold text-[#475569] mb-3 text-xs md:text-sm">유의사항</h3>
+                <ul class="text-[11px] md:text-xs text-[#64748b] space-y-1.5 list-disc pl-4 break-keep">
+                    <li>이벤트 기간 : 2026-04-01 ~ 2026-04-30 (해당 페이지 신청자 대상)</li>
+                    <li>모든 시술 및 수술은 개인에 따라 출혈, 부종, 멍 등의 부작용이 발생할 수 있으며 효과의 차이가 있을 수 있습니다.</li>
+                    <li>기저 질환 및 복용약에 따라 시술이 어려울 수 있습니다.</li>
+                    <li class="text-red-400 font-medium">임산부 및 수유부, 항암 치료를 진행 중이신 고객님은 상담이 제한될 수 있습니다.</li>
+                </ul>
+            </div>
+            <div class="text-[#94a3b8] text-[10px] md:text-[11px] leading-relaxed break-keep px-2">
+                <p class="font-bold text-[#64748b] mb-1.5 text-xs">신사 세레아의원</p>
+                <p>대표 : 서명철 | 사업자등록번호 : 637-24-02301</p>
+                <p>서울 강남구 도산대로 150 (논현동) 1층 신사세레아의원 (신사역 1번출구) | 대표번호 : 02-6956-5731</p>
+                <p class="mt-2 uppercase tracking-wide">Copyright © Serea Clinic. All right reserved.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 공통 스타일 -->
+    <div id="modal-privacy"
+        class="fixed inset-0 z-[100] hidden bg-gray-900 bg-opacity-40 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div
+            class="bg-white rounded-2xl max-w-sm md:max-w-md w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="px-6 py-5 flex justify-between items-center border-b border-gray-100">
+                <h3 class="font-bold text-gray-800 text-base">개인정보 수집 및 이용 동의 (필수)</h3>
+                <button type="button" onclick="closeModal('modal-privacy')"
+                    class="text-gray-400 hover:text-gray-800"><svg class="w-5 h-5" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg></button>
+            </div>
+            <div class="px-6 py-6 overflow-y-auto text-sm text-gray-600 space-y-4">
+                <p>신사 세레아의원은 원활한 상담을 위해 개인정보를 수집/이용합니다.</p>
+                <ul class="list-disc pl-4 space-y-2 text-gray-500">
+                    <li><strong>수집 항목:</strong> 이름, 연락처, 설문 응답 내용</li>
+                    <li><strong>이용 목적:</strong> 혜택 적용, 상담원 연결, 예약 확인</li>
+                    <li><strong>보유 기간:</strong> 상담 종료 후 6개월 (또는 파기 요청 시까지)</li>
+                </ul>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                <button type="button" onclick="closeModal('modal-privacy')"
+                    class="w-full bg-[#2977ff] text-white py-3 rounded-xl font-bold hover:bg-[#0d65ff]">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-marketing"
+        class="fixed inset-0 z-[100] hidden bg-gray-900 bg-opacity-40 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div
+            class="bg-white rounded-2xl max-w-sm md:max-w-md w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="px-6 py-5 flex justify-between items-center border-b border-gray-100">
+                <h3 class="font-bold text-gray-800 text-base">마케팅 정보 수신 동의 (선택)</h3>
+                <button type="button" onclick="closeModal('modal-marketing')"
+                    class="text-gray-400 hover:text-gray-800"><svg class="w-5 h-5" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg></button>
+            </div>
+            <div class="px-6 py-6 overflow-y-auto text-sm text-gray-600 space-y-4">
+                <p>신사 세레아의원은 이벤트 및 혜택 안내를 위해 광고성 정보를 전송할 수 있습니다.</p>
+                <ul class="list-disc pl-4 space-y-2 text-gray-500">
+                    <li><strong>전송 내용:</strong> 이벤트, 프로모션, 신규 시술 안내</li>
+                    <li><strong>전송 방법:</strong> 문자, 카카오톡, 이메일</li>
+                    <li><strong>보유 기간:</strong> <strong>동의 철회 시까지</strong></li>
+                </ul>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                <button type="button" onclick="closeModal('modal-marketing')"
+                    class="w-full bg-[#2977ff] text-white py-3 rounded-xl font-bold hover:bg-[#0d65ff]">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const totalQuestions = 5;
+        let userAnswers = {};
+
+        document.addEventListener("DOMContentLoaded", () => {
+            updateProgress(1);
+        });
+
+        function nextStep(currentStepNum, answer) {
+            userAnswers[`step${currentStepNum}`] = answer;
+
+            const buttons = document.querySelectorAll(`#step-${currentStepNum} .option-btn`);
+            buttons.forEach(btn => {
+                if (btn.innerText.includes(answer) || (answer === '여성' && btn.innerText.includes('Female')) || (answer === '남성' && btn.innerText.includes('Male'))) {
+                    btn.classList.add('selected');
+                }
+            });
+
+            setTimeout(() => {
+                document.getElementById(`step-${currentStepNum}`).classList.add('hidden');
+                document.getElementById(`step-${currentStepNum}`).classList.remove('step-enter');
+
+                if (currentStepNum < totalQuestions) {
+                    const nextId = currentStepNum + 1;
+                    const nextElement = document.getElementById(`step-${nextId}`);
+                    nextElement.classList.remove('hidden');
+                    nextElement.classList.add('step-enter');
+                    updateProgress(nextId);
+                } else {
+                    showLoadingScreen();
+                }
+            }, 350);
+        }
+
+        function updateProgress(step) {
+            const progressPercentage = (step / totalQuestions) * 100;
+            document.getElementById('top-progress-bar').style.width = `${progressPercentage}%`;
+        }
+
+        function showLoadingScreen() {
+            const banner = document.getElementById('benefit-banner');
+            if (banner) banner.style.display = 'none';
+
+            const loadingScreen = document.getElementById('step-loading');
+            loadingScreen.classList.remove('hidden');
+            loadingScreen.classList.add('step-enter');
+
+            setTimeout(() => {
+                loadingScreen.classList.add('hidden');
+                const finalScreen = document.getElementById('step-final');
+                finalScreen.classList.remove('hidden');
+                finalScreen.classList.add('step-enter');
+                document.getElementById('top-progress-bar').style.width = '100%';
+            }, 2200);
+        }
+
+        function autoHyphen(target) {
+            target.value = target.value.replace(/[^0-9]/g, '').replace(/^(\d{2,3})(\d{3,4})(\d{4})$/, `$1-$2-$3`);
+        }
+
+        function toggleAll(source) {
+            document.getElementById('privacy').checked = source.checked;
+            document.getElementById('marketing').checked = source.checked;
+        }
+
+        function checkIndividual() {
+            const privacy = document.getElementById('privacy').checked;
+            const marketing = document.getElementById('marketing').checked;
+            document.getElementById('agreeAll').checked = (privacy && marketing);
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('div').classList.remove('scale-95');
+            }, 10);
+            document.body.classList.add('modal-open');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('opacity-0');
+            modal.querySelector('div').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+            }, 300);
+        }
+
+        async function submitForm(event) {
+            event.preventDefault();
+            const name = document.getElementById('userName').value;
+            const phone = document.getElementById('userPhone').value;
+            const privacy = document.getElementById('privacy').checked;
+            const marketing = document.getElementById('marketing').checked;
+
+            if (!name || !phone || !privacy) {
+                alert("정보를 모두 입력하고 필수 동의를 체크해주세요.");
+                return;
+            }
+
+            const phoneRegex = /^01([0|1|6|7|8|9])-?([0-9]{3,4})-?([0-9]{4})$/;
+            if (!phoneRegex.test(phone)) {
+                alert("유효한 휴대폰 번호를 입력해주세요.\n(예: 010-0000-0000)");
+                document.getElementById('userPhone').focus();
+                return;
+            }
+
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = "신청 중...";
+            submitBtn.disabled = true;
+
+            // URL에서 UTM 파라미터 추출
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // 서버에서 주입한 데이터 사용
+            const lpData = window.__LP_DATA__ || {};
+
+            // payload 구성
+            const payload = {
+                name: name,
+                phoneNumber: phone,
+                clinic_id: lpData.clinicId,
+                landing_page_id: lpData.landingPageId,
+                inflowUrl: window.location.href,
+                utm_source: urlParams.get('utm_source'),
+                utm_medium: urlParams.get('utm_medium'),
+                utm_campaign: urlParams.get('utm_campaign'),
+                utm_content: urlParams.get('utm_content'),
+                utm_term: urlParams.get('utm_term'),
+                custom_data: {
+                    survey: userAnswers,
+                    marketing_consent: marketing
+                }
+            };
+
+            // localStorage에 먼저 저장 (유실 방지)
+            const queueKey = window.LeadQueue ? window.LeadQueue.save(payload) : null;
+
+            try {
+                const response = await fetch('/api/webhook/lead', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if (response.ok) {
+                    // 성공 시 localStorage에서 제거
+                    if (window.LeadQueue) window.LeadQueue.remove(queueKey);
+                    submitBtn.innerHTML = "신청 완료 ✓";
+                    submitBtn.className = "w-full bg-[#1e293b] text-white font-bold text-lg md:text-xl py-5 rounded-2xl cursor-not-allowed transition-all";
+                    alert(`${name}님, 신청이 완료되었습니다.\n작성해주신 번호로 상담원이 연락드리도록 하겠습니다.`);
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.error || '신청 실패');
+                }
+            } catch (error) {
+                // 실패 시 localStorage에 유지 → 재방문 시 자동 재시도
+                console.error('Submit error:', error);
+                alert("신청 중 오류가 발생했습니다. 다시 시도해주세요.");
+                submitBtn.innerHTML = "설문 제출 완료";
+                submitBtn.disabled = false;
+                submitBtn.className = "w-full bg-gradient-to-r from-[#2977ff] to-[#0d65ff] hover:from-[#0d65ff] hover:to-[#0047cc] text-white font-bold text-xl py-5 rounded-2xl shadow-[0_10px_25px_-5px_rgba(41,119,255,0.4)] transform transition-all hover:-translate-y-1 active:scale-95";
+            }
+        }
+    </script>
+</body>
+
+</html>

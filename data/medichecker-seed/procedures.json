@@ -1,0 +1,452 @@
+[
+  {
+    "id": 1,
+    "name": "보톡스",
+    "specialty": "성형외과",
+    "aliases": ["보툴리눔", "보툴렉스", "제오민", "나보타", "보톨렉스", "디스포트", "BTX"],
+    "requiredDisclosures": ["멍", "비대칭", "두통", "안검하수", "일시적 마비"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["시술 결과 개인차 고지 필요", "효과 지속 기간 명시 권장"]
+  },
+  {
+    "id": 2,
+    "name": "필러",
+    "specialty": "성형외과",
+    "aliases": ["히알루론산", "HA필러", "레스틸렌", "쥬비덤", "볼륨필러", "콜라겐필러"],
+    "requiredDisclosures": ["멍", "부기", "혈관 폐색", "괴사", "이물감"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["시술 부위별 부작용 고지 필요", "필러 종류 명시 권장"]
+  },
+  {
+    "id": 3,
+    "name": "리프팅",
+    "specialty": "성형외과",
+    "aliases": ["실리프팅", "울쎄라", "슈링크", "인모드", "써마지", "올리지오", "PDO리프팅"],
+    "requiredDisclosures": ["통증", "멍", "감각 이상", "비대칭", "부기"],
+    "commonViolations": ["2호(경험담)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["효과 개인차 고지 필요", "다운타임 정보 필수"]
+  },
+  {
+    "id": 4,
+    "name": "쌍꺼풀 수술",
+    "specialty": "성형외과",
+    "aliases": ["눈성형", "쌍수", "매몰법", "절개법", "눈매교정", "트임"],
+    "requiredDisclosures": ["부기", "비대칭", "흉터", "안구건조", "재수술 가능성"],
+    "commonViolations": ["2호(전후사진)", "4호(비교)", "8호(과장)"],
+    "specialRegulations": ["수술 방법별 특성 안내 필요", "회복 기간 명시"]
+  },
+  {
+    "id": 5,
+    "name": "코성형",
+    "specialty": "성형외과",
+    "aliases": ["코수술", "융비술", "비중격", "콧대", "코끝성형", "매부리코"],
+    "requiredDisclosures": ["부기", "감염", "비대칭", "호흡 장애", "구축"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["보형물 종류 안내", "재수술 가능성 고지"]
+  },
+  {
+    "id": 6,
+    "name": "지방흡입",
+    "specialty": "성형외과",
+    "aliases": ["지흡", "라이포", "바디성형", "복부성형", "팔뚝지흡", "허벅지지흡"],
+    "requiredDisclosures": ["출혈", "감염", "피부 울퉁불퉁", "혈전", "마취 위험"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["지방량 제한 안내", "회복 기간 명확히 고지"]
+  },
+  {
+    "id": 7,
+    "name": "레이저 시술",
+    "specialty": "피부과",
+    "aliases": ["레이저토닝", "피코레이저", "프락셀", "IPL", "제모레이저", "색소레이저"],
+    "requiredDisclosures": ["화상", "색소침착", "흉터", "홍반", "물집"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["시술 횟수 및 간격 안내", "피부 타입별 주의사항"]
+  },
+  {
+    "id": 8,
+    "name": "피부관리",
+    "specialty": "피부과",
+    "aliases": ["스킨케어", "필링", "MTS", "더마롤러", "스킨부스터", "물광주사"],
+    "requiredDisclosures": ["홍반", "각질", "건조함", "민감반응"],
+    "commonViolations": ["2호(전후사진)", "8호(과장)", "13호(할인)"],
+    "specialRegulations": ["시술 간격 안내", "홈케어 필요성 고지"]
+  },
+  {
+    "id": 9,
+    "name": "임플란트",
+    "specialty": "치과",
+    "aliases": ["치아임플란트", "인공치아", "식립", "오스템", "스트라우만"],
+    "requiredDisclosures": ["감염", "골유착 실패", "신경 손상", "상악동염", "보철물 파손"],
+    "commonViolations": ["2호(경험담)", "7호(부작용 누락)", "13호(할인)"],
+    "specialRegulations": ["임플란트 브랜드 명시", "유지 관리 안내 필수"]
+  },
+  {
+    "id": 10,
+    "name": "치아교정",
+    "specialty": "치과",
+    "aliases": ["교정", "투명교정", "인비절라인", "브라켓교정", "설측교정"],
+    "requiredDisclosures": ["통증", "치아 손상", "잇몸 퇴축", "치근 흡수", "교정 기간 변동"],
+    "commonViolations": ["2호(전후사진)", "8호(과장)", "13호(할인)"],
+    "specialRegulations": ["예상 교정 기간 고지", "유지 장치 안내"]
+  },
+  {
+    "id": 11,
+    "name": "치아미백",
+    "specialty": "치과",
+    "aliases": ["미백", "화이트닝", "블리칭", "램프미백"],
+    "requiredDisclosures": ["치아 시림", "잇몸 자극", "효과 지속 기간", "변색 가능"],
+    "commonViolations": ["2호(전후사진)", "8호(과장)", "13호(할인)"],
+    "specialRegulations": ["시술 후 음식 제한 안내", "유지 관리 필요성 고지"]
+  },
+  {
+    "id": 12,
+    "name": "라미네이트",
+    "specialty": "치과",
+    "aliases": ["베니어", "치아성형", "올세라믹"],
+    "requiredDisclosures": ["치아 삭제", "탈락 가능성", "시림", "파절"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["비가역적 시술 고지", "수명 및 재시술 안내"]
+  },
+  {
+    "id": 13,
+    "name": "침치료",
+    "specialty": "한의원",
+    "aliases": ["침", "한방침", "전침", "약침", "봉침"],
+    "requiredDisclosures": ["출혈", "멍", "감염", "기흉(드물게)"],
+    "commonViolations": ["2호(경험담)", "3호(거짓)", "8호(과장)"],
+    "specialRegulations": ["치료 횟수 및 기간 안내", "효과 개인차 고지"]
+  },
+  {
+    "id": 14,
+    "name": "한방다이어트",
+    "specialty": "한의원",
+    "aliases": ["한방비만치료", "한약다이어트", "매선", "지방분해침"],
+    "requiredDisclosures": ["소화장애", "두통", "불면", "심장박동 이상", "요요현상"],
+    "commonViolations": ["2호(경험담)", "3호(거짓)", "8호(과장)"],
+    "specialRegulations": ["식이요법 병행 안내", "요요현상 가능성 고지"]
+  },
+  {
+    "id": 15,
+    "name": "추나요법",
+    "specialty": "한의원",
+    "aliases": ["추나", "도수치료", "한방물리치료"],
+    "requiredDisclosures": ["통증", "근육통", "어지러움"],
+    "commonViolations": ["2호(경험담)", "8호(과장)", "9호(무자격)"],
+    "specialRegulations": ["건강보험 적용 여부 안내"]
+  },
+  {
+    "id": 16,
+    "name": "안면윤곽",
+    "specialty": "성형외과",
+    "aliases": ["윤곽수술", "사각턱", "광대축소", "턱끝성형", "V라인"],
+    "requiredDisclosures": ["부기", "감각 이상", "비대칭", "감염", "신경 손상"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["수술 전 CT 촬영 안내", "회복 기간 상세 고지"]
+  },
+  {
+    "id": 17,
+    "name": "눈밑지방재배치",
+    "specialty": "성형외과",
+    "aliases": ["눈밑성형", "다크서클제거", "하안검", "눈밑꺼짐"],
+    "requiredDisclosures": ["부기", "멍", "비대칭", "눈물흘림", "외반"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["수술 방법별 장단점 안내"]
+  },
+  {
+    "id": 18,
+    "name": "가슴성형",
+    "specialty": "성형외과",
+    "aliases": ["가슴수술", "유방확대", "유방축소", "처진가슴", "모티바"],
+    "requiredDisclosures": ["구축", "감염", "비대칭", "감각 이상", "파열"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["보형물 종류 및 특성 상세 안내", "정기 검진 필요성 고지"]
+  },
+  {
+    "id": 19,
+    "name": "탈모치료",
+    "specialty": "피부과",
+    "aliases": ["모발이식", "헤어라인교정", "두피관리", "프로페시아", "미녹시딜"],
+    "requiredDisclosures": ["효과 개인차", "지속적 관리 필요", "부작용(약물)", "일시적 탈모"],
+    "commonViolations": ["2호(전후사진)", "3호(거짓)", "8호(과장)"],
+    "specialRegulations": ["치료 기간 및 비용 안내", "약물 부작용 고지"]
+  },
+  {
+    "id": 20,
+    "name": "여드름치료",
+    "specialty": "피부과",
+    "aliases": ["아크네", "여드름흉터", "피지관리", "압출"],
+    "requiredDisclosures": ["건조함", "각질", "초기악화", "색소침착"],
+    "commonViolations": ["2호(전후사진)", "8호(과장)", "13호(할인)"],
+    "specialRegulations": ["치료 기간 안내", "홈케어 병행 필요성"]
+  },
+  {
+    "id": 21,
+    "name": "라식",
+    "specialty": "안과",
+    "aliases": ["레이저시력교정", "라식수술", "LASIK"],
+    "requiredDisclosures": ["안구건조증", "야간 빛번짐", "각막 혼탁", "근시 퇴행", "감염"],
+    "commonViolations": ["2호(전후사진)", "3호(거짓)", "8호(과장)"],
+    "specialRegulations": ["수술 전 정밀검사 안내", "부적합 케이스 고지"]
+  },
+  {
+    "id": 22,
+    "name": "라섹",
+    "specialty": "안과",
+    "aliases": ["레이저시력교정", "라섹수술", "LASEK", "PRK"],
+    "requiredDisclosures": ["통증", "안구건조증", "각막 혼탁", "회복 기간", "빛번짐"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["회복 기간 상세 안내", "라식과 차이점 설명"]
+  },
+  {
+    "id": 23,
+    "name": "스마일라식",
+    "specialty": "안과",
+    "aliases": ["스마일수술", "SMILE", "렌티큘추출술"],
+    "requiredDisclosures": ["안구건조증", "시력 변동", "각막 혼탁", "재수술 제한"],
+    "commonViolations": ["2호(전후사진)", "4호(비교)", "8호(과장)"],
+    "specialRegulations": ["기존 라식/라섹 대비 장단점 균형 설명"]
+  },
+  {
+    "id": 24,
+    "name": "백내장수술",
+    "specialty": "안과",
+    "aliases": ["백내장", "인공수정체", "다초점렌즈", "노안수술"],
+    "requiredDisclosures": ["감염", "안압 상승", "후발 백내장", "인공수정체 탈구"],
+    "commonViolations": ["2호(경험담)", "8호(과장)", "13호(할인)"],
+    "specialRegulations": ["렌즈 종류별 특성 안내", "건강보험 적용 여부"]
+  },
+  {
+    "id": 25,
+    "name": "렌즈삽입술",
+    "specialty": "안과",
+    "aliases": ["ICL", "안내렌즈삽입", "시력교정렌즈"],
+    "requiredDisclosures": ["감염", "백내장", "녹내장", "난시", "안압 상승"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["고도근시 적응증 안내", "정기 검진 필요성"]
+  },
+  {
+    "id": 26,
+    "name": "인공관절",
+    "specialty": "정형외과",
+    "aliases": ["관절치환술", "무릎인공관절", "고관절인공관절", "어깨인공관절"],
+    "requiredDisclosures": ["감염", "탈구", "혈전", "인공관절 마모", "재수술 가능성"],
+    "commonViolations": ["2호(경험담)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["인공관절 수명 안내", "재활 기간 고지"]
+  },
+  {
+    "id": 27,
+    "name": "척추수술",
+    "specialty": "정형외과",
+    "aliases": ["디스크수술", "척추고정술", "척추유합술", "추간판절제술"],
+    "requiredDisclosures": ["신경 손상", "감염", "출혈", "재발", "인접 분절 질환"],
+    "commonViolations": ["2호(경험담)", "3호(거짓)", "8호(과장)"],
+    "specialRegulations": ["비수술 치료 옵션 안내", "수술 필요성 기준"]
+  },
+  {
+    "id": 28,
+    "name": "관절경수술",
+    "specialty": "정형외과",
+    "aliases": ["관절경", "무릎관절경", "어깨관절경", "연골수술"],
+    "requiredDisclosures": ["감염", "관절 강직", "혈전", "신경 손상"],
+    "commonViolations": ["2호(경험담)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["재활 프로그램 안내", "수술 후 관리 필요성"]
+  },
+  {
+    "id": 29,
+    "name": "도수치료",
+    "specialty": "정형외과",
+    "aliases": ["물리치료", "도수교정", "카이로프랙틱", "재활치료"],
+    "requiredDisclosures": ["일시적 통증", "근육통", "어지러움"],
+    "commonViolations": ["2호(경험담)", "8호(과장)", "9호(무자격)"],
+    "specialRegulations": ["치료 횟수 및 기간 안내", "건강보험 적용 범위"]
+  },
+  {
+    "id": 30,
+    "name": "비만대사수술",
+    "specialty": "외과",
+    "aliases": ["위절제술", "위우회술", "비만수술", "슬리브절제술"],
+    "requiredDisclosures": ["영양 결핍", "덤핑증후군", "감염", "출혈", "재수술"],
+    "commonViolations": ["2호(경험담)", "3호(거짓)", "8호(과장)"],
+    "specialRegulations": ["수술 전 검사 안내", "평생 관리 필요성 고지"]
+  },
+  {
+    "id": 31,
+    "name": "건강검진",
+    "specialty": "내과",
+    "aliases": ["종합검진", "정밀검사", "암검진", "기업검진"],
+    "requiredDisclosures": ["검사별 한계점", "추가 검사 필요 가능성"],
+    "commonViolations": ["8호(과장)", "13호(할인)", "14호(인증)"],
+    "specialRegulations": ["검진 항목별 설명", "국가검진 vs 개인검진 구분"]
+  },
+  {
+    "id": 32,
+    "name": "예방접종",
+    "specialty": "내과",
+    "aliases": ["백신", "독감예방접종", "대상포진백신", "폐렴백신"],
+    "requiredDisclosures": ["접종 부위 통증", "발열", "알레르기 반응", "아나필락시스"],
+    "commonViolations": ["3호(거짓)", "7호(부작용 누락)", "13호(할인)"],
+    "specialRegulations": ["접종 대상자 안내", "금기사항 고지"]
+  },
+  {
+    "id": 33,
+    "name": "자궁경부암백신",
+    "specialty": "산부인과",
+    "aliases": ["HPV백신", "가다실", "서바릭스", "인유두종바이러스백신"],
+    "requiredDisclosures": ["접종 부위 통증", "발열", "두통", "알레르기 반응"],
+    "commonViolations": ["3호(거짓)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["접종 대상 연령 안내", "정기 검진 병행 필요성"]
+  },
+  {
+    "id": 34,
+    "name": "여성성형",
+    "specialty": "산부인과",
+    "aliases": ["질성형", "소음순수술", "회음부성형", "여성비뇨기성형"],
+    "requiredDisclosures": ["감염", "출혈", "흉터", "감각 이상", "비대칭"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["수술 목적 및 기대 효과 명확히 안내"]
+  },
+  {
+    "id": 35,
+    "name": "비뇨기시술",
+    "specialty": "비뇨기과",
+    "aliases": ["전립선시술", "요실금수술", "남성성형", "정관수술"],
+    "requiredDisclosures": ["감염", "출혈", "배뇨 장애", "성기능 영향"],
+    "commonViolations": ["2호(경험담)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["시술 방법별 특성 안내", "회복 기간 고지"]
+  },
+  {
+    "id": 36,
+    "name": "귀성형",
+    "specialty": "성형외과",
+    "aliases": ["돌출귀수술", "귀교정", "이개성형"],
+    "requiredDisclosures": ["감염", "비대칭", "흉터", "재발"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["수술 대상 연령 안내"]
+  },
+  {
+    "id": 37,
+    "name": "입술성형",
+    "specialty": "성형외과",
+    "aliases": ["입술필러", "입술확대", "입꼬리수술", "인중축소"],
+    "requiredDisclosures": ["부기", "멍", "비대칭", "감각 이상"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["필러 vs 수술 장단점 안내"]
+  },
+  {
+    "id": 38,
+    "name": "엉덩이성형",
+    "specialty": "성형외과",
+    "aliases": ["힙업", "지방이식", "엉덩이확대", "브라질리안힙"],
+    "requiredDisclosures": ["감염", "지방 흡수", "비대칭", "색전증"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["지방색전증 위험성 필수 고지"]
+  },
+  {
+    "id": 39,
+    "name": "하체지방흡입",
+    "specialty": "성형외과",
+    "aliases": ["허벅지지흡", "종아리지흡", "하체성형"],
+    "requiredDisclosures": ["부기", "멍", "피부 울퉁불퉁", "비대칭", "혈전"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["지방 제거량 한계 안내", "압박복 착용 기간"]
+  },
+  {
+    "id": 40,
+    "name": "팔지방흡입",
+    "specialty": "성형외과",
+    "aliases": ["팔뚝지흡", "상체지흡", "팔성형"],
+    "requiredDisclosures": ["부기", "멍", "비대칭", "피부 처짐"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["피부 탄력도에 따른 결과 차이 안내"]
+  },
+  {
+    "id": 41,
+    "name": "색소치료",
+    "specialty": "피부과",
+    "aliases": ["기미치료", "잡티제거", "주근깨", "검버섯", "색소침착"],
+    "requiredDisclosures": ["색소침착 재발", "홍반", "색소탈락", "화상"],
+    "commonViolations": ["2호(전후사진)", "3호(거짓)", "8호(과장)"],
+    "specialRegulations": ["치료 횟수 및 재발 가능성 안내"]
+  },
+  {
+    "id": 42,
+    "name": "흉터치료",
+    "specialty": "피부과",
+    "aliases": ["흉터제거", "켈로이드", "여드름흉터", "수술흉터"],
+    "requiredDisclosures": ["치료 효과 제한", "색소침착", "통증", "재발"],
+    "commonViolations": ["2호(전후사진)", "3호(거짓)", "8호(과장)"],
+    "specialRegulations": ["흉터 유형별 치료 방법 및 효과 안내"]
+  },
+  {
+    "id": 43,
+    "name": "제모",
+    "specialty": "피부과",
+    "aliases": ["레이저제모", "영구제모", "왁싱", "IPL제모"],
+    "requiredDisclosures": ["화상", "색소침착", "모낭염", "효과 개인차"],
+    "commonViolations": ["3호(거짓-영구)", "7호(부작용 누락)", "13호(할인)"],
+    "specialRegulations": ["시술 횟수 안내", "영구 제모 표현 주의"]
+  },
+  {
+    "id": 44,
+    "name": "다한증치료",
+    "specialty": "피부과",
+    "aliases": ["땀치료", "보톡스다한증", "미라드라이", "교감신경차단술"],
+    "requiredDisclosures": ["보상성 다한증", "효과 지속 기간", "통증"],
+    "commonViolations": ["2호(경험담)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["치료 방법별 장단점 안내"]
+  },
+  {
+    "id": 45,
+    "name": "치아성형",
+    "specialty": "치과",
+    "aliases": ["라미네이트", "치아심미", "레진치료", "올세라믹"],
+    "requiredDisclosures": ["치아 삭제", "시림", "파절", "탈락"],
+    "commonViolations": ["2호(전후사진)", "7호(부작용 누락)", "8호(과장)"],
+    "specialRegulations": ["비가역적 시술 고지", "수명 안내"]
+  },
+  {
+    "id": 46,
+    "name": "잇몸치료",
+    "specialty": "치과",
+    "aliases": ["치주치료", "스케일링", "치은성형", "잇몸수술"],
+    "requiredDisclosures": ["출혈", "시림", "치아 흔들림", "통증"],
+    "commonViolations": ["2호(경험담)", "7호(부작용 누락)", "13호(할인)"],
+    "specialRegulations": ["정기 관리 필요성 안내"]
+  },
+  {
+    "id": 47,
+    "name": "한약치료",
+    "specialty": "한의원",
+    "aliases": ["한약", "보약", "한방첩약", "공진단"],
+    "requiredDisclosures": ["소화장애", "간독성", "약물 상호작용", "알레르기"],
+    "commonViolations": ["2호(경험담)", "3호(거짓)", "8호(과장)"],
+    "specialRegulations": ["복용 기간 및 방법 안내", "병행 약물 확인"]
+  },
+  {
+    "id": 48,
+    "name": "한방피부치료",
+    "specialty": "한의원",
+    "aliases": ["한방피부과", "아토피한방치료", "습진치료", "한방미용"],
+    "requiredDisclosures": ["초기악화", "가려움증", "피부 자극"],
+    "commonViolations": ["2호(경험담)", "3호(거짓)", "8호(과장)"],
+    "specialRegulations": ["치료 기간 안내", "효과 개인차 고지"]
+  },
+  {
+    "id": 49,
+    "name": "통증치료",
+    "specialty": "마취통증의학과",
+    "aliases": ["신경차단술", "통증주사", "프롤로테라피", "도수치료"],
+    "requiredDisclosures": ["일시적 악화", "감염", "출혈", "신경 손상"],
+    "commonViolations": ["2호(경험담)", "8호(과장)", "9호(무자격)"],
+    "specialRegulations": ["치료 횟수 및 효과 지속 기간 안내"]
+  },
+  {
+    "id": 50,
+    "name": "체형관리",
+    "specialty": "피부과",
+    "aliases": ["바디라인", "셀룰라이트", "쿨스컬프팅", "지방분해주사"],
+    "requiredDisclosures": ["효과 개인차", "부기", "멍", "통증"],
+    "commonViolations": ["2호(경험담)", "3호(거짓)", "13호(할인)"],
+    "specialRegulations": ["시술 vs 수술 차이점 명확히 안내"]
+  }
+]

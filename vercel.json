@@ -1,0 +1,17 @@
+{
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/sync-ads",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/sync-press",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "0 0 * * 1"
+    }
+  ]
+}

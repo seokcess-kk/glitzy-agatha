@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 224 12% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 12% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 12% 15%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 9% 46%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 220 14% 96%;
+    --accent-foreground: 224 12% 15%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%;
+    --ring-offset-background: var(--background);
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 228 12% 8%;
+    --foreground: 210 20% 92%;
+
+    --card: 228 10% 11%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 228 10% 11%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 225 8% 16%;
+    --secondary-foreground: 210 15% 78%;
+
+    --muted: 225 8% 16%;
+    --muted-foreground: 215 12% 55%;
+
+    --accent: 225 8% 16%;
+    --accent-foreground: 210 20% 92%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 8% 16%;
+    --input: 225 8% 16%;
+    --ring: 217 91% 60%;
+    --ring-offset-background: var(--background);
+
+    --overlay: 230 25% 14%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-inter), 'Inter', sans-serif;
+  }
+}
+
+/* 스크롤바 커스텀 */
+* { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.12) transparent; }
+.dark * { scrollbar-color: rgba(255,255,255,0.08) transparent; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+/* 카드 — 미니멀 */
+.glass-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+.dark .glass-card {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* 카운트업 애니메이션 */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+/* DateRangePicker 예약 날짜 도트 */
+.rdp-booked-day::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: hsl(var(--primary));
+}
+
+/* 모션 감소 선호 사용자 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

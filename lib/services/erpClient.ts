@@ -58,7 +58,8 @@ async function erpFetch<T>(path: string, options?: {
 export async function fetchQuotes(clientId: number, params?: {
   status?: string; page?: number; limit?: number
 }): Promise<ERPListResponse<ERPQuote>> {
-  const sp = new URLSearchParams({ client_id: String(clientId) })
+  // glitzy-web API는 clinic_id 파라미터를 기대 (외부 API 인터페이스 유지)
+  const sp = new URLSearchParams({ clinic_id: String(clientId) })
   if (params?.status) sp.set('status', params.status)
   if (params?.page) sp.set('page', String(params.page))
   if (params?.limit) sp.set('limit', String(params.limit))
@@ -66,13 +67,13 @@ export async function fetchQuotes(clientId: number, params?: {
 }
 
 export async function fetchQuoteDetail(clientId: number, id: string): Promise<ERPDetailResponse<ERPQuoteDetail>> {
-  return erpFetch<ERPDetailResponse<ERPQuoteDetail>>(`/quotes/${id}?client_id=${clientId}`)
+  return erpFetch<ERPDetailResponse<ERPQuoteDetail>>(`/quotes/${id}?clinic_id=${clientId}`)
 }
 
 export async function fetchInvoices(clientId: number, params?: {
   status?: string; page?: number; limit?: number
 }): Promise<ERPListResponse<ERPInvoice>> {
-  const sp = new URLSearchParams({ client_id: String(clientId) })
+  const sp = new URLSearchParams({ clinic_id: String(clientId) })
   if (params?.status) sp.set('status', params.status)
   if (params?.page) sp.set('page', String(params.page))
   if (params?.limit) sp.set('limit', String(params.limit))
@@ -80,7 +81,7 @@ export async function fetchInvoices(clientId: number, params?: {
 }
 
 export async function fetchInvoiceDetail(clientId: number, id: string): Promise<ERPDetailResponse<ERPInvoice>> {
-  return erpFetch<ERPDetailResponse<ERPInvoice>>(`/invoices/${id}?client_id=${clientId}`)
+  return erpFetch<ERPDetailResponse<ERPInvoice>>(`/invoices/${id}?clinic_id=${clientId}`)
 }
 
 export async function respondToQuote(
@@ -89,8 +90,9 @@ export async function respondToQuote(
   action: 'approve' | 'reject',
   reason?: string,
 ): Promise<ERPRespondResult> {
+  // glitzy-web API는 clinic_id 필드를 기대
   return erpFetch<ERPRespondResult>(`/quotes/${quoteId}/respond`, {
     method: 'PATCH',
-    body: JSON.stringify({ client_id: clientId, action, reason }),
+    body: JSON.stringify({ clinic_id: clientId, action, reason }),
   })
 }

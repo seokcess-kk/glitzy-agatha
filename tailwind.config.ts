@@ -10,18 +10,19 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-inter)', 'Inter', 'sans-serif'],
+        sans: ['var(--font-pretendard)', 'Pretendard', 'sans-serif'],
+        mono: ['var(--font-geist-mono)', 'Geist Mono', 'monospace'],
       },
       colors: {
         // Agatha brand — Blue 기반
         brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          900: '#1e3a8a',
+          50: '#F5F3FF',   // Violet-50
+          100: '#EDE9FE',  // Violet-100
+          400: '#A78BFA',  // Violet-400
+          500: '#8B5CF6',  // Violet-500
+          600: '#7C3AED',  // Violet-600 (메인 포인트)
+          700: '#6D28D9',  // Violet-700
+          900: '#4C1D95',  // Violet-900
         },
         // shadcn 색상 시스템
         border: "hsl(var(--border))",

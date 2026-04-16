@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --font-pretendard: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -13,7 +17,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 224 12% 15%;
 
-    --primary: 217 91% 60%;
+    --primary: 263 70% 58%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 96%;
@@ -30,23 +34,23 @@
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 217 91% 60%;
+    --ring: 263 70% 58%;
     --ring-offset-background: var(--background);
 
     --radius: 0.625rem;
   }
 
   .dark {
-    --background: 228 12% 8%;
+    --background: 222 47% 2%;
     --foreground: 210 20% 92%;
 
-    --card: 228 10% 11%;
+    --card: 222 47% 6%;
     --card-foreground: 210 20% 92%;
 
-    --popover: 228 10% 11%;
+    --popover: 222 47% 6%;
     --popover-foreground: 210 20% 92%;
 
-    --primary: 217 91% 60%;
+    --primary: 263 70% 58%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 225 8% 16%;
@@ -63,7 +67,7 @@
 
     --border: 225 8% 16%;
     --input: 225 8% 16%;
-    --ring: 217 91% 60%;
+    --ring: 263 70% 58%;
     --ring-offset-background: var(--background);
 
     --overlay: 230 25% 14%;
@@ -76,7 +80,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-inter), 'Inter', sans-serif;
+    font-family: var(--font-pretendard), 'Pretendard', sans-serif;
   }
 }
 

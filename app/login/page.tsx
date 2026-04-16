@@ -4,7 +4,6 @@ import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Activity, AlertCircle, Loader2 } from 'lucide-react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -40,46 +39,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      {/* 배경 장식 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-brand-600/20 via-transparent to-transparent rounded-full blur-3xl" />
-        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-purple-600/10 via-transparent to-transparent rounded-full blur-3xl" />
-      </div>
-
-      <div className="w-full max-w-sm relative z-10">
-        {/* 로고 */}
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-slate-50 dark:bg-background">
+      <div className="w-full max-w-[400px]">
+        {/* 로고 — 카드 위 중앙 */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 bg-gradient-to-br from-brand-500 to-brand-700 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-brand-600/30">
-            <Activity size={28} className="text-white" />
+          <div className="w-12 h-12 bg-brand-600 rounded-xl flex items-center justify-center mb-3">
+            <Activity size={24} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Agatha</h1>
-          <p className="text-sm text-muted-foreground mt-1">Marketing Intelligence</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Agatha</h1>
+          <p className="text-sm text-slate-400 mt-1">Marketing Intelligence</p>
         </div>
 
-        {/* 로그인 폼 */}
-        <Card variant="glass" className="p-6">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-foreground">로그인</h2>
-            <p className="text-sm text-muted-foreground mt-1">계정 정보를 입력하여 로그인하세요</p>
-          </div>
-
+        {/* 로그인 카드 */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-xs text-muted-foreground font-medium">아이디</Label>
+              <Label htmlFor="username" className="text-sm text-slate-700 dark:text-slate-200 font-medium">
+                휴대폰 번호
+              </Label>
               <Input
                 id="username"
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                placeholder="admin"
+                placeholder="010-0000-0000"
                 required
                 autoComplete="username"
+                className="border-slate-200 dark:border-slate-700 rounded-lg"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-xs text-muted-foreground font-medium">비밀번호</Label>
+              <Label htmlFor="password" className="text-sm text-slate-700 dark:text-slate-200 font-medium">
+                비밀번호
+              </Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -89,14 +82,14 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
-                  className="pr-10"
+                  className="pr-10 border-slate-200 dark:border-slate-700 rounded-lg"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowPw(v => !v)}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-white/10"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
                 >
                   {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
                 </Button>
@@ -104,7 +97,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
                 <AlertCircle size={14} className="shrink-0" />
                 {error}
               </div>
@@ -113,7 +106,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-brand-600 hover:bg-brand-700"
+              className="w-full bg-brand-600 hover:bg-brand-700 text-white rounded-lg"
             >
               {loading ? (
                 <>
@@ -121,26 +114,31 @@ export default function LoginPage() {
                   로그인 중...
                 </>
               ) : (
-                '로그인'
+                '로그인하기'
               )}
             </Button>
           </form>
-        </Card>
 
-        {/* 푸터 */}
-        <div className="text-center mt-6 space-y-2">
-          <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground/60">
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted-foreground transition-colors">
-              개인정보처리방침
-            </a>
-            <span>·</span>
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-muted-foreground transition-colors">
-              서비스 이용약관
-            </a>
+          {/* 회원가입 */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-500 mb-2">초대받으셨나요?</p>
+            <Link href="/register">
+              <Button variant="ghost" className="text-slate-700 dark:text-slate-200 w-full">
+                회원가입
+              </Button>
+            </Link>
           </div>
-          <p className="text-xs text-muted-foreground/60">
-            &copy; 2026 Glitzy. All rights reserved.
-          </p>
+        </div>
+
+        {/* 하단 링크 */}
+        <div className="flex items-center justify-center gap-3 mt-6 text-xs text-slate-400">
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-slate-600 transition-colors">
+            개인정보처리방침
+          </a>
+          <span>·</span>
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-slate-600 transition-colors">
+            이용약관
+          </a>
         </div>
       </div>
     </div>

@@ -37,7 +37,12 @@ type ErpLinkMode = 'select' | 'create' | 'later'
 interface ErpSearchResult {
   id: string
   name: string
+  branch_name?: string | null
   business_number?: string
+}
+
+function erpDisplayName(item: ErpSearchResult): string {
+  return item.branch_name ? `${item.name} (${item.branch_name})` : item.name
 }
 
 interface ApiConfigSummary {
@@ -376,10 +381,7 @@ export default function ClientsPage() {
                   {selectedErpClient ? (
                     <div className="flex items-center gap-2 bg-brand-600/10 text-brand-600 rounded-md px-3 py-2 text-sm">
                       <Link2 size={14} />
-                      <span className="font-medium">{selectedErpClient.name}</span>
-                      {selectedErpClient.business_number && (
-                        <span className="text-xs text-muted-foreground">({selectedErpClient.business_number})</span>
-                      )}
+                      <span className="font-medium">{erpDisplayName(selectedErpClient)}</span>
                       <button type="button" onClick={() => setSelectedErpClient(null)} className="ml-auto hover:text-red-400">
                         <X size={14} />
                       </button>
@@ -404,23 +406,24 @@ export default function ClientsPage() {
                             type="button"
                             onClick={() => {
                               setSelectedErpClient(item)
-                              const autoSlug = item.name
+                              const displayName = erpDisplayName(item)
+                              const autoSlug = displayName
                                 .toLowerCase()
                                 .replace(/[^a-z0-9\s-]/g, '')
                                 .trim()
                                 .replace(/\s+/g, '-')
                                 .slice(0, 30) || `client-${item.id.slice(0, 8)}`
                               setForm({
-                                name: item.name,
+                                name: displayName,
                                 slug: autoSlug,
                               })
                             }}
                             className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 text-sm text-left border-b border-border last:border-b-0"
                           >
                             <span>
-                              {item.name}
+                              {erpDisplayName(item)}
                               {item.business_number && (
-                                <span className="text-xs text-muted-foreground ml-2">({item.business_number})</span>
+                                <span className="text-xs text-muted-foreground ml-2">{item.business_number}</span>
                               )}
                             </span>
                           </button>

@@ -27,6 +27,7 @@ interface WebhookBody {
   data: {
     id: string
     name: string
+    branch_name?: string | null
     business_number?: string
     contact_name?: string
     contact_phone?: string
@@ -77,11 +78,14 @@ export async function POST(req: NextRequest) {
         }
 
         // 새 클라이언트 자동 생성
-        const slug = `erp-${data.id}`
+        const slug = `erp-${data.id.slice(0, 8)}`
+        const displayName = data.branch_name
+          ? `${data.name} (${data.branch_name})`
+          : data.name
         const { error: insertError } = await supabase
           .from('clients')
           .insert({
-            name: sanitizeString(data.name, 100),
+            name: sanitizeString(displayName, 100),
             slug,
             erp_client_id: data.id,
           })
@@ -107,9 +111,12 @@ export async function POST(req: NextRequest) {
           return apiSuccess({ message: '매핑된 클라이언트가 없습니다.' })
         }
 
+        const updatedName = data.branch_name
+          ? `${data.name} (${data.branch_name})`
+          : data.name
         const { error: updateError } = await supabase
           .from('clients')
-          .update({ name: sanitizeString(data.name, 100) })
+          .update({ name: sanitizeString(updatedName, 100) })
           .eq('id', mapped.id)
 
         if (updateError) {

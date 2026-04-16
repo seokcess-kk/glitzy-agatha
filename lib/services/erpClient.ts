@@ -72,7 +72,7 @@ export async function createErpClient(data: {
 // glitzy-web 거래처 목록 조회
 export async function fetchErpClients(params?: {
   search?: string; page?: number; limit?: number
-}): Promise<{ data: Array<{ id: string; name: string; business_number?: string }>; pagination: ERPPagination }> {
+}): Promise<{ data: Array<{ id: string; name: string; branch_name?: string | null; business_number?: string }>; pagination: ERPPagination }> {
   const sp = new URLSearchParams()
   if (params?.search) sp.set('search', params.search)
   if (params?.page) sp.set('page', String(params.page))

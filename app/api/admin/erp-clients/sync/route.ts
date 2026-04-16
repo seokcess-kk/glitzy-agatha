@@ -16,7 +16,7 @@ export const POST = withSuperAdmin(async () => {
   const supabase = serverSupabase()
 
   // 1. glitzy-web 거래처 전체 조회 (페이지네이션 순회)
-  const allErpClients: Array<{ id: string; name: string; business_number?: string }> = []
+  const allErpClients: Array<{ id: string; name: string; branch_name?: string | null; business_number?: string }> = []
   let page = 1
   const limit = 100
 
@@ -54,8 +54,9 @@ export const POST = withSuperAdmin(async () => {
 
   for (const erp of newClients) {
     const slug = `erp-${erp.id.slice(0, 8)}`
+    const displayName = erp.branch_name ? `${erp.name} (${erp.branch_name})` : erp.name
     const { error } = await supabase.from('clients').insert({
-      name: erp.name,
+      name: displayName,
       erp_client_id: erp.id,
       slug,
       is_active: true,

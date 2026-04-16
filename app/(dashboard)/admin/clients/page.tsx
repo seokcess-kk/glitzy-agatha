@@ -402,7 +402,19 @@ export default function ClientsPage() {
                           <button
                             key={item.id}
                             type="button"
-                            onClick={() => setSelectedErpClient(item)}
+                            onClick={() => {
+                              setSelectedErpClient(item)
+                              const autoSlug = item.name
+                                .toLowerCase()
+                                .replace(/[^a-z0-9\s-]/g, '')
+                                .trim()
+                                .replace(/\s+/g, '-')
+                                .slice(0, 30) || `client-${item.id.slice(0, 8)}`
+                              setForm(f => ({
+                                name: f.name || item.name,
+                                slug: f.slug || autoSlug,
+                              }))
+                            }}
                             className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 text-sm text-left border-b border-border last:border-b-0"
                           >
                             <span>

@@ -61,7 +61,7 @@ export function KpiSection({ data, loading, onNavigate }: KpiSectionProps) {
         : undefined,
       subtitle: `오늘 +${todayLeads}`,
       subtitleColor: todayLeads > 0 ? 'positive' : 'default',
-      path: '/leads',
+      path: '/customers',
     },
     {
       label: 'CPL',

@@ -18,6 +18,10 @@ interface ChannelData {
   clicks: number
   impressions: number
   ctr: number
+  conversionRate?: number
+  lostRate?: number
+  holdRate?: number
+  noshowRate?: number
 }
 
 interface ChannelTableProps {
@@ -25,21 +29,18 @@ interface ChannelTableProps {
   loading?: boolean
 }
 
-type SortKey = 'leads' | 'spend' | 'cpl' | 'clicks' | 'ctr' | 'roas'
+type SortKey = 'leads' | 'spend' | 'cpl' | 'roas' | 'conversionRate' | 'lostRate' | 'holdRate' | 'noshowRate'
 
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'spend', label: '광고비' },
   { key: 'leads', label: '리드' },
   { key: 'cpl', label: 'CPL' },
-  { key: 'clicks', label: '클릭' },
-  { key: 'ctr', label: 'CTR' },
   { key: 'roas', label: 'ROAS' },
+  { key: 'conversionRate', label: '전환율' },
+  { key: 'lostRate', label: '거부율' },
+  { key: 'holdRate', label: '보류율' },
+  { key: 'noshowRate', label: '노쇼율' },
 ]
-
-/** 광고 데이터가 있는 채널인지 (clicks/impressions/spend 중 하나라도 있으면) */
-function hasAdData(row: ChannelData): boolean {
-  return row.spend > 0 || row.clicks > 0 || row.impressions > 0
-}
 
 export function ChannelTable({ data, loading }: ChannelTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('leads')
@@ -55,8 +56,8 @@ export function ChannelTable({ data, loading }: ChannelTableProps) {
   }
 
   const sorted = [...data].sort((a, b) => {
-    const av = a[sortKey]
-    const bv = b[sortKey]
+    const av = (a as any)[sortKey] ?? 0
+    const bv = (b as any)[sortKey] ?? 0
     return sortAsc ? av - bv : bv - av
   })
 
@@ -122,12 +123,6 @@ export function ChannelTable({ data, loading }: ChannelTableProps) {
                   <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
                     {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
                   </td>
-                  <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
-                    {hasAdData(row) ? row.clicks.toLocaleString() : '-'}
-                  </td>
-                  <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
-                    {hasAdData(row) ? `${row.ctr}%` : '-'}
-                  </td>
                   <td className="text-right py-2.5 px-2 min-w-[120px]">
                     {row.roas > 0 ? (
                       <div className="flex items-center justify-end gap-2">
@@ -151,6 +146,18 @@ export function ChannelTable({ data, loading }: ChannelTableProps) {
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
+                  </td>
+                  <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
+                    {(row.conversionRate ?? 0) > 0 ? `${row.conversionRate}%` : '-'}
+                  </td>
+                  <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
+                    {(row.lostRate ?? 0) > 0 ? `${row.lostRate}%` : '-'}
+                  </td>
+                  <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
+                    {(row.holdRate ?? 0) > 0 ? `${row.holdRate}%` : '-'}
+                  </td>
+                  <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
+                    {(row.noshowRate ?? 0) > 0 ? `${row.noshowRate}%` : '-'}
                   </td>
                 </tr>
               ))}

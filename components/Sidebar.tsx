@@ -80,7 +80,7 @@ const generalMenuGroups: MenuGroup[] = [
   {
     items: [
       { href: '/campaigns', label: '캠페인', icon: Megaphone, menuKey: 'campaigns' },
-      { href: '/leads', label: '고객관리', icon: Users, menuKey: 'leads' },
+      { href: '/customers', label: '고객관리', icon: Users, menuKey: 'leads' },
     ]
   },
   {

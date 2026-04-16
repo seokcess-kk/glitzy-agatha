@@ -448,7 +448,7 @@ export default function LandingPagesPage() {
                   <TableCell>
                     {stats[lp.id]?.lead_count ? (
                       <Link
-                        href={`/leads?landing_page_id=${lp.id}`}
+                        href={`/customers?landing_page_id=${lp.id}`}
                         className="text-brand-400 hover:text-brand-300 font-semibold transition-colors"
                       >
                         {stats[lp.id].lead_count}건

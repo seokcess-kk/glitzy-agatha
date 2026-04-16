@@ -122,6 +122,27 @@ export function useRecentLeads(clientId: number | null) {
   return { recentLeads, loading, refetch: fetch_ }
 }
 
+// ─── 예산 소진 현황 ───
+export function useBudgetData(clientId: number | null) {
+  const [state, setState] = useState<FetchState<any>>({ data: null, loading: true })
+
+  const fetch_ = useCallback(async () => {
+    setState(prev => ({ ...prev, loading: true }))
+    try {
+      const qs = buildQs({ client_id: clientId })
+      const res = await fetch(`/api/dashboard/budget${qs}`)
+      const json = await res.json()
+      setState({ data: json, loading: false })
+    } catch {
+      setState(prev => ({ ...prev, loading: false }))
+    }
+  }, [clientId])
+
+  useEffect(() => { fetch_() }, [fetch_])
+
+  return { ...state, refetch: fetch_ }
+}
+
 // ─── 퍼널 + 채널 + 시술별 매출 ───
 export function useFunnelChannelData(clientId: number | null, startDate: string, endDate: string) {
   const [funnel, setFunnel] = useState<any>(null)

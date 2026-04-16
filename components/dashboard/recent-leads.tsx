@@ -65,7 +65,7 @@ export function RecentLeads({ data, loading }: RecentLeadsProps) {
 
       <div className="mt-3 pt-3 border-t border-border dark:border-white/5">
         <Link
-          href="/leads"
+          href="/customers"
           className="inline-flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 transition-colors"
         >
           리드 전체 보기

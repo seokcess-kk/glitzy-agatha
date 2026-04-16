@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common'
 import { Users, Filter } from 'lucide-react'
-import Link from 'next/link'
 import { FUNNEL_COLORS } from '@/lib/chart-colors'
 import { useState, useRef } from 'react'
 
@@ -20,6 +19,10 @@ interface FunnelData {
   funnel?: {
     stages: FunnelStage[]
     totalConversionRate: number
+    holdCount?: number
+    holdRate?: number
+    lostCount?: number
+    lostRate?: number
   }
 }
 
@@ -28,9 +31,9 @@ interface FunnelSectionProps {
   loading?: boolean
 }
 
-/** 3단계만 필터하고 dropoff 재계산 */
+/** Agatha 3단계 퍼널 필터 */
 function filterThreeStages(stages: FunnelStage[]): FunnelStage[] {
-  const KEEP = ['Lead', 'Booking', 'Payment']
+  const KEEP = ['New', 'InProgress', 'Converted']
   const filtered = stages.filter(s => KEEP.includes(s.stage))
   if (filtered.length === 0) return []
 
@@ -60,9 +63,9 @@ function getMaxDropoffInsight(stages: FunnelStage[]): string | null {
 
 /** 단계별 링크 매핑 */
 const STAGE_LINKS: Record<string, string> = {
-  Lead: '/leads',
-  Booking: '/bookings',
-  Payment: '/patients',
+  New: '/customers',
+  InProgress: '/customers',
+  Converted: '/customers',
 }
 
 const NODE_SIZE = 40
@@ -85,6 +88,10 @@ export function FunnelSection({ data, loading }: FunnelSectionProps) {
   const rawStages = data?.funnel?.stages
   const stages = rawStages ? filterThreeStages(rawStages) : undefined
   const totalRate = data?.funnel?.totalConversionRate
+  const holdCount = data?.funnel?.holdCount ?? 0
+  const holdRate = data?.funnel?.holdRate ?? 0
+  const lostCount = data?.funnel?.lostCount ?? 0
+  const lostRate = data?.funnel?.lostRate ?? 0
 
   return (
     <Card variant="glass" className="p-5 h-full">
@@ -93,13 +100,20 @@ export function FunnelSection({ data, loading }: FunnelSectionProps) {
           <Users size={16} className="text-brand-400" />
           <h2 className="text-sm font-semibold text-foreground">전환 퍼널</h2>
         </div>
-        <span className="text-xs text-muted-foreground">리드 → 결제 전환율</span>
+        <span className="text-xs text-muted-foreground">유입 → 전환율</span>
       </div>
 
       {loading ? (
         <Skeleton className="h-[120px] rounded-lg" />
       ) : stages && stages.length > 0 ? (
-        <FunnelProgress stages={stages} totalRate={totalRate} />
+        <FunnelProgress
+          stages={stages}
+          totalRate={totalRate}
+          holdCount={holdCount}
+          holdRate={holdRate}
+          lostCount={lostCount}
+          lostRate={lostRate}
+        />
       ) : (
         <EmptyState
           icon={Filter}
@@ -114,9 +128,17 @@ export function FunnelSection({ data, loading }: FunnelSectionProps) {
 function FunnelProgress({
   stages,
   totalRate,
+  holdCount,
+  holdRate,
+  lostCount,
+  lostRate,
 }: {
   stages: FunnelStage[]
   totalRate?: number
+  holdCount: number
+  holdRate: number
+  lostCount: number
+  lostRate: number
 }) {
   const [tooltip, setTooltip] = useState<{
     index: number
@@ -163,9 +185,8 @@ function FunnelProgress({
         <div className="relative flex justify-between">
           {stages.map((stage, i) => (
             <div key={stage.stage} className="flex flex-col items-center" style={{ minWidth: NODE_SIZE + 16 }}>
-              <Link
-                href={STAGE_LINKS[stage.stage] || '#'}
-                aria-label={`${stage.label}: ${stage.count}명 (리드 대비 ${stage.rate}%)`}
+              <div
+                aria-label={`${stage.label}: ${stage.count}건 (리드 대비 ${stage.rate}%)`}
                 className="rounded-full flex items-center justify-center font-bold text-white dark:text-white cursor-pointer
                   transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-white/20 hover:shadow-lg hover:shadow-brand-500/20
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -180,7 +201,6 @@ function FunnelProgress({
                   const rect = e.currentTarget.getBoundingClientRect()
                   const containerRect = containerRef.current?.getBoundingClientRect()
                   if (containerRect) {
-                    e.preventDefault()
                     setTooltip(prev => prev?.index === i ? null : {
                       index: i,
                       x: rect.left - containerRect.left + rect.width / 2,
@@ -202,7 +222,7 @@ function FunnelProgress({
                 onMouseLeave={() => setTooltip(null)}
               >
                 {stage.count}
-              </Link>
+              </div>
               <p className="text-xs font-medium text-foreground/80 mt-2">{stage.label}</p>
               <p className="text-xs text-muted-foreground tabular-nums">{stage.rate}%</p>
             </div>
@@ -259,10 +279,7 @@ function FunnelProgress({
               )}
 
               {/* 노드 행 */}
-              <Link
-                href={STAGE_LINKS[stage.stage] || '#'}
-                className="flex items-center gap-3 py-1 rounded-lg hover:bg-muted dark:hover:bg-white/5 transition-colors duration-200 px-1 -mx-1"
-              >
+              <div className="flex items-center gap-3 py-1 rounded-lg hover:bg-muted dark:hover:bg-white/5 transition-colors duration-200 px-1 -mx-1">
                 <div
                   className="rounded-full flex items-center justify-center font-bold text-white dark:text-white shrink-0"
                   style={{
@@ -281,7 +298,7 @@ function FunnelProgress({
                     리드 대비 {stage.rate}%
                   </p>
                 </div>
-              </Link>
+              </div>
             </div>
           )
         })}
@@ -291,7 +308,7 @@ function FunnelProgress({
       {totalRate !== undefined && totalRate > 0 && (
         <div className="mt-5 pt-4 border-t border-border dark:border-white/5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted-foreground">전체 전환율 (리드 → 결제)</span>
+            <span className="text-xs text-muted-foreground">전체 전환율 (유입 → 전환)</span>
             <span className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
               {totalRate}%
             </span>
@@ -305,6 +322,18 @@ function FunnelProgress({
               }}
             />
           </div>
+        </div>
+      )}
+
+      {/* 보류/미전환 표시 */}
+      {(holdCount > 0 || lostCount > 0) && (
+        <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+          {holdCount > 0 && (
+            <span>보류: {holdCount}건({holdRate}%)</span>
+          )}
+          {lostCount > 0 && (
+            <span>미전환: {lostCount}건({lostRate}%)</span>
+          )}
         </div>
       )}
 
@@ -340,8 +369,8 @@ function FunnelTooltip({
       <p className="text-xs font-semibold text-foreground mb-1">{stage.label}</p>
       <div className="space-y-0.5 text-xs">
         <p className="text-foreground/80">
-          <span className="text-muted-foreground">인원:</span>{' '}
-          <span className="font-medium tabular-nums">{stage.count}명</span>
+          <span className="text-muted-foreground">건수:</span>{' '}
+          <span className="font-medium tabular-nums">{stage.count}건</span>
         </p>
         <p className="text-foreground/80">
           <span className="text-muted-foreground">리드 대비:</span>{' '}

@@ -1,12 +1,13 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClientFilter, ClientContext, applyClientFilter, applyDateRange, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 
 
 /**
  * 퍼널 분석 API
- * Phase 2: Lead → Booking → Visit → Payment 전환율 분석
+ * Agatha 모델: New(유입) → In Progress(진행) → Converted(전환)
+ * 하단에 보류 건수(%), 미전환 건수(%) 표시
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const url = new URL(req.url)
@@ -18,7 +19,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
   // agency_staff 배정 클라이언트 0개 → 빈 결과
   if (assignedClientIds !== null && assignedClientIds.length === 0) {
-    return apiSuccess({ type: 'total', funnel: { stages: [], totalConversionRate: 0, summary: { leads: 0, payments: 0 } } })
+    return apiSuccess({ type: 'total', funnel: { stages: [], totalConversionRate: 0, holdCount: 0, holdRate: 0, lostCount: 0, lostRate: 0 } })
   }
 
   const ctx = { clientId, assignedClientIds }
@@ -34,52 +35,25 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     tsEnd = endDate.toISOString()
   }
 
-  // 데이터 조회 — 모든 timestamp 컬럼에 KPI와 동일한 gte/lt 패턴 적용
+  // 리드 데이터 조회 (상태 포함)
   let leadsQuery = supabase
     .from('leads')
-    .select('id, contact_id, utm_source, utm_campaign, created_at')
+    .select('id, contact_id, utm_source, utm_campaign, status, created_at')
+    .neq('status', 'invalid') // 무효 제외
     .limit(5000)
   leadsQuery = applyClientFilter(leadsQuery, ctx)!
   if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
   if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select('id, contact_id, status, created_at')
-    .limit(5000)
-  bookingsQuery = applyClientFilter(bookingsQuery, ctx)!
-  if (tsStart) bookingsQuery = bookingsQuery.gte('created_at', tsStart)
-  if (tsEnd) bookingsQuery = bookingsQuery.lt('created_at', tsEnd)
+  const leadsRes = await leadsQuery
 
-  let consultationsQuery = supabase
-    .from('consultations')
-    .select('id, contact_id, status, created_at')
-    .limit(5000)
-  consultationsQuery = applyClientFilter(consultationsQuery, ctx)!
-  if (tsStart) consultationsQuery = consultationsQuery.gte('created_at', tsStart)
-  if (tsEnd) consultationsQuery = consultationsQuery.lt('created_at', tsEnd)
-
-  // payment_date(DATE 컬럼)는 KST 날짜 문자열로 비교
-  let paymentsQuery = supabase
-    .from('payments')
-    .select('id, contact_id, payment_amount, payment_date')
-    .limit(5000)
-  paymentsQuery = applyClientFilter(paymentsQuery, ctx)!
-  if (startKst) paymentsQuery = paymentsQuery.gte('payment_date', startKst)
-  if (endKst) paymentsQuery = paymentsQuery.lte('payment_date', endKst)
-
-  const [leadsRes, bookingsRes, consultationsRes, paymentsRes] = await Promise.all([
-    leadsQuery,
-    bookingsQuery,
-    consultationsQuery,
-    paymentsQuery,
-  ])
+  const leads = leadsRes.data || []
 
   // 고객별 채널/캠페인 매핑
   const contactChannel: Map<number, string> = new Map()
   const contactCampaign: Map<number, string> = new Map()
 
-  for (const lead of leadsRes.data || []) {
+  for (const lead of leads) {
     if (!contactChannel.has(lead.contact_id)) {
       contactChannel.set(lead.contact_id, normalizeChannel(lead.utm_source))
     }
@@ -88,94 +62,28 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }
   }
 
-  // 단계별 고객 집합
-  const leadContacts = new Set((leadsRes.data || []).map(l => l.contact_id))
-  const bookedContacts = new Set(
-    (bookingsRes.data || [])
-      .filter(b => b.status !== 'cancelled')
-      .map(b => b.contact_id)
-  )
-  const visitedContacts = new Set(
-    (bookingsRes.data || [])
-      .filter(b => ['visited', 'treatment_confirmed'].includes(b.status))
-      .map(b => b.contact_id)
-  )
-  const consultedContacts = new Set(
-    (consultationsRes.data || [])
-      .filter(c => ['방문완료', '상담중', '시술확정'].includes(c.status))
-      .map(c => c.contact_id)
-  )
-  const paidContacts = new Set((paymentsRes.data || []).map(p => p.contact_id))
-
   // 전체 퍼널 또는 그룹별 퍼널
   if (groupBy === 'total') {
-    const funnel = buildFunnel(
-      leadContacts,
-      bookedContacts,
-      visitedContacts,
-      consultedContacts,
-      paidContacts
-    )
+    const funnel = buildAgathaFunnel(leads)
     return apiSuccess({ type: 'total', funnel })
   }
 
   // 채널별 또는 캠페인별 그룹
-  const groups: Record<string, {
-    leads: Set<number>
-    booked: Set<number>
-    visited: Set<number>
-    consulted: Set<number>
-    paid: Set<number>
-  }> = {}
+  const groups: Record<string, typeof leads> = {}
 
-  const getGroupKey = (contactId: number): string => {
-    if (groupBy === 'channel') {
-      return contactChannel.get(contactId) || 'Unknown'
-    } else if (groupBy === 'campaign') {
-      return contactCampaign.get(contactId) || 'Unknown'
-    }
-    return 'Unknown'
+  for (const lead of leads) {
+    const key = groupBy === 'channel'
+      ? (contactChannel.get(lead.contact_id) || 'Unknown')
+      : (contactCampaign.get(lead.contact_id) || 'Unknown')
+    if (!groups[key]) groups[key] = []
+    groups[key].push(lead)
   }
 
-  // 리드 기준으로 그룹 초기화
-  for (const lead of leadsRes.data || []) {
-    const key = getGroupKey(lead.contact_id)
-    if (!groups[key]) {
-      groups[key] = {
-        leads: new Set(),
-        booked: new Set(),
-        visited: new Set(),
-        consulted: new Set(),
-        paid: new Set(),
-      }
-    }
-    groups[key].leads.add(lead.contact_id)
-  }
-
-  // 각 단계 고객을 그룹에 배분
-  for (const contactId of bookedContacts) {
-    const key = getGroupKey(contactId)
-    if (groups[key]) groups[key].booked.add(contactId)
-  }
-  for (const contactId of visitedContacts) {
-    const key = getGroupKey(contactId)
-    if (groups[key]) groups[key].visited.add(contactId)
-  }
-  for (const contactId of consultedContacts) {
-    const key = getGroupKey(contactId)
-    if (groups[key]) groups[key].consulted.add(contactId)
-  }
-  for (const contactId of paidContacts) {
-    const key = getGroupKey(contactId)
-    if (groups[key]) groups[key].paid.add(contactId)
-  }
-
-  // 결과 생성
   const result = Object.entries(groups)
-    .filter(([key]) => key !== 'Unknown' || groups[key].leads.size > 0)
-    .map(([key, g]) => ({
+    .filter(([key, groupLeads]) => key !== 'Unknown' || groupLeads.length > 0)
+    .map(([key, groupLeads]) => ({
       group: key,
-      funnel: buildFunnel(g.leads, g.booked, g.visited, g.consulted, g.paid),
+      funnel: buildAgathaFunnel(groupLeads),
     }))
     .sort((a, b) => b.funnel.stages[0].count - a.funnel.stages[0].count)
 
@@ -183,66 +91,55 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 })
 
 /**
- * 퍼널 데이터 생성
+ * Agatha 퍼널 데이터 생성
+ * New(유입) → In Progress(진행) → Converted(전환)
  */
-function buildFunnel(
-  leads: Set<number>,
-  booked: Set<number>,
-  visited: Set<number>,
-  consulted: Set<number>,
-  paid: Set<number>
+function buildAgathaFunnel(
+  leads: { id: number; status: string; contact_id: number }[]
 ) {
-  const leadCount = leads.size
-  const bookedCount = booked.size
-  const visitedCount = visited.size
-  const consultedCount = consulted.size
-  const paidCount = paid.size
+  // 유효 리드 (invalid 제외) — 이미 쿼리에서 제외했지만 방어적 필터
+  const validLeads = leads.filter(l => l.status !== 'invalid')
+  const totalCount = validLeads.length
+
+  // 각 상태별 카운트
+  const newCount = totalCount // 전체 유효 리드 = 유입
+  const inProgressCount = validLeads.filter(l =>
+    ['in_progress', 'converted', 'lost', 'hold'].includes(l.status)
+  ).length
+  const convertedCount = validLeads.filter(l => l.status === 'converted').length
+  const holdCount = validLeads.filter(l => l.status === 'hold').length
+  const lostCount = validLeads.filter(l => l.status === 'lost').length
 
   const stages = [
     {
-      stage: 'Lead',
-      label: '리드',
-      count: leadCount,
+      stage: 'New',
+      label: '유입',
+      count: newCount,
       rate: 100,
       dropoff: 0,
     },
     {
-      stage: 'Booking',
-      label: '예약',
-      count: bookedCount,
-      rate: leadCount > 0 ? Number(((bookedCount / leadCount) * 100).toFixed(1)) : 0,
-      dropoff: leadCount > 0 ? Number((((leadCount - bookedCount) / leadCount) * 100).toFixed(1)) : 0,
+      stage: 'InProgress',
+      label: '진행',
+      count: inProgressCount,
+      rate: newCount > 0 ? Number(((inProgressCount / newCount) * 100).toFixed(1)) : 0,
+      dropoff: newCount > 0 ? Number((((newCount - inProgressCount) / newCount) * 100).toFixed(1)) : 0,
     },
     {
-      stage: 'Visit',
-      label: '방문',
-      count: visitedCount,
-      rate: leadCount > 0 ? Number(((visitedCount / leadCount) * 100).toFixed(1)) : 0,
-      dropoff: bookedCount > 0 ? Number((((bookedCount - visitedCount) / bookedCount) * 100).toFixed(1)) : 0,
-    },
-    {
-      stage: 'Consultation',
-      label: '상담',
-      count: consultedCount,
-      rate: leadCount > 0 ? Number(((consultedCount / leadCount) * 100).toFixed(1)) : 0,
-      dropoff: visitedCount > 0 ? Number((((visitedCount - consultedCount) / visitedCount) * 100).toFixed(1)) : 0,
-    },
-    {
-      stage: 'Payment',
-      label: '결제',
-      count: paidCount,
-      rate: leadCount > 0 ? Number(((paidCount / leadCount) * 100).toFixed(1)) : 0,
-      dropoff: consultedCount > 0 ? Number((((consultedCount - paidCount) / consultedCount) * 100).toFixed(1)) : 0,
+      stage: 'Converted',
+      label: '전환',
+      count: convertedCount,
+      rate: newCount > 0 ? Number(((convertedCount / newCount) * 100).toFixed(1)) : 0,
+      dropoff: inProgressCount > 0 ? Number((((inProgressCount - convertedCount) / inProgressCount) * 100).toFixed(1)) : 0,
     },
   ]
 
   return {
     stages,
-    totalConversionRate: leadCount > 0 ? Number(((paidCount / leadCount) * 100).toFixed(1)) : 0,
-    summary: {
-      leads: leadCount,
-      payments: paidCount,
-    },
+    totalConversionRate: newCount > 0 ? Number(((convertedCount / newCount) * 100).toFixed(1)) : 0,
+    holdCount,
+    holdRate: totalCount > 0 ? Number(((holdCount / totalCount) * 100).toFixed(1)) : 0,
+    lostCount,
+    lostRate: totalCount > 0 ? Number(((lostCount / totalCount) * 100).toFixed(1)) : 0,
   }
 }
-

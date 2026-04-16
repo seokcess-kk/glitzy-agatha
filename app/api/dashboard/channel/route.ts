@@ -8,6 +8,7 @@ import { getKstDateString } from '@/lib/date'
  * 채널별 KPI 분석 API
  * utm_source 원본 기준 세분화 집계 (google_search, meta_feed 등)
  * 광고 지출은 platform(meta_ads) 기준 → sourceToChannel로 채널 매칭
+ * 추가 컬럼: 전환율, 거부율, 보류율, 노쇼율
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
@@ -33,10 +34,10 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     tsEnd = endDate.toISOString()
   }
 
-  // 1. 리드 데이터 조회 (utm_source 포함) — KPI와 동일한 gte/lt 패턴
+  // 1. 리드 데이터 조회 (utm_source + status 포함) — KPI와 동일한 gte/lt 패턴
   let leadsQuery = supabase
     .from('leads')
-    .select('id, contact_id, utm_source, created_at')
+    .select('id, contact_id, utm_source, status, lost_reason, created_at')
     .limit(5000)
   leadsQuery = applyClientFilter(leadsQuery, ctx)!
   if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
@@ -50,24 +51,24 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   if (startKst) adStatsQuery = adStatsQuery.gte('stat_date', startKst)
   if (endKst) adStatsQuery = adStatsQuery.lte('stat_date', endKst)
 
-  // 3. 결제 데이터 — payment_date(DATE 컬럼)는 KST 날짜 문자열로 비교
-  let paymentsQuery = supabase
-    .from('payments')
-    .select('payment_amount, contact_id, payment_date')
-    .limit(5000)
-  paymentsQuery = applyClientFilter(paymentsQuery, ctx)!
-  if (startKst) paymentsQuery = paymentsQuery.gte('payment_date', startKst)
-  if (endKst) paymentsQuery = paymentsQuery.lte('payment_date', endKst)
-
-  const [leadsRes, adStatsRes, paymentsRes] = await Promise.all([
+  const [leadsRes, adStatsRes] = await Promise.all([
     leadsQuery,
     adStatsQuery,
-    paymentsQuery,
   ])
 
   // 채널별 리드 집계 — 플랫폼 단위 통합 (Meta, Google 등)
   const leadsByChannel: Record<string, Set<number>> = {}
   const contactToChannel: Map<number, string> = new Map()
+
+  // 채널별 상태 카운트
+  const statusByChannel: Record<string, {
+    total: number
+    converted: number
+    lost: number
+    hold: number
+    noResponse: number
+    invalid: number
+  }> = {}
 
   for (const lead of leadsRes.data || []) {
     const channel = normalizeChannel(lead.utm_source)
@@ -79,6 +80,22 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
     if (!contactToChannel.has(lead.contact_id)) {
       contactToChannel.set(lead.contact_id, channel)
+    }
+
+    // 상태별 집계
+    if (!statusByChannel[channel]) {
+      statusByChannel[channel] = { total: 0, converted: 0, lost: 0, hold: 0, noResponse: 0, invalid: 0 }
+    }
+    statusByChannel[channel].total++
+
+    if (lead.status === 'converted') statusByChannel[channel].converted++
+    else if (lead.status === 'lost') statusByChannel[channel].lost++
+    else if (lead.status === 'hold') statusByChannel[channel].hold++
+    else if (lead.status === 'invalid') statusByChannel[channel].invalid++
+
+    // 노쇼율 = lost_reason === 'no_response'
+    if (lead.status === 'lost' && lead.lost_reason === 'no_response') {
+      statusByChannel[channel].noResponse++
     }
   }
 
@@ -93,20 +110,6 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     impressionsByChannel[channel] = (impressionsByChannel[channel] || 0) + Number(row.impressions || 0)
   }
 
-  // 채널별 매출 집계
-  const revenueByChannel: Record<string, number> = {}
-  const payingContactsByChannel: Record<string, Set<number>> = {}
-
-  for (const payment of paymentsRes.data || []) {
-    const channel = contactToChannel.get(payment.contact_id) || 'Unknown'
-    revenueByChannel[channel] = (revenueByChannel[channel] || 0) + Number(payment.payment_amount)
-
-    if (!payingContactsByChannel[channel]) {
-      payingContactsByChannel[channel] = new Set()
-    }
-    payingContactsByChannel[channel].add(payment.contact_id)
-  }
-
   // 결과 생성 — 플랫폼 단위로 광고비 직접 매칭 (안분 불필요)
   const allChannels = Object.keys(leadsByChannel)
 
@@ -115,27 +118,34 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     .map(ch => {
       const leads = leadsByChannel[ch]?.size || 0
       const spend = spendByChannel[ch] || 0
-      const revenue = revenueByChannel[ch] || 0
-      const payingContacts = payingContactsByChannel[ch]?.size || 0
       const clicks = clicksByChannel[ch] || 0
       const impressions = impressionsByChannel[ch] || 0
+
+      const stats = statusByChannel[ch] || { total: 0, converted: 0, lost: 0, hold: 0, noResponse: 0, invalid: 0 }
+      // 유효 리드 = 전체 - 무효
+      const validLeads = stats.total - stats.invalid
+
+      // 전환 금액 계산을 위한 revenue는 채널 API에서 직접 계산하지 않으므로 0
+      // (ROAS는 이전 버전과의 호환을 위해 유지하되 spend 기반으로만 계산)
+      const revenue = 0
 
       return {
         channel: ch,
         leads,
         spend,
         revenue,
-        payingContacts,
         clicks,
         impressions,
         cpl: leads > 0 ? Math.round(spend / leads) : 0,
-        roas: spend > 0 ? Number((revenue / spend).toFixed(2)) : 0,
+        roas: 0, // 전환 금액 없이는 계산 불가
         ctr: impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0,
-        conversionRate: leads > 0 ? Number(((payingContacts / leads) * 100).toFixed(1)) : 0,
+        conversionRate: validLeads > 0 ? Number(((stats.converted / validLeads) * 100).toFixed(1)) : 0,
+        lostRate: validLeads > 0 ? Number(((stats.lost / validLeads) * 100).toFixed(1)) : 0,
+        holdRate: validLeads > 0 ? Number(((stats.hold / validLeads) * 100).toFixed(1)) : 0,
+        noshowRate: validLeads > 0 ? Number(((stats.noResponse / validLeads) * 100).toFixed(1)) : 0,
       }
     })
     .sort((a, b) => b.leads - a.leads)
 
   return apiSuccess(result)
 })
-

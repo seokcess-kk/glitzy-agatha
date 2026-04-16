@@ -9,14 +9,14 @@ import type { DateRange } from 'react-day-picker'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/common'
 import { useClient } from '@/components/ClientContext'
-import { useKpiData, useTrendData, useFunnelChannelData, useRecentLeads } from '@/hooks/use-dashboard-data'
+import { useKpiData, useTrendData, useFunnelChannelData, useBudgetData } from '@/hooks/use-dashboard-data'
 import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 
 // 섹션 컴포넌트
 import { KpiSection } from '@/components/dashboard/kpi-section'
 import { SpendLeadTrend } from '@/components/dashboard/spend-lead-trend'
 import { FunnelSection } from '@/components/dashboard/funnel-section'
-import { RecentLeads } from '@/components/dashboard/recent-leads'
+import { BudgetGauge } from '@/components/dashboard/budget-gauge'
 import { ChannelTable } from '@/components/dashboard/channel-table'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 
@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const { selectedClientId } = useClient()
 
   useEffect(() => {
-    if (sessionUser?.role === 'client_staff') router.replace('/patients')
+    if (sessionUser?.role === 'client_staff') router.replace('/customers')
   }, [sessionUser, router])
 
   // 기본값: 이번 달
@@ -44,7 +44,7 @@ export default function DashboardPage() {
   const kpi = useKpiData(selectedClientId, startDate, endDate)
   const trendData = useTrendData(selectedClientId, startDate, endDate)
   const funnelChannel = useFunnelChannelData(selectedClientId, startDate, endDate)
-  const recentLeadsData = useRecentLeads(selectedClientId)
+  const budget = useBudgetData(selectedClientId)
 
   // 마지막 업데이트 시간 추적
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function DashboardPage() {
     kpi.refetch()
     trendData.refetch()
     funnelChannel.refetch()
-    recentLeadsData.refetch()
+    budget.refetch()
   }
 
   const anyLoading = kpi.loading || trendData.loading || funnelChannel.loading
@@ -91,21 +91,21 @@ export default function DashboardPage() {
         }
       />
 
-      {/* Row 1: KPI 카드 5개 */}
+      {/* Row 1: KPI 카드 4개 (리드, 전환, CPL, ROAS) */}
       <KpiSection data={kpi.data} loading={kpi.loading} onNavigate={handleNavigate} />
 
-      {/* Row 2: 광고비·리드 추이 */}
+      {/* Row 2: 광고비·리드 추이 (전체 폭) */}
       <div className="mb-6 md:mb-8">
         <SpendLeadTrend data={trendData.trend} loading={trendData.loading} periodLabel={trendPeriodLabel} />
       </div>
 
-      {/* Row 3: 전환 퍼널 + 최근 리드 */}
+      {/* Row 3: 퍼널 전환율 (1/2) + 예산 소진 현황 (1/2) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-6 md:mb-8">
         <FunnelSection data={funnelChannel.funnel} loading={funnelChannel.loading} />
-        <RecentLeads data={recentLeadsData.recentLeads} loading={recentLeadsData.loading} />
+        <BudgetGauge data={budget.data} loading={budget.loading} />
       </div>
 
-      {/* Row 4: 채널 성과 테이블 */}
+      {/* Row 4: 채널 성과 테이블 (전체 폭) */}
       <div className="mb-6 md:mb-8">
         <ChannelTable data={funnelChannel.channel} loading={funnelChannel.loading} />
       </div>

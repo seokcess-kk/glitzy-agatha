@@ -1,5 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiSuccess, apiError } from '@/lib/api-middleware'
+import { isDemoViewer, getDemoLandingPagePerformance } from '@/lib/demo-data'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 
@@ -10,7 +11,9 @@ const logger = createLogger('AdsLandingPagePerformance')
  * - landing_pages → leads(landing_page_id) → contact_id → payments
  * - 랜딩페이지별 리드 수, 결제 고객 수, 매출, 전환율 집계
  */
-export const GET = withClientFilter(async (req: Request, { clientId, assignedClientIds }: ClientContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoLandingPagePerformance())
+
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

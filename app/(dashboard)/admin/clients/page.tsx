@@ -48,7 +48,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', slug: '' })
+  const [form, setForm] = useState({ name: '', slug: '', erp_client_id: '' })
   const [saving, setSaving] = useState(false)
   // 알림 설정
   const [notifyDialogOpen, setNotifyDialogOpen] = useState(false)
@@ -56,6 +56,7 @@ export default function ClientsPage() {
   const [notifyPhones, setNotifyPhones] = useState<string[]>([''])
   const [notifyEnabled, setNotifyEnabled] = useState(false)
   const [notifySaving, setNotifySaving] = useState(false)
+  const [erpClientId, setErpClientId] = useState('')
   // API 설정
   const [apiConfigTarget, setApiConfigTarget] = useState<{ id: number; name: string } | null>(null)
   const [apiConfigSummaries, setApiConfigSummaries] = useState<Record<number, ApiConfigSummary[]>>({})
@@ -116,13 +117,17 @@ export default function ClientsPage() {
       const res = await fetch('/api/admin/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name: form.name,
+          slug: form.slug,
+          ...(form.erp_client_id ? { erp_client_id: Number(form.erp_client_id) } : {}),
+        }),
       })
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error)
       }
-      setForm({ name: '', slug: '' })
+      setForm({ name: '', slug: '', erp_client_id: '' })
       setDialogOpen(false)
       toast.success('클라이언트이 등록되었습니다.')
       fetchClients()
@@ -158,6 +163,7 @@ export default function ClientsPage() {
     if (phones.length === 0) phones.push('')
     setNotifyPhones(phones)
     setNotifyEnabled(client.notify_enabled || false)
+    setErpClientId(client.erp_client_id != null ? String(client.erp_client_id) : '')
     setNotifyDialogOpen(true)
   }
 
@@ -193,6 +199,7 @@ export default function ClientsPage() {
         body: JSON.stringify({
           notify_phones: filtered,
           notify_enabled: notifyEnabled,
+          erp_client_id: erpClientId ? Number(erpClientId) : null,
         }),
       })
       if (!res.ok) {
@@ -265,6 +272,16 @@ export default function ClientsPage() {
               />
               <p className="text-xs text-muted-foreground">URL에 사용됩니다. 영문 소문자, 숫자, 하이픈만 허용</p>
             </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">glitzy-web 거래처 ID</Label>
+              <Input
+                type="number"
+                value={form.erp_client_id}
+                onChange={e => setForm(f => ({ ...f, erp_client_id: e.target.value }))}
+                placeholder="선택 입력"
+              />
+              <p className="text-xs text-muted-foreground">견적/계산서 연동을 위한 glitzy-web 거래처 ID</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDialogOpen(false)}>취소</Button>
@@ -279,9 +296,20 @@ export default function ClientsPage() {
       <Dialog open={notifyDialogOpen} onOpenChange={setNotifyDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>리드 알림 설정 - {notifyTarget?.name}</DialogTitle>
+            <DialogTitle>클라이언트 설정 - {notifyTarget?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">glitzy-web 거래처 ID</Label>
+              <Input
+                type="number"
+                value={erpClientId}
+                onChange={e => setErpClientId(e.target.value)}
+                placeholder="선택 입력"
+              />
+              <p className="text-xs text-muted-foreground">견적/계산서 연동을 위한 glitzy-web 거래처 ID</p>
+            </div>
+            <hr className="border-border dark:border-white/5" />
             <p className="text-xs text-muted-foreground">
               새 리드가 유입되면 등록된 연락처로 알림 문자를 발송합니다. (최대 3개)
             </p>

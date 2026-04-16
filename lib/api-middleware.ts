@@ -91,6 +91,9 @@ export function withAuth(handler: AuthHandler) {
   return async (req: Request): Promise<NextResponse> => {
     const user = await getAuthUser()
     if (!user) return UNAUTHORIZED()
+    // demo_viewer: GET만 허용
+    const demoBlock = blockDemoWrite(req, user)
+    if (demoBlock) return demoBlock
     return handler(req, { user })
   }
 }
@@ -106,6 +109,10 @@ export function withClientFilter(handler: ClientHandler) {
   return async (req: Request): Promise<NextResponse> => {
     const user = await getAuthUser()
     if (!user) return UNAUTHORIZED()
+
+    // demo_viewer: GET만 허용
+    const demoBlock = blockDemoWrite(req, user)
+    if (demoBlock) return demoBlock
 
     const clientId = await getClientId(req.url)
 
@@ -145,6 +152,10 @@ export function withClientAdmin(handler: ClientAdminHandler) {
     const user = await getAuthUser()
     if (!user) return UNAUTHORIZED()
     if (user.role !== 'superadmin' && user.role !== 'client_admin') return FORBIDDEN_CLIENT_ADMIN()
+
+    // demo_viewer: GET만 허용
+    const demoBlock = blockDemoWrite(req, user)
+    if (demoBlock) return demoBlock
 
     const clientId = await getClientId(req.url)
     return handler(req, { user, clientId, assignedClientIds: null })

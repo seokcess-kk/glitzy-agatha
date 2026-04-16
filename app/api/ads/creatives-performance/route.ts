@@ -1,5 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { isDemoViewer, getDemoCreativesPerformance } from '@/lib/demo-data'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { normalizeChannel } from '@/lib/channel'
@@ -33,6 +34,7 @@ function extractUtmId(inflowUrl: string | null): string | null {
  * 2차: leads.inflow_url의 utm_id → campaign_id → ad_stats 캠페인별 집계 → 리드 비율 배분
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoCreativesPerformance())
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

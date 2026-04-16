@@ -2,6 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
+import { isDemoViewer, getDemoAdsPerformance } from '@/lib/demo-data'
 
 const logger = createLogger('AdsStats')
 
@@ -13,6 +14,8 @@ function extractUtmId(inflowUrl: string | null): string | null {
 }
 
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoAdsPerformance())
+
   const url = new URL(req.url)
   const daysParam = Number(url.searchParams.get('days') || 30)
   const days = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 30

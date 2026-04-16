@@ -1,5 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiSuccess, apiError } from '@/lib/api-middleware'
+import { isDemoViewer, getDemoLandingPageAnalysis } from '@/lib/demo-data'
 import { createLogger } from '@/lib/logger'
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
@@ -13,6 +14,7 @@ const logger = createLogger('AdsLandingPageAnalysis')
  * - channelBreakdown: LP별 UTM source 채널 분석
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoLandingPageAnalysis())
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

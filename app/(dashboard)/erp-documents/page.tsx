@@ -25,8 +25,12 @@ export default function ErpDocumentsPage() {
     if (user?.role === 'client_staff') router.replace('/customers')
   }, [user, router])
 
-  const { selectedClientId } = useClient()
+  const { selectedClientId, clients } = useClient()
   const [activeTab, setActiveTab] = useState('quotes')
+
+  // 선택된 클라이언트의 erp_client_id 확인
+  const selectedClient = clients.find((c) => c.id === selectedClientId) as (typeof clients[number] & { erp_client_id?: number | null }) | undefined
+  const hasErpClientId = selectedClient?.erp_client_id != null
 
   // Restore tab from URL on mount
   useEffect(() => {
@@ -60,6 +64,12 @@ export default function ErpDocumentsPage() {
         <Card variant="glass" className="p-4 md:p-5">
           <p className="text-sm text-muted-foreground text-center py-8">
             클라이언트를 선택해주세요
+          </p>
+        </Card>
+      ) : !hasErpClientId ? (
+        <Card variant="glass" className="p-4 md:p-5">
+          <p className="text-sm text-muted-foreground text-center py-8">
+            glitzy-web 거래처가 연결되지 않았습니다. 관리자 설정에서 거래처 ID를 등록해주세요.
           </p>
         </Card>
       ) : (

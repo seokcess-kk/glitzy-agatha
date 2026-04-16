@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, Activity, AlertCircle, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Activity, AlertCircle, Loader2, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
 
   useEffect(() => {
     if (session) router.replace('/')
@@ -128,6 +129,46 @@ export default function LoginPage() {
               </Button>
             </Link>
           </div>
+        </div>
+
+        {/* 데모 체험 */}
+        <div className="mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={demoLoading}
+            onClick={async () => {
+              setDemoLoading(true)
+              setError('')
+              const result = await signIn('credentials', {
+                phone_number: '00000000000',
+                password: 'demo1234!',
+                redirect: false,
+              })
+              if (result?.ok) {
+                router.replace('/')
+              } else {
+                setError('데모 로그인에 실패했습니다.')
+                setDemoLoading(false)
+              }
+            }}
+            className="w-full border-brand-200 text-brand-700 hover:bg-brand-50 dark:border-brand-800 dark:text-brand-300 dark:hover:bg-brand-950"
+          >
+            {demoLoading ? (
+              <>
+                <Loader2 size={16} className="animate-spin mr-2" />
+                접속 중...
+              </>
+            ) : (
+              <>
+                <Play size={16} className="mr-2" />
+                데모 체험하기
+              </>
+            )}
+          </Button>
+          <p className="text-xs text-slate-400 text-center mt-2">
+            샘플 데이터로 대시보드를 미리 체험해보세요
+          </p>
         </div>
 
         {/* 하단 링크 */}

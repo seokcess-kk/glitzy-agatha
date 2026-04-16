@@ -18,7 +18,7 @@ export const GET = withSuperAdmin(async (_req, { user }) => {
 })
 
 export const POST = withSuperAdmin(async (req: Request) => {
-  const { name, slug } = await req.json()
+  const { name, slug, erp_client_id } = await req.json()
 
   if (!name || !slug) {
     return apiError('클라이언트명과 슬러그를 입력해주세요.', 400)
@@ -36,6 +36,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
     .insert({
       name: sanitizeString(name, 100),
       slug: slug.toLowerCase(),
+      ...(erp_client_id != null ? { erp_client_id: Number(erp_client_id) } : {}),
     })
     .select()
     .single()

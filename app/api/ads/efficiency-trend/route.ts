@@ -1,5 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { isDemoViewer, getDemoEfficiencyTrend } from '@/lib/demo-data'
 import { getKstDateString } from '@/lib/date'
 
 const DEFAULT_DAYS = 28
@@ -16,6 +17,7 @@ interface DayEntry {
 }
 
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoEfficiencyTrend())
   const supabase = serverSupabase()
   const url = new URL(req.url)
 

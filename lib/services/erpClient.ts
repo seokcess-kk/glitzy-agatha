@@ -55,37 +55,37 @@ async function erpFetch<T>(path: string, options?: {
   return result.data as T
 }
 
-export async function fetchQuotes(clientId: number, params?: {
+export async function fetchQuotes(erpClientId: number, params?: {
   status?: string; page?: number; limit?: number
 }): Promise<ERPListResponse<ERPQuote>> {
   // glitzy-web API는 clinic_id 파라미터를 기대 (외부 API 인터페이스 유지)
-  const sp = new URLSearchParams({ clinic_id: String(clientId) })
+  const sp = new URLSearchParams({ clinic_id: String(erpClientId) })
   if (params?.status) sp.set('status', params.status)
   if (params?.page) sp.set('page', String(params.page))
   if (params?.limit) sp.set('limit', String(params.limit))
   return erpFetch<ERPListResponse<ERPQuote>>(`/quotes?${sp}`)
 }
 
-export async function fetchQuoteDetail(clientId: number, id: string): Promise<ERPDetailResponse<ERPQuoteDetail>> {
-  return erpFetch<ERPDetailResponse<ERPQuoteDetail>>(`/quotes/${id}?clinic_id=${clientId}`)
+export async function fetchQuoteDetail(erpClientId: number, id: string): Promise<ERPDetailResponse<ERPQuoteDetail>> {
+  return erpFetch<ERPDetailResponse<ERPQuoteDetail>>(`/quotes/${id}?clinic_id=${erpClientId}`)
 }
 
-export async function fetchInvoices(clientId: number, params?: {
+export async function fetchInvoices(erpClientId: number, params?: {
   status?: string; page?: number; limit?: number
 }): Promise<ERPListResponse<ERPInvoice>> {
-  const sp = new URLSearchParams({ clinic_id: String(clientId) })
+  const sp = new URLSearchParams({ clinic_id: String(erpClientId) })
   if (params?.status) sp.set('status', params.status)
   if (params?.page) sp.set('page', String(params.page))
   if (params?.limit) sp.set('limit', String(params.limit))
   return erpFetch<ERPListResponse<ERPInvoice>>(`/invoices?${sp}`)
 }
 
-export async function fetchInvoiceDetail(clientId: number, id: string): Promise<ERPDetailResponse<ERPInvoice>> {
-  return erpFetch<ERPDetailResponse<ERPInvoice>>(`/invoices/${id}?clinic_id=${clientId}`)
+export async function fetchInvoiceDetail(erpClientId: number, id: string): Promise<ERPDetailResponse<ERPInvoice>> {
+  return erpFetch<ERPDetailResponse<ERPInvoice>>(`/invoices/${id}?clinic_id=${erpClientId}`)
 }
 
 export async function respondToQuote(
-  clientId: number,
+  erpClientId: number,
   quoteId: string,
   action: 'approve' | 'reject',
   reason?: string,
@@ -93,6 +93,6 @@ export async function respondToQuote(
   // glitzy-web API는 clinic_id 필드를 기대
   return erpFetch<ERPRespondResult>(`/quotes/${quoteId}/respond`, {
     method: 'PATCH',
-    body: JSON.stringify({ clinic_id: clientId, action, reason }),
+    body: JSON.stringify({ clinic_id: erpClientId, action, reason }),
   })
 }

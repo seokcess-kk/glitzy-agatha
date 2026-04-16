@@ -4,6 +4,7 @@ import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { apiToCreativePlatform, getSourceLabel } from '@/lib/platform'
+import { isDemoViewer, getDemoChannel } from '@/lib/demo-data'
 
 const logger = createLogger('AdsPlatformSummary')
 
@@ -14,6 +15,8 @@ const logger = createLogger('AdsPlatformSummary')
  * - payments를 contact→channel 매핑을 통해 채널별 매출 집계
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoChannel())
+
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

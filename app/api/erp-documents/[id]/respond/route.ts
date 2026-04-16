@@ -14,6 +14,12 @@ export const PATCH = withClientFilter(async (req, { user, clientId }) => {
   if (user.role === 'client_staff') return apiError('Forbidden', 403)
   if (!clientId) return apiError('클라이언트를 선택해주세요.', 400)
 
+  // clients 테이블에서 erp_client_id 조회
+  const supabase = serverSupabase()
+  const { data: client } = await supabase
+    .from('clients').select('erp_client_id').eq('id', clientId).single()
+  if (!client?.erp_client_id) return apiError('glitzy-web 거래처가 연결되지 않았습니다', 400)
+
   // URL에서 [id] 추출 — /api/erp-documents/{id}/respond
   const url = new URL(req.url)
   const segments = url.pathname.split('/')
@@ -40,14 +46,13 @@ export const PATCH = withClientFilter(async (req, { user, clientId }) => {
 
   try {
     const result = await respondToQuote(
-      clientId,
+      client.erp_client_id,
       id,
       action as 'approve' | 'reject',
       reason,
     )
 
     // 활동 로그 기록 (non-blocking)
-    const supabase = serverSupabase()
     logActivity(supabase, {
       userId: user.id,
       clientId,

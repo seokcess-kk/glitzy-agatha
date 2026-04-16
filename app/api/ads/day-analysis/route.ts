@@ -1,5 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiSuccess, apiError } from '@/lib/api-middleware'
+import { isDemoViewer, getDemoDayAnalysis } from '@/lib/demo-data'
 import { getKstDateString, toUtcDate } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 
@@ -15,6 +16,7 @@ const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'] as const
  * - day: 0(일) ~ 6(토), dayLabel: "일"~"토"
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+  if (isDemoViewer(user.role)) return apiSuccess(getDemoDayAnalysis())
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')

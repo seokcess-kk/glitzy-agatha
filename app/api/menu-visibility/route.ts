@@ -1,11 +1,13 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withAuth, apiError, apiSuccess } from '@/lib/api-middleware'
 import { createLogger } from '@/lib/logger'
+import { isDemoViewer } from '@/lib/demo-data'
 
 const logger = createLogger('MenuVisibility')
 
 /** 인증된 사용자가 숨김 메뉴 목록을 조회 */
-export const GET = withAuth(async () => {
+export const GET = withAuth(async (_req, { user }) => {
+  if (isDemoViewer(user.role)) return apiSuccess({ hiddenMenus: [] })
   try {
     const supabase = serverSupabase()
     const { data, error } = await supabase

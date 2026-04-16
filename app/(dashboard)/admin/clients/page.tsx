@@ -32,7 +32,7 @@ import { API_CONFIG_PLATFORMS, API_PLATFORM_SHORT, type ApiPlatform } from '@/li
 
 type Platform = ApiPlatform
 
-type ErpLinkMode = 'search' | 'create' | 'later'
+type ErpLinkMode = 'select' | 'create' | 'later'
 
 interface ErpSearchResult {
   id: string
@@ -59,10 +59,9 @@ export default function ClientsPage() {
   const [form, setForm] = useState({ name: '', slug: '' })
   const [saving, setSaving] = useState(false)
   // ERP 거래처 연결 옵션
-  const [erpLinkMode, setErpLinkMode] = useState<ErpLinkMode>('later')
-  const [erpSearchQuery, setErpSearchQuery] = useState('')
-  const [erpSearchResults, setErpSearchResults] = useState<ErpSearchResult[]>([])
-  const [erpSearching, setErpSearching] = useState(false)
+  const [erpLinkMode, setErpLinkMode] = useState<ErpLinkMode>('select')
+  const [erpClients, setErpClients] = useState<ErpSearchResult[]>([])
+  const [erpClientsLoading, setErpClientsLoading] = useState(false)
   const [selectedErpClient, setSelectedErpClient] = useState<ErpSearchResult | null>(null)
   const [erpCreateData, setErpCreateData] = useState({
     business_number: '',
@@ -70,7 +69,7 @@ export default function ClientsPage() {
     contact_phone: '',
     contact_email: '',
   })
-  const erpSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const erpClientsLoadedRef = useRef(false)
   // 알림 설정
   const [notifyDialogOpen, setNotifyDialogOpen] = useState(false)
   const [notifyTarget, setNotifyTarget] = useState<any>(null)
@@ -128,34 +127,34 @@ export default function ClientsPage() {
     }
   }, [clients, fetchApiConfigSummaries])
 
-  const searchErpClients = async (query: string) => {
-    if (!query.trim()) {
-      setErpSearchResults([])
-      return
-    }
-    setErpSearching(true)
+  // glitzy-web 거래처 전체 목록 로드 (1회)
+  const loadErpClients = useCallback(async () => {
+    if (erpClientsLoadedRef.current) return
+    setErpClientsLoading(true)
     try {
-      const res = await fetch(`/api/admin/erp-clients?search=${encodeURIComponent(query)}&limit=10`)
-      if (!res.ok) throw new Error()
-      const json = await res.json()
-      const results = json?.data?.data || json?.data || []
-      setErpSearchResults(Array.isArray(results) ? results : [])
+      const all: ErpSearchResult[] = []
+      let page = 1
+      while (true) {
+        const res = await fetch(`/api/admin/erp-clients?page=${page}&limit=100`)
+        if (!res.ok) throw new Error()
+        const json = await res.json()
+        const items = json?.data?.data || json?.data || []
+        if (Array.isArray(items)) all.push(...items)
+        const pagination = json?.data?.pagination
+        if (!pagination || page >= pagination.totalPages) break
+        page++
+      }
+      setErpClients(all)
+      erpClientsLoadedRef.current = true
     } catch {
-      toast.error('glitzy-web 거래처 검색에 실패했습니다.')
-      setErpSearchResults([])
+      toast.error('glitzy-web 거래처 목록을 불러올 수 없습니다.')
     } finally {
-      setErpSearching(false)
+      setErpClientsLoading(false)
     }
-  }
-
-  const handleErpSearch = () => {
-    searchErpClients(erpSearchQuery)
-  }
+  }, [])
 
   const resetErpForm = () => {
-    setErpLinkMode('later')
-    setErpSearchQuery('')
-    setErpSearchResults([])
+    setErpLinkMode('select')
     setSelectedErpClient(null)
     setErpCreateData({ business_number: '', contact_name: '', contact_phone: '', contact_email: '' })
   }
@@ -166,7 +165,7 @@ export default function ClientsPage() {
       return
     }
 
-    if (erpLinkMode === 'search' && !selectedErpClient) {
+    if (erpLinkMode === 'select' && !selectedErpClient) {
       toast.error('거래처를 선택해주세요.')
       return
     }
@@ -178,7 +177,7 @@ export default function ClientsPage() {
         slug: form.slug,
       }
 
-      if (erpLinkMode === 'search' && selectedErpClient) {
+      if (erpLinkMode === 'select' && selectedErpClient) {
         payload.erp_client_id = selectedErpClient.id
       } else if (erpLinkMode === 'create') {
         payload.create_erp_client = true
@@ -350,7 +349,7 @@ export default function ClientsPage() {
               <Label className="text-xs text-muted-foreground">glitzy-web 거래처 연결</Label>
               <div className="flex gap-1">
                 {([
-                  { value: 'search' as ErpLinkMode, label: '기존 거래처 검색' },
+                  { value: 'select' as ErpLinkMode, label: '거래처 선택' },
                   { value: 'create' as ErpLinkMode, label: '새로 생성' },
                   { value: 'later' as ErpLinkMode, label: '나중에 연결' },
                 ] as const).map(opt => (
@@ -363,8 +362,7 @@ export default function ClientsPage() {
                     onClick={() => {
                       setErpLinkMode(opt.value)
                       setSelectedErpClient(null)
-                      setErpSearchResults([])
-                      setErpSearchQuery('')
+                      if (opt.value === 'select') loadErpClients()
                     }}
                   >
                     {opt.label}
@@ -372,58 +370,56 @@ export default function ClientsPage() {
                 ))}
               </div>
 
-              {/* 기존 거래처 검색 */}
-              {erpLinkMode === 'search' && (
+              {/* 거래처 드롭다운 목록 */}
+              {erpLinkMode === 'select' && (
                 <div className="space-y-2 border border-border rounded-lg p-3">
-                  <div className="flex gap-2">
-                    <Input
-                      type="text"
-                      value={erpSearchQuery}
-                      onChange={e => setErpSearchQuery(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleErpSearch()}
-                      placeholder="거래처명 검색..."
-                      className="flex-1"
-                    />
-                    <Button type="button" size="sm" variant="outline" onClick={handleErpSearch} disabled={erpSearching}>
-                      <Search size={14} />
-                      {erpSearching ? '검색 중...' : '검색'}
-                    </Button>
-                  </div>
-
-                  {selectedErpClient && (
+                  {selectedErpClient ? (
                     <div className="flex items-center gap-2 bg-brand-600/10 text-brand-600 rounded-md px-3 py-2 text-sm">
                       <Link2 size={14} />
                       <span className="font-medium">{selectedErpClient.name}</span>
-                      <span className="text-xs text-muted-foreground">(ID: {selectedErpClient.id})</span>
+                      {selectedErpClient.business_number && (
+                        <span className="text-xs text-muted-foreground">({selectedErpClient.business_number})</span>
+                      )}
                       <button type="button" onClick={() => setSelectedErpClient(null)} className="ml-auto hover:text-red-400">
                         <X size={14} />
                       </button>
                     </div>
-                  )}
-
-                  {erpSearchResults.length > 0 && !selectedErpClient && (
-                    <div className="border border-border rounded-md max-h-40 overflow-y-auto">
-                      {erpSearchResults.map(item => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setSelectedErpClient(item)}
-                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 text-sm text-left border-b border-border last:border-b-0"
-                        >
-                          <span>
-                            {item.name}
-                            {item.business_number && (
-                              <span className="text-xs text-muted-foreground ml-2">({item.business_number})</span>
-                            )}
-                          </span>
-                          <span className="text-xs text-muted-foreground">ID: {item.id}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {erpSearchQuery && erpSearchResults.length === 0 && !erpSearching && !selectedErpClient && (
-                    <p className="text-xs text-muted-foreground text-center py-2">검색 결과가 없습니다.</p>
+                  ) : erpClientsLoading ? (
+                    <p className="text-xs text-muted-foreground text-center py-3">거래처 목록 불러오는 중...</p>
+                  ) : erpClients.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-3">등록된 거래처가 없습니다.</p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground">{erpClients.length}개 거래처</p>
+                      <div className="border border-border rounded-md max-h-48 overflow-y-auto">
+                        {erpClients
+                          .filter(item => {
+                            // 이미 Agatha에 연결된 거래처는 비활성 표시
+                            const alreadyLinked = clients.some((c: any) => c.erp_client_id === item.id)
+                            return !alreadyLinked
+                          })
+                          .map(item => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setSelectedErpClient(item)}
+                            className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 text-sm text-left border-b border-border last:border-b-0"
+                          >
+                            <span>
+                              {item.name}
+                              {item.business_number && (
+                                <span className="text-xs text-muted-foreground ml-2">({item.business_number})</span>
+                              )}
+                            </span>
+                          </button>
+                        ))}
+                        {erpClients.filter(item => clients.some((c: any) => c.erp_client_id === item.id)).length > 0 && (
+                          <div className="px-3 py-2 text-xs text-muted-foreground border-t border-border bg-muted/30">
+                            이미 연결된 거래처 {erpClients.filter(item => clients.some((c: any) => c.erp_client_id === item.id)).length}개는 숨김 처리됨
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -573,7 +569,7 @@ export default function ClientsPage() {
       <Card variant="glass" className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-foreground">클라이언트 목록 ({clients.length})</h2>
-          <Button onClick={() => setDialogOpen(true)} size="sm" className="bg-brand-600 hover:bg-brand-700">
+          <Button onClick={() => { setDialogOpen(true); loadErpClients() }} size="sm" className="bg-brand-600 hover:bg-brand-700">
             <Plus size={14} /> 클라이언트 등록
           </Button>
         </div>

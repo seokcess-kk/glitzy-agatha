@@ -8,7 +8,19 @@ export const metadata: Metadata = {
     default: 'Agatha — Marketing Intelligence',
     template: '%s | Agatha',
   },
-  description: 'Agatha — Marketing Intelligence Dashboard',
+  description: '광고 성과를 하나의 대시보드에서. Data in, Growth out.',
+  openGraph: {
+    title: 'Agatha — Marketing Intelligence',
+    description: '광고 성과를 하나의 대시보드에서. Data in, Growth out.',
+    siteName: 'Agatha',
+    locale: 'ko_KR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Agatha — Marketing Intelligence',
+    description: '광고 성과를 하나의 대시보드에서. Data in, Growth out.',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

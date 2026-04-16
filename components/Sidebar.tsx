@@ -388,16 +388,16 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, onTog
               {collapsed ? (
                 <button className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-muted transition-colors duration-200 cursor-pointer" aria-label="사용자 메뉴">
                   <div className="w-8 h-8 rounded-full bg-brand-600/20 flex items-center justify-center text-brand-600 font-semibold text-sm shrink-0">
-                    {(user?.name || user?.username)?.[0]?.toUpperCase() || <User size={14} />}
+                    {(user?.name || user?.phone_number)?.[0]?.toUpperCase() || <User size={14} />}
                   </div>
                 </button>
               ) : (
                 <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors duration-200 text-left cursor-pointer" aria-label="사용자 메뉴">
                   <div className="w-8 h-8 rounded-full bg-brand-600/20 flex items-center justify-center text-brand-600 font-semibold text-sm shrink-0">
-                    {(user?.name || user?.username)?.[0]?.toUpperCase() || <User size={14} />}
+                    {(user?.name || user?.phone_number)?.[0]?.toUpperCase() || <User size={14} />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground font-medium truncate">{user?.name || user?.username}</p>
+                    <p className="text-sm text-foreground font-medium truncate">{user?.name || user?.phone_number}</p>
                     <p className="text-[10px] text-muted-foreground">
                       {isSuperAdmin ? '슈퍼어드민' : isAgencyStaff ? '에이전시 담당자' : isClientAdmin ? '클라이언트 관리자' : '클라이언트 담당자'}
                     </p>
@@ -408,7 +408,7 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, onTog
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="start" className="w-52">
               <DropdownMenuLabel>
-                {user?.name || user?.username}
+                {user?.name || user?.phone_number}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setPwDialogOpen(true)}>

@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 export default function LoginPage() {
   const { data: session } = useSession()
   const router = useRouter()
-  const [username, setUsername] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
@@ -25,14 +25,14 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const result = await signIn('credentials', { username, password, redirect: false })
+    const result = await signIn('credentials', { phone_number: phoneNumber, password, redirect: false })
     if (result?.ok) {
       router.replace('/')
     } else {
       if (result?.error === 'RATE_LIMITED') {
         setError('로그인 시도 횟수를 초과했습니다. 15분 후 다시 시도해주세요.')
       } else {
-        setError('아이디 또는 비밀번호가 올바르지 않습니다.')
+        setError('휴대폰 번호 또는 비밀번호가 올바르지 않습니다.')
       }
       setLoading(false)
     }
@@ -54,17 +54,17 @@ export default function LoginPage() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-sm text-slate-700 dark:text-slate-200 font-medium">
+              <Label htmlFor="phone_number" className="text-sm text-slate-700 dark:text-slate-200 font-medium">
                 휴대폰 번호
               </Label>
               <Input
-                id="username"
+                id="phone_number"
                 type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
+                value={phoneNumber}
+                onChange={e => setPhoneNumber(e.target.value)}
                 placeholder="010-0000-0000"
                 required
-                autoComplete="username"
+                autoComplete="tel"
                 className="border-slate-200 dark:border-slate-700 rounded-lg"
               />
             </div>
@@ -122,7 +122,7 @@ export default function LoginPage() {
           {/* 회원가입 */}
           <div className="mt-6 text-center">
             <p className="text-sm text-slate-500 mb-2">초대받으셨나요?</p>
-            <Link href="/register">
+            <Link href="/signup">
               <Button variant="ghost" className="text-slate-700 dark:text-slate-200 w-full">
                 회원가입
               </Button>

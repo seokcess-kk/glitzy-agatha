@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
-import { sanitizeString, parseId } from '@/lib/security'
+import { sanitizeString, parseId, isValidPhoneNumber, normalizePhoneNumber } from '@/lib/security'
 import { createLogger } from '@/lib/logger'
 
 const logger = createLogger('AdminUsers')
@@ -11,7 +11,7 @@ export const GET = withSuperAdmin(async () => {
     const supabase = serverSupabase()
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, role, client_id, is_active, created_at, client:clients(name)')
+      .select('id, phone_number, name, role, client_id, is_active, created_at, client:clients(name)')
       .order('created_at', { ascending: false })
 
     if (error) return apiError(error.message, 500)
@@ -24,17 +24,16 @@ export const GET = withSuperAdmin(async () => {
 
 export const POST = withSuperAdmin(async (req: Request, { user }) => {
   try {
-    const { username, password, role, client_id, assigned_client_ids, menu_permissions } = await req.json()
+    const { phone_number, name, password, role, client_id, assigned_client_ids, menu_permissions } = await req.json()
 
     // 필수값 검증
-    if (!username || !password) {
-      return apiError('아이디와 비밀번호를 입력해주세요.', 400)
+    if (!phone_number || !password) {
+      return apiError('휴대폰 번호와 비밀번호를 입력해주세요.', 400)
     }
 
-    // 아이디 형식 검증
-    const usernamePattern = /^[a-zA-Z0-9_]{3,30}$/
-    if (!usernamePattern.test(username)) {
-      return apiError('아이디는 영문, 숫자, 밑줄만 사용 가능합니다. (3-30자)', 400)
+    // 휴대폰 번호 형식 검증
+    if (!isValidPhoneNumber(phone_number)) {
+      return apiError('올바른 휴대폰 번호를 입력해주세요. (010으로 시작, 11자리)', 400)
     }
 
     // 비밀번호 강도 검증
@@ -49,14 +48,15 @@ export const POST = withSuperAdmin(async (req: Request, { user }) => {
     }
 
     if ((role === 'client_admin' || role === 'client_staff') && !client_id) {
-      return apiError('클라이언트을 선택해주세요.', 400)
+      return apiError('클라이언트를 선택해주세요.', 400)
     }
 
     if (role === 'agency_staff' && (!Array.isArray(assigned_client_ids) || assigned_client_ids.length === 0)) {
-      return apiError('에이전시 담당자는 최소 1개 클라이언트을 배정해야 합니다.', 400)
+      return apiError('에이전시 담당자는 최소 1개 클라이언트를 배정해야 합니다.', 400)
     }
 
     const password_hash = await bcrypt.hash(password, 12)
+    const normalizedPhone = normalizePhoneNumber(phone_number)
     const supabase = serverSupabase()
 
     // agency_staff, superadmin은 client_id NULL
@@ -65,17 +65,18 @@ export const POST = withSuperAdmin(async (req: Request, { user }) => {
     const { data, error } = await supabase
       .from('users')
       .insert({
-        username: sanitizeString(username, 30),
+        phone_number: normalizedPhone,
+        name: name ? sanitizeString(name, 50) : null,
         password_hash,
         role,
         client_id: userClientId,
       })
-      .select('id, username, role, client_id, is_active, created_at')
+      .select('id, phone_number, name, role, client_id, is_active, created_at')
       .single()
 
     if (error) {
       if (error.message.includes('duplicate') || error.message.includes('unique')) {
-        return apiError('이미 존재하는 아이디입니다.', 400)
+        return apiError('이미 등록된 휴대폰 번호입니다.', 400)
       }
       return apiError(error.message, 500)
     }
@@ -88,7 +89,6 @@ export const POST = withSuperAdmin(async (req: Request, { user }) => {
         const clientRows = assigned_client_ids.map((cid: number) => ({ user_id: userId, client_id: cid }))
         const { error: assignError } = await supabase.from('user_client_assignments').insert(clientRows)
         if (assignError) {
-          // 유저는 생성되었으므로 롤백 대신 경고 로그 + 에러 반환
           await supabase.from('users').delete().eq('id', userId)
           return apiError('클라이언트 배정 실패: ' + assignError.message, 500)
         }
@@ -98,7 +98,6 @@ export const POST = withSuperAdmin(async (req: Request, { user }) => {
         const menuRows = menu_permissions.map((key: string) => ({ user_id: userId, menu_key: key }))
         const { error: menuError } = await supabase.from('user_menu_permissions').insert(menuRows)
         if (menuError) {
-          // 유저+클라이언트배정은 유지, 메뉴 권한만 실패 → 유저 삭제 롤백 (CASCADE로 배정도 삭제됨)
           await supabase.from('users').delete().eq('id', userId)
           return apiError('메뉴 권한 저장 실패: ' + menuError.message, 500)
         }
@@ -130,7 +129,7 @@ export const PATCH = withSuperAdmin(async (req: Request) => {
       .from('users')
       .update({ is_active })
       .eq('id', userId)
-      .select('id, username, is_active')
+      .select('id, phone_number, is_active')
       .single()
 
     if (error) return apiError(error.message, 500)

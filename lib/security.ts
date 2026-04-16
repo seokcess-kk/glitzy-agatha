@@ -128,7 +128,7 @@ export function parseId(value: unknown): number | null {
 
 export interface SessionUser {
   id: string
-  username: string
+  phone_number: string
   role: 'superadmin' | 'client_admin' | 'client_staff' | 'agency_staff' | 'demo_viewer'
   client_id: number | null
   password_version: number

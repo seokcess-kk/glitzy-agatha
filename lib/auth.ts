@@ -15,7 +15,7 @@ type UserRole = 'superadmin' | 'client_admin' | 'client_staff' | 'agency_staff' 
 interface ExtendedUser extends User {
   role: UserRole
   client_id: number | null
-  username: string
+  phone_number: string
   password_version: number
 }
 
@@ -33,7 +33,7 @@ export function setRequestContext(ip: string, ua: string) {
  */
 async function insertLoginLog(params: {
   userId: number | null
-  username: string
+  phoneNumber: string
   ip: string
   ua: string
   success: boolean
@@ -43,7 +43,7 @@ async function insertLoginLog(params: {
     const supabase = serverSupabase()
     await supabase.from('login_logs').insert({
       user_id: params.userId,
-      username: params.username,
+      username: params.phoneNumber,
       ip_address: params.ip,
       user_agent: params.ua,
       success: params.success,
@@ -59,20 +59,20 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: 'credentials',
       credentials: {
-        username: { label: 'Username', type: 'text' },
+        phone_number: { label: 'Phone Number', type: 'text' },
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials): Promise<ExtendedUser | null> {
-        if (!credentials?.username || !credentials?.password) return null
+        if (!credentials?.phone_number || !credentials?.password) return null
 
         const ip = _requestIp
         const ua = _requestUa
-        const username = credentials.username
+        const phoneNumber = credentials.phone_number
 
         // Rate limit 체크
-        const rateCheck = checkRateLimit(ip, username)
+        const rateCheck = checkRateLimit(ip, phoneNumber)
         if (rateCheck.limited) {
-          insertLoginLog({ userId: null, username, ip, ua, success: false, failureReason: 'rate_limited' })
+          insertLoginLog({ userId: null, phoneNumber, ip, ua, success: false, failureReason: 'rate_limited' })
           throw new Error('RATE_LIMITED')
         }
 
@@ -81,34 +81,34 @@ export const authOptions: NextAuthOptions = {
         const { data: user } = await supabase
           .from('users')
           .select('*')
-          .eq('username', username)
+          .eq('phone_number', phoneNumber)
           .eq('is_active', true)
           .single()
 
         if (!user) {
-          recordFailedAttempt(ip, username)
-          insertLoginLog({ userId: null, username, ip, ua, success: false, failureReason: 'user_not_found' })
+          recordFailedAttempt(ip, phoneNumber)
+          insertLoginLog({ userId: null, phoneNumber, ip, ua, success: false, failureReason: 'user_not_found' })
           return null
         }
 
         const valid = await bcrypt.compare(credentials.password, user.password_hash)
         if (!valid) {
-          recordFailedAttempt(ip, username)
-          insertLoginLog({ userId: user.id, username, ip, ua, success: false, failureReason: 'invalid_password' })
+          recordFailedAttempt(ip, phoneNumber)
+          insertLoginLog({ userId: user.id, phoneNumber, ip, ua, success: false, failureReason: 'invalid_password' })
           return null
         }
 
         // 성공 → rate limit 리셋 + 로그 기록
-        resetRateLimit(ip, username)
-        insertLoginLog({ userId: user.id, username, ip, ua, success: true })
+        resetRateLimit(ip, phoneNumber)
+        insertLoginLog({ userId: user.id, phoneNumber, ip, ua, success: true })
 
         return {
           id: String(user.id),
-          name: user.username,
-          email: `${user.username}@agatha.local`,
+          name: user.name || user.phone_number,
+          email: `${user.phone_number}@agatha.local`,
           role: user.role as UserRole,
           client_id: user.client_id,
-          username: user.username,
+          phone_number: user.phone_number,
           password_version: user.password_version ?? 1,
         }
       },
@@ -120,7 +120,7 @@ export const authOptions: NextAuthOptions = {
         const extUser = user as ExtendedUser
         token.role = extUser.role
         token.client_id = extUser.client_id
-        token.username = extUser.username || extUser.name || ''
+        token.phone_number = extUser.phone_number || extUser.name || ''
         token.password_version = extUser.password_version
       }
       return token
@@ -130,7 +130,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.sub || ''
         session.user.role = token.role
         session.user.client_id = token.client_id
-        session.user.username = token.username
+        session.user.phone_number = token.phone_number
         session.user.password_version = token.password_version
       }
       return session

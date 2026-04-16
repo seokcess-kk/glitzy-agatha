@@ -7,6 +7,6 @@ export default withAuth(
 )
 
 export const config = {
-  // api/auth, api/webhook, api/qstash, login, lp(랜딩페이지), privacy, terms 는 인증 불필요
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login|lp|privacy|terms).*)'],
+  // api/auth, api/webhook, api/qstash, login, signup, lp(랜딩페이지), privacy, terms 는 인증 불필요
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login|signup|lp|privacy|terms).*)'],
 }

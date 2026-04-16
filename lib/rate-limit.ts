@@ -1,6 +1,6 @@
 /**
  * 로그인 Rate Limiting
- * IP:username 키 기반, 15분 내 5회 제한
+ * IP:phone_number 키 기반, 15분 내 5회 제한
  */
 
 interface RateLimitEntry {
@@ -27,16 +27,16 @@ function cleanup() {
   }
 }
 
-function getKey(ip: string, username: string): string {
-  return `${ip}:${username}`
+function getKey(ip: string, phoneNumber: string): string {
+  return `${ip}:${phoneNumber}`
 }
 
 /**
  * Rate limit 체크 — 제한 초과 시 { limited: true, retryAfterSeconds }
  */
-export function checkRateLimit(ip: string, username: string): { limited: boolean; retryAfterSeconds?: number } {
+export function checkRateLimit(ip: string, phoneNumber: string): { limited: boolean; retryAfterSeconds?: number } {
   cleanup()
-  const key = getKey(ip, username)
+  const key = getKey(ip, phoneNumber)
   const now = Date.now()
   const entry = attempts.get(key)
 
@@ -59,9 +59,9 @@ export function checkRateLimit(ip: string, username: string): { limited: boolean
 /**
  * 실패 시도 기록
  */
-export function recordFailedAttempt(ip: string, username: string): void {
+export function recordFailedAttempt(ip: string, phoneNumber: string): void {
   cleanup()
-  const key = getKey(ip, username)
+  const key = getKey(ip, phoneNumber)
   const now = Date.now()
   const entry = attempts.get(key)
 
@@ -75,6 +75,6 @@ export function recordFailedAttempt(ip: string, username: string): void {
 /**
  * 성공 시 리셋
  */
-export function resetRateLimit(ip: string, username: string): void {
-  attempts.delete(getKey(ip, username))
+export function resetRateLimit(ip: string, phoneNumber: string): void {
+  attempts.delete(getKey(ip, phoneNumber))
 }

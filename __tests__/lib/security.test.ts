@@ -144,8 +144,8 @@ describe('isValidPaymentAmount', () => {
 })
 
 describe('checkClientAccess', () => {
-  const superadmin: SessionUser = { id: '1', username: 'admin', role: 'superadmin', client_id: null, password_version: 1 }
-  const clientAdmin: SessionUser = { id: '2', username: 'doc', role: 'client_admin', client_id: 10, password_version: 1 }
+  const superadmin: SessionUser = { id: '1', phone_number: '010-0000-0000', role: 'superadmin', client_id: null, password_version: 1 }
+  const clientAdmin: SessionUser = { id: '2', phone_number: '010-1111-1111', role: 'client_admin', client_id: 10, password_version: 1 }
 
   it('superadmin은 모든 client 접근 가능', () => {
     expect(checkClientAccess(10, superadmin)).toBe(true)

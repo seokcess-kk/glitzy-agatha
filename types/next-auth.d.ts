@@ -8,7 +8,7 @@ declare module 'next-auth' {
   interface Session {
     user: {
       id: string
-      username: string
+      phone_number: string
       role: UserRole
       client_id: number | null
       password_version: number
@@ -22,7 +22,7 @@ declare module 'next-auth' {
     id: string
     role: UserRole
     client_id: number | null
-    username: string
+    phone_number: string
     password_version: number
   }
 }
@@ -32,7 +32,7 @@ declare module 'next-auth/jwt' {
     sub?: string
     role: UserRole
     client_id: number | null
-    username: string
+    phone_number: string
     password_version: number
   }
 }

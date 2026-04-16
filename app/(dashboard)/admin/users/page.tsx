@@ -75,7 +75,7 @@ export default function UsersPage() {
   const [permMenuKeys, setPermMenuKeys] = useState<string[]>([])
   const [permSaving, setPermSaving] = useState(false)
   const [form, setForm] = useState({
-    username: '', password: '', role: 'client_admin', client_id: '',
+    phone_number: '', name: '', password: '', role: 'client_admin', client_id: '',
     assigned_client_ids: [] as number[], menu_permissions: [] as string[],
   })
   const [saving, setSaving] = useState(false)
@@ -103,14 +103,15 @@ export default function UsersPage() {
   useEffect(() => { fetchData() }, [])
 
   const handleSave = async () => {
-    if (!form.username || !form.password) {
-      toast.error('아이디와 비밀번호를 입력해주세요.')
+    if (!form.phone_number || !form.password) {
+      toast.error('휴대폰 번호와 비밀번호를 입력해주세요.')
       return
     }
     setSaving(true)
     try {
       const body: any = {
-        username: form.username,
+        phone_number: form.phone_number,
+        name: form.name,
         password: form.password,
         role: form.role,
         client_id: form.client_id ? Number(form.client_id) : null,
@@ -128,7 +129,7 @@ export default function UsersPage() {
         const err = await res.json()
         throw new Error(err.error)
       }
-      setForm({ username: '', password: '', role: 'client_admin', client_id: '', assigned_client_ids: [], menu_permissions: [] })
+      setForm({ phone_number: '', name: '', password: '', role: 'client_admin', client_id: '', assigned_client_ids: [], menu_permissions: [] })
       setDialogOpen(false)
       toast.success('계정이 생성되었습니다.')
       fetchData()
@@ -220,23 +221,32 @@ export default function UsersPage() {
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">아이디 *</Label>
+                <Label className="text-xs text-muted-foreground">휴대폰 번호 *</Label>
                 <Input
                   type="text"
-                  value={form.username}
-                  onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                  placeholder="로그인 아이디"
+                  value={form.phone_number}
+                  onChange={e => setForm(f => ({ ...f, phone_number: e.target.value }))}
+                  placeholder="010-0000-0000"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">비밀번호 *</Label>
+                <Label className="text-xs text-muted-foreground">이름</Label>
                 <Input
-                  type="password"
-                  value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  placeholder="초기 비밀번호"
+                  type="text"
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="사용자 이름"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">비밀번호 *</Label>
+              <Input
+                type="password"
+                value={form.password}
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                placeholder="초기 비밀번호"
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">역할 *</Label>
@@ -381,7 +391,7 @@ export default function UsersPage() {
             <TableBody>
               {users.map((u: any) => (
               <TableRow key={u.id} className="border-b border-border dark:border-white/5">
-                <TableCell className="text-foreground font-medium">{u.username}</TableCell>
+                <TableCell className="text-foreground font-medium">{u.name || u.phone_number}</TableCell>
                 <TableCell>
                   <Badge
                     variant={u.role === 'superadmin' ? 'default' : u.role === 'agency_staff' ? 'warning' : 'info'}

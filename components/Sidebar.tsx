@@ -364,8 +364,8 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, pinne
             </div>
           )}
 
-          {/* 슈퍼어드민 관리 메뉴 */}
-          {isSuperAdmin && (
+          {/* 슈퍼어드민 관리 메뉴 (데모 뷰어는 제외) */}
+          {isSuperAdmin && !isDemoViewer && (
             <>
               <div className="my-2 mx-2 border-t border-border" />
               {!collapsed && (
@@ -410,7 +410,7 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, pinne
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground font-medium truncate">{user?.name || user?.phone_number}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {isSuperAdmin ? '슈퍼어드민' : isAgencyStaff ? '에이전시 담당자' : isClientAdmin ? '클라이언트 관리자' : '클라이언트 담당자'}
+                      {isDemoViewer ? '데모 체험' : isSuperAdmin ? '슈퍼어드민' : isAgencyStaff ? '에이전시 담당자' : isClientAdmin ? '클라이언트 관리자' : '클라이언트 담당자'}
                     </p>
                   </div>
                   <ChevronUp size={14} className="text-muted-foreground shrink-0" />
@@ -422,10 +422,12 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, pinne
                 {user?.name || user?.phone_number}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setPwDialogOpen(true)}>
-                <KeyRound size={14} />
-                비밀번호 변경
-              </DropdownMenuItem>
+              {!isDemoViewer && (
+                <DropdownMenuItem onClick={() => setPwDialogOpen(true)}>
+                  <KeyRound size={14} />
+                  비밀번호 변경
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={() => signOut({ callbackUrl: '/login' })}
                 className="text-red-500 hover:text-red-600 focus:text-red-600 dark:text-red-400 dark:hover:text-red-300 dark:focus:text-red-300"

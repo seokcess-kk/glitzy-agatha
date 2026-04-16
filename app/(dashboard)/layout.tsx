@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react'
 import Sidebar from '@/components/Sidebar'
 import { ClientProvider } from '@/components/ClientContext'
 import { WebVitals } from '@/components/common'
+import DemoBanner from '@/components/DemoBanner'
 
 const PINNED_KEY = 'agatha_sidebar_pinned'
 
@@ -43,8 +44,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
 
         {/* 사이드바 — 모바일: 슬라이드인, 데스크탑: hover 확대 + 핀 고정 */}
-        {/* 축소 시 플레이스홀더: 항상 w-16 공간 확보 */}
-        <div className="hidden md:block w-16 shrink-0" />
+        {/* 플레이스홀더: 핀 고정 시 w-60, 아닐 때 w-16 — 본문 영역이 함께 조정됨 */}
+        <div className={`hidden md:block ${pinned ? 'w-60' : 'w-16'} shrink-0 transition-all duration-200`} />
         <div
           className={`
             ${expanded ? 'w-60' : 'w-16'} shrink-0 fixed inset-y-0 left-0 z-50 md:z-30
@@ -64,6 +65,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative z-10">
+          <DemoBanner />
           {/* 모바일 상단 바 */}
           <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-background">
             <button

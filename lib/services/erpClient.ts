@@ -55,6 +55,31 @@ async function erpFetch<T>(path: string, options?: {
   return result.data as T
 }
 
+// glitzy-web에 거래처 생성
+export async function createErpClient(data: {
+  name: string
+  business_number?: string
+  contact_name?: string
+  contact_phone?: string
+  contact_email?: string
+}): Promise<{ id: number; name: string }> {
+  return erpFetch<{ success: boolean; data: { id: number; name: string } }>('/clients', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }).then(res => res.data)
+}
+
+// glitzy-web 거래처 목록 조회
+export async function fetchErpClients(params?: {
+  search?: string; page?: number; limit?: number
+}): Promise<{ data: Array<{ id: number; name: string; business_number?: string }>; pagination: ERPPagination }> {
+  const sp = new URLSearchParams()
+  if (params?.search) sp.set('search', params.search)
+  if (params?.page) sp.set('page', String(params.page))
+  if (params?.limit) sp.set('limit', String(params.limit || 50))
+  return erpFetch(`/clients?${sp}`)
+}
+
 export async function fetchQuotes(erpClientId: number, params?: {
   status?: string; page?: number; limit?: number
 }): Promise<ERPListResponse<ERPQuote>> {

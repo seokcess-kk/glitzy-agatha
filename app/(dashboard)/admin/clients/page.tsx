@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Building2, Bell, Pencil, X, Settings2 } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Plus, Building2, Bell, Pencil, X, Settings2, Search, Link2 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -32,6 +32,14 @@ import { API_CONFIG_PLATFORMS, API_PLATFORM_SHORT, type ApiPlatform } from '@/li
 
 type Platform = ApiPlatform
 
+type ErpLinkMode = 'search' | 'create' | 'later'
+
+interface ErpSearchResult {
+  id: number
+  name: string
+  business_number?: string
+}
+
 interface ApiConfigSummary {
   platform: Platform
   last_test_result: string | null
@@ -48,8 +56,21 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', slug: '', erp_client_id: '' })
+  const [form, setForm] = useState({ name: '', slug: '' })
   const [saving, setSaving] = useState(false)
+  // ERP 거래처 연결 옵션
+  const [erpLinkMode, setErpLinkMode] = useState<ErpLinkMode>('later')
+  const [erpSearchQuery, setErpSearchQuery] = useState('')
+  const [erpSearchResults, setErpSearchResults] = useState<ErpSearchResult[]>([])
+  const [erpSearching, setErpSearching] = useState(false)
+  const [selectedErpClient, setSelectedErpClient] = useState<ErpSearchResult | null>(null)
+  const [erpCreateData, setErpCreateData] = useState({
+    business_number: '',
+    contact_name: '',
+    contact_phone: '',
+    contact_email: '',
+  })
+  const erpSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // 알림 설정
   const [notifyDialogOpen, setNotifyDialogOpen] = useState(false)
   const [notifyTarget, setNotifyTarget] = useState<any>(null)
@@ -107,29 +128,81 @@ export default function ClientsPage() {
     }
   }, [clients, fetchApiConfigSummaries])
 
+  const searchErpClients = async (query: string) => {
+    if (!query.trim()) {
+      setErpSearchResults([])
+      return
+    }
+    setErpSearching(true)
+    try {
+      const res = await fetch(`/api/admin/erp-clients?search=${encodeURIComponent(query)}&limit=10`)
+      if (!res.ok) throw new Error()
+      const json = await res.json()
+      const results = json?.data?.data || json?.data || []
+      setErpSearchResults(Array.isArray(results) ? results : [])
+    } catch {
+      toast.error('glitzy-web 거래처 검색에 실패했습니다.')
+      setErpSearchResults([])
+    } finally {
+      setErpSearching(false)
+    }
+  }
+
+  const handleErpSearch = () => {
+    searchErpClients(erpSearchQuery)
+  }
+
+  const resetErpForm = () => {
+    setErpLinkMode('later')
+    setErpSearchQuery('')
+    setErpSearchResults([])
+    setSelectedErpClient(null)
+    setErpCreateData({ business_number: '', contact_name: '', contact_phone: '', contact_email: '' })
+  }
+
   const handleSave = async () => {
     if (!form.name || !form.slug) {
       toast.error('클라이언트명과 슬러그를 입력해주세요.')
       return
     }
+
+    if (erpLinkMode === 'search' && !selectedErpClient) {
+      toast.error('거래처를 선택해주세요.')
+      return
+    }
+
     setSaving(true)
     try {
+      const payload: Record<string, unknown> = {
+        name: form.name,
+        slug: form.slug,
+      }
+
+      if (erpLinkMode === 'search' && selectedErpClient) {
+        payload.erp_client_id = selectedErpClient.id
+      } else if (erpLinkMode === 'create') {
+        payload.create_erp_client = true
+        payload.erp_client_data = {
+          ...(erpCreateData.business_number ? { business_number: erpCreateData.business_number } : {}),
+          ...(erpCreateData.contact_name ? { contact_name: erpCreateData.contact_name } : {}),
+          ...(erpCreateData.contact_phone ? { contact_phone: erpCreateData.contact_phone } : {}),
+          ...(erpCreateData.contact_email ? { contact_email: erpCreateData.contact_email } : {}),
+        }
+      }
+
       const res = await fetch('/api/admin/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          slug: form.slug,
-          ...(form.erp_client_id ? { erp_client_id: Number(form.erp_client_id) } : {}),
-        }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error)
       }
-      setForm({ name: '', slug: '', erp_client_id: '' })
+      setForm({ name: '', slug: '' })
+      resetErpForm()
       setDialogOpen(false)
-      toast.success('클라이언트이 등록되었습니다.')
+      toast.success('클라이언트가 등록되었습니다.')
       fetchClients()
     } catch (e: any) {
       toast.error(e.message || '등록 실패')
@@ -272,15 +345,138 @@ export default function ClientsPage() {
               />
               <p className="text-xs text-muted-foreground">URL에 사용됩니다. 영문 소문자, 숫자, 하이픈만 허용</p>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">glitzy-web 거래처 ID</Label>
-              <Input
-                type="number"
-                value={form.erp_client_id}
-                onChange={e => setForm(f => ({ ...f, erp_client_id: e.target.value }))}
-                placeholder="선택 입력"
-              />
-              <p className="text-xs text-muted-foreground">견적/계산서 연동을 위한 glitzy-web 거래처 ID</p>
+            {/* glitzy-web 거래처 연결 */}
+            <div className="space-y-3">
+              <Label className="text-xs text-muted-foreground">glitzy-web 거래처 연결</Label>
+              <div className="flex gap-1">
+                {([
+                  { value: 'search' as ErpLinkMode, label: '기존 거래처 검색' },
+                  { value: 'create' as ErpLinkMode, label: '새로 생성' },
+                  { value: 'later' as ErpLinkMode, label: '나중에 연결' },
+                ] as const).map(opt => (
+                  <Button
+                    key={opt.value}
+                    type="button"
+                    variant={erpLinkMode === opt.value ? 'default' : 'outline'}
+                    size="sm"
+                    className={erpLinkMode === opt.value ? 'bg-brand-600 hover:bg-brand-700' : ''}
+                    onClick={() => {
+                      setErpLinkMode(opt.value)
+                      setSelectedErpClient(null)
+                      setErpSearchResults([])
+                      setErpSearchQuery('')
+                    }}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+
+              {/* 기존 거래처 검색 */}
+              {erpLinkMode === 'search' && (
+                <div className="space-y-2 border border-border rounded-lg p-3">
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={erpSearchQuery}
+                      onChange={e => setErpSearchQuery(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleErpSearch()}
+                      placeholder="거래처명 검색..."
+                      className="flex-1"
+                    />
+                    <Button type="button" size="sm" variant="outline" onClick={handleErpSearch} disabled={erpSearching}>
+                      <Search size={14} />
+                      {erpSearching ? '검색 중...' : '검색'}
+                    </Button>
+                  </div>
+
+                  {selectedErpClient && (
+                    <div className="flex items-center gap-2 bg-brand-600/10 text-brand-600 rounded-md px-3 py-2 text-sm">
+                      <Link2 size={14} />
+                      <span className="font-medium">{selectedErpClient.name}</span>
+                      <span className="text-xs text-muted-foreground">(ID: {selectedErpClient.id})</span>
+                      <button type="button" onClick={() => setSelectedErpClient(null)} className="ml-auto hover:text-red-400">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+
+                  {erpSearchResults.length > 0 && !selectedErpClient && (
+                    <div className="border border-border rounded-md max-h-40 overflow-y-auto">
+                      {erpSearchResults.map(item => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelectedErpClient(item)}
+                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 text-sm text-left border-b border-border last:border-b-0"
+                        >
+                          <span>
+                            {item.name}
+                            {item.business_number && (
+                              <span className="text-xs text-muted-foreground ml-2">({item.business_number})</span>
+                            )}
+                          </span>
+                          <span className="text-xs text-muted-foreground">ID: {item.id}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {erpSearchQuery && erpSearchResults.length === 0 && !erpSearching && !selectedErpClient && (
+                    <p className="text-xs text-muted-foreground text-center py-2">검색 결과가 없습니다.</p>
+                  )}
+                </div>
+              )}
+
+              {/* 새로 생성 */}
+              {erpLinkMode === 'create' && (
+                <div className="space-y-2 border border-border rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">클라이언트 저장 시 glitzy-web에 거래처가 동시에 생성됩니다.</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">사업자번호</Label>
+                      <Input
+                        type="text"
+                        value={erpCreateData.business_number}
+                        onChange={e => setErpCreateData(d => ({ ...d, business_number: e.target.value }))}
+                        placeholder="선택 입력"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">담당자명</Label>
+                      <Input
+                        type="text"
+                        value={erpCreateData.contact_name}
+                        onChange={e => setErpCreateData(d => ({ ...d, contact_name: e.target.value }))}
+                        placeholder="선택 입력"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">연락처</Label>
+                      <Input
+                        type="tel"
+                        value={erpCreateData.contact_phone}
+                        onChange={e => setErpCreateData(d => ({ ...d, contact_phone: e.target.value }))}
+                        placeholder="선택 입력"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">이메일</Label>
+                      <Input
+                        type="email"
+                        value={erpCreateData.contact_email}
+                        onChange={e => setErpCreateData(d => ({ ...d, contact_email: e.target.value }))}
+                        placeholder="선택 입력"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 나중에 연결 */}
+              {erpLinkMode === 'later' && (
+                <p className="text-xs text-muted-foreground">거래처 연결 없이 생성합니다. 견적/계산서 기능은 비활성 상태입니다.</p>
+              )}
             </div>
           </div>
           <DialogFooter>

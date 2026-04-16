@@ -26,7 +26,7 @@ export const GET = withSuperAdmin(async (req: Request) => {
     .from('ad_creatives')
     .select(`
       *,
-      clinic:clinics(id, name),
+      client:clients(id, name),
       landing_page:landing_pages(id, name, file_name)
     `)
     .eq('id', creativeId)
@@ -48,7 +48,7 @@ export const PUT = withSuperAdmin(async (req: Request) => {
   const body = await req.json()
   const {
     name, description, utm_content, utm_source, utm_medium, utm_campaign, utm_term,
-    platform, clinic_id, landing_page_id, is_active, file_name, file_type
+    platform, client_id, landing_page_id, is_active, file_name, file_type
   } = body
 
   const supabase = serverSupabase()
@@ -56,7 +56,7 @@ export const PUT = withSuperAdmin(async (req: Request) => {
   // 기존 데이터 확인
   const { data: existing } = await supabase
     .from('ad_creatives')
-    .select('id, clinic_id')
+    .select('id, client_id')
     .eq('id', creativeId)
     .single()
 
@@ -64,19 +64,19 @@ export const PUT = withSuperAdmin(async (req: Request) => {
     return apiError('광고 소재를 찾을 수 없습니다.', 404)
   }
 
-  // clinic_id 변경 시 유효성 검증
-  let validClinicId: number | undefined = undefined
-  if (clinic_id !== undefined) {
-    validClinicId = parseId(clinic_id) ?? undefined
-    if (validClinicId) {
-      const { data: clinic } = await supabase
-        .from('clinics')
+  // client_id 변경 시 유효성 검증
+  let validClientId: number | undefined = undefined
+  if (client_id !== undefined) {
+    validClientId = parseId(client_id) ?? undefined
+    if (validClientId) {
+      const { data: client } = await supabase
+        .from('clients')
         .select('id')
-        .eq('id', validClinicId)
+        .eq('id', validClientId)
         .single()
 
-      if (!clinic) {
-        return apiError('존재하지 않는 병원입니다.', 400)
+      if (!client) {
+        return apiError('존재하지 않는 클라이언트입니다.', 400)
       }
     }
   }
@@ -102,13 +102,13 @@ export const PUT = withSuperAdmin(async (req: Request) => {
     }
   }
 
-  // utm_content 중복 검사 (변경 시, 같은 병원 내, 자기 자신 제외)
+  // utm_content 중복 검사 (변경 시, 같은 클라이언트 내, 자기 자신 제외)
   if (utm_content) {
-    const checkClinicId = validClinicId ?? existing.clinic_id
+    const checkClientId = validClientId ?? existing.client_id
     const { data: duplicate } = await supabase
       .from('ad_creatives')
       .select('id')
-      .eq('clinic_id', checkClinicId)
+      .eq('client_id', checkClientId)
       .eq('utm_content', utm_content)
       .neq('id', creativeId)
       .maybeSingle()
@@ -130,7 +130,7 @@ export const PUT = withSuperAdmin(async (req: Request) => {
   if (utm_campaign !== undefined) updateData.utm_campaign = utm_campaign ? sanitizeString(utm_campaign, 100) : null
   if (utm_term !== undefined) updateData.utm_term = utm_term ? sanitizeString(utm_term, 100) : null
   if (platform !== undefined) updateData.platform = platform ? (creativeToApiPlatform(platform) || sanitizeString(platform, 50)) : null
-  if (validClinicId !== undefined) updateData.clinic_id = validClinicId
+  if (validClientId !== undefined) updateData.client_id = validClientId
   if (validLandingPageId !== undefined) updateData.landing_page_id = validLandingPageId
   if (is_active !== undefined) updateData.is_active = is_active
   if (file_name !== undefined) updateData.file_name = file_name ? sanitizeString(String(file_name).replace(/[/\\:*?"<>|]/g, ''), 200) : null
@@ -142,7 +142,7 @@ export const PUT = withSuperAdmin(async (req: Request) => {
     .eq('id', creativeId)
     .select(`
       *,
-      clinic:clinics(id, name),
+      client:clients(id, name),
       landing_page:landing_pages(id, name, file_name)
     `)
     .single()
@@ -166,7 +166,7 @@ export const PUT = withSuperAdmin(async (req: Request) => {
         const { data: existingLink } = await supabase
           .from('utm_links')
           .select('id')
-          .eq('clinic_id', data.clinic_id)
+          .eq('client_id', data.client_id)
           .eq('utm_content', data.utm_content)
           .maybeSingle()
 
@@ -186,7 +186,7 @@ export const PUT = withSuperAdmin(async (req: Request) => {
           await supabase
             .from('utm_links')
             .insert({
-              clinic_id: data.clinic_id,
+              client_id: data.client_id,
               original_url: generatedUrl,
               utm_source: data.utm_source,
               utm_medium: data.utm_medium,

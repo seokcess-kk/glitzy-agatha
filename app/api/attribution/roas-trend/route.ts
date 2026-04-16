@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
@@ -15,7 +15,7 @@ interface DayChannelEntry {
  * 채널별 일별 ROAS 추이 API
  * GET /api/attribution/roas-trend?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
  */
-export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
 
@@ -41,12 +41,12 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
   // 결제 쿼리 (일별 + 고객의 첫 유입 채널)
   let paymentQuery = supabase
     .from('payments')
-    .select('payment_amount, payment_date, customers(first_source)')
+    .select('payment_amount, payment_date, contacts(first_source)')
     .gte('payment_date', startDate)
     .lte('payment_date', endDate)
 
-  const adFiltered = applyClinicFilter(adQuery, { clinicId, assignedClinicIds })
-  const payFiltered = applyClinicFilter(paymentQuery, { clinicId, assignedClinicIds })
+  const adFiltered = applyClientFilter(adQuery, { clientId, assignedClientIds })
+  const payFiltered = applyClientFilter(paymentQuery, { clientId, assignedClientIds })
 
   if (adFiltered === null && payFiltered === null) {
     return apiSuccess([])
@@ -57,7 +57,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
   try {
     const [adRes, payRes] = await Promise.all([
       adFiltered ? adQuery : Promise.resolve({ data: [] as { stat_date: string; platform: string; spend_amount: number }[], error: null }),
-      payFiltered ? paymentQuery : Promise.resolve({ data: [] as { payment_amount: number; payment_date: string; customers: { first_source: string | null } | null }[], error: null }),
+      payFiltered ? paymentQuery : Promise.resolve({ data: [] as { payment_amount: number; payment_date: string; contacts: { first_source: string | null } | null }[], error: null }),
     ])
 
     if (adRes.error) return apiError(adRes.error.message, 500)
@@ -78,8 +78,8 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
 
     // 매출 일별 채널 집계 (퍼스트터치 기준)
     for (const row of payRes.data || []) {
-      const customer = row.customers as unknown as { first_source: string | null } | null
-      const ch = normalizeChannel(customer?.first_source ?? null)
+      const contact = row.contacts as unknown as { first_source: string | null } | null
+      const ch = normalizeChannel(contact?.first_source ?? null)
       const date = toKstDate(row.payment_date)
       const entry = dayMap.get(date)
       if (!entry) continue
@@ -103,7 +103,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
 
     return apiSuccess(result)
   } catch (error) {
-    logger.error('ROAS 추이 조회 실패', error, { clinicId })
+    logger.error('ROAS 추이 조회 실패', error, { clientId })
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 })

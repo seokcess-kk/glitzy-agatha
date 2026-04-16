@@ -46,12 +46,12 @@ test.describe('리드 수집 테스트', () => {
     }
   })
 
-  test('병원 미선택 시 경고 표시', async ({ authenticatedPage }) => {
+  test('클라이언트 미선택 시 경고 표시', async ({ authenticatedPage }) => {
     const leadFormPage = new LeadFormPage(authenticatedPage)
     await leadFormPage.goto()
 
-    // 병원 선택 경고가 있는지 확인
-    const hasWarning = await leadFormPage.clinicWarning.isVisible().catch(() => false)
+    // 클라이언트 선택 경고가 있는지 확인
+    const hasWarning = await leadFormPage.clientWarning.isVisible().catch(() => false)
 
     // 경고가 있거나 제출 버튼이 비활성화되어야 함
     if (!hasWarning) {

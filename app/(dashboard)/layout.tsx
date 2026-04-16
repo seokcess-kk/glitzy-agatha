@@ -2,14 +2,14 @@
 import { useState } from 'react'
 import { Menu } from 'lucide-react'
 import Sidebar from '@/components/Sidebar'
-import { ClinicProvider } from '@/components/ClinicContext'
+import { ClientProvider } from '@/components/ClientContext'
 import { WebVitals } from '@/components/common'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <ClinicProvider>
+    <ClientProvider>
       <WebVitals />
       <div className="flex h-screen overflow-hidden relative bg-background">
 
@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <Menu size={20} />
             </button>
-            <p className="text-sm font-bold text-foreground">Samantha</p>
+            <p className="text-sm font-bold text-foreground">Agatha</p>
           </div>
 
           <main className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -56,6 +56,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
       </div>
-    </ClinicProvider>
+    </ClientProvider>
   )
 }

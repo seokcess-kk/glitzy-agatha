@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, applyClinicFilter, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 
@@ -12,7 +12,7 @@ function extractUtmId(inflowUrl: string | null): string | null {
   return match?.[1] || null
 }
 
-export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const url = new URL(req.url)
   const daysParam = Number(url.searchParams.get('days') || 30)
   const days = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 30
@@ -32,13 +32,13 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       .order('stat_date', { ascending: false })
 
     if (platform) query = query.eq('platform', platform)
-    const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
+    const filtered = applyClientFilter(query, { clientId, assignedClientIds })
     if (filtered === null) return apiSuccess({ stats: [], campaignLeadCounts: {} })
     query = filtered
 
     const { data, error } = await query
     if (error) {
-      logger.error('ad_campaign_stats 조회 실패', error, { clinicId })
+      logger.error('ad_campaign_stats 조회 실패', error, { clientId })
       return apiSuccess({ stats: [], campaignLeadCounts: {} })
     }
 
@@ -52,7 +52,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       .not('inflow_url', 'is', null)
       .gte('created_at', since)
 
-    const filteredLeads = applyClinicFilter(leadsQuery, { clinicId, assignedClinicIds })
+    const filteredLeads = applyClientFilter(leadsQuery, { clientId, assignedClientIds })
     if (filteredLeads) leadsQuery = filteredLeads
 
     const { data: leadsData } = await leadsQuery
@@ -66,7 +66,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
 
     return apiSuccess({ stats: data, campaignLeadCounts })
   } catch (err) {
-    logger.error('ads/stats 조회 실패', err, { clinicId })
+    logger.error('ads/stats 조회 실패', err, { clientId })
     return apiSuccess({ stats: [], campaignLeadCounts: {} })
   }
 })

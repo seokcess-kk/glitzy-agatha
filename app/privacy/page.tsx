@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: '개인정보처리방침',
-  description: 'Samantha 대시보드 개인정보처리방침',
+  description: 'Agatha 대시보드 개인정보처리방침',
 }
 
 export default function PrivacyPolicyPage() {
@@ -26,12 +26,12 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">1. 개인정보의 처리 목적</h2>
             <p>
-              주식회사 글리지(이하 &ldquo;회사&rdquo;)는 Samantha(Medical Marketing Intelligence) 대시보드 서비스(이하 &ldquo;서비스&rdquo;)
+              주식회사 글리지(이하 &ldquo;회사&rdquo;)는 Agatha(Marketing Intelligence) 대시보드 서비스(이하 &ldquo;서비스&rdquo;)
               제공을 위해 다음 목적으로 개인정보를 처리합니다.
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>서비스 회원 관리 및 본인 확인</li>
-              <li>병원 마케팅 데이터 분석 및 대시보드 제공</li>
+              <li>클라이언트 마케팅 데이터 분석 및 대시보드 제공</li>
               <li>광고 성과 데이터 연동 및 리포트 생성</li>
               <li>고객 문의 응대 및 서비스 개선</li>
               <li>서비스 이용 통계 및 분석</li>
@@ -45,7 +45,7 @@ export default function PrivacyPolicyPage() {
                 <h3 className="font-medium text-foreground">필수 항목</h3>
                 <ul className="list-disc pl-5 mt-1 space-y-1">
                   <li>아이디, 비밀번호, 이름, 이메일 주소</li>
-                  <li>소속 병원 정보, 직책/역할</li>
+                  <li>소속 클라이언트 정보, 직책/역할</li>
                 </ul>
               </div>
               <div>

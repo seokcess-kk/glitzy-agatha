@@ -27,7 +27,7 @@ export interface SendSmsOptions {
 }
 
 export interface SendSmsWithLogOptions extends SendSmsOptions {
-  clinicId?: number | null
+  clientId?: number | null
   leadId?: number | null
 }
 
@@ -70,7 +70,7 @@ export async function sendSms({ to, text, from }: SendSmsOptions): Promise<{ suc
  */
 export async function sendSmsWithLog(
   supabase: { from: (table: string) => any },
-  { to, text, from, clinicId, leadId }: SendSmsWithLogOptions
+  { to, text, from, clientId, leadId }: SendSmsWithLogOptions
 ): Promise<{ success: boolean; logId?: number; error?: string }> {
   const result = await sendSms({ to, text, from })
 
@@ -79,7 +79,7 @@ export async function sendSmsWithLog(
     const { data: log } = await supabase
       .from('sms_send_logs')
       .insert({
-        clinic_id: clinicId ?? null,
+        client_id: clientId ?? null,
         lead_id: leadId ?? null,
         phone: to,
         message: text,

@@ -9,12 +9,12 @@ import { createLogger } from './logger'
 const logger = createLogger('Auth')
 
 // 사용자 역할 타입
-type UserRole = 'superadmin' | 'clinic_admin' | 'clinic_staff' | 'agency_staff' | 'demo_viewer'
+type UserRole = 'superadmin' | 'client_admin' | 'client_staff' | 'agency_staff' | 'demo_viewer'
 
 // 확장된 User 타입
 interface ExtendedUser extends User {
   role: UserRole
-  clinic_id: number | null
+  client_id: number | null
   username: string
   password_version: number
 }
@@ -105,9 +105,9 @@ export const authOptions: NextAuthOptions = {
         return {
           id: String(user.id),
           name: user.username,
-          email: `${user.username}@samantha.local`,
+          email: `${user.username}@agatha.local`,
           role: user.role as UserRole,
-          clinic_id: user.clinic_id,
+          client_id: user.client_id,
           username: user.username,
           password_version: user.password_version ?? 1,
         }
@@ -119,7 +119,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         const extUser = user as ExtendedUser
         token.role = extUser.role
-        token.clinic_id = extUser.clinic_id
+        token.client_id = extUser.client_id
         token.username = extUser.username || extUser.name || ''
         token.password_version = extUser.password_version
       }
@@ -129,7 +129,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.sub || ''
         session.user.role = token.role
-        session.user.clinic_id = token.clinic_id
+        session.user.client_id = token.client_id
         session.user.username = token.username
         session.user.password_version = token.password_version
       }

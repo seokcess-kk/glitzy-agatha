@@ -5,7 +5,7 @@ import { sanitizeString } from '@/lib/security'
 export const GET = withSuperAdmin(async (_req, { user }) => {
   const supabase = serverSupabase()
   const { data, error } = await supabase
-    .from('clinics')
+    .from('clients')
     .select('*')
     .order('created_at', { ascending: false })
 
@@ -17,7 +17,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
   const { name, slug } = await req.json()
 
   if (!name || !slug) {
-    return apiError('병원명과 슬러그를 입력해주세요.', 400)
+    return apiError('클라이언트명과 슬러그를 입력해주세요.', 400)
   }
 
   // 슬러그 형식 검증
@@ -28,7 +28,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
 
   const supabase = serverSupabase()
   const { data, error } = await supabase
-    .from('clinics')
+    .from('clients')
     .insert({
       name: sanitizeString(name, 100),
       slug: slug.toLowerCase(),

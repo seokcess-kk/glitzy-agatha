@@ -7,7 +7,7 @@ import { startOfDay, startOfMonth } from 'date-fns'
 import { DateRange } from 'react-day-picker'
 import { RefreshCw, Play } from 'lucide-react'
 import { toast } from 'sonner'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/common'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
@@ -25,12 +25,12 @@ export default function AdsPage() {
   const router = useRouter()
   const user = session?.user
 
-  // Role guard — clinic_staff cannot access ads
+  // Role guard — client_staff cannot access ads
   useEffect(() => {
-    if (user?.role === 'clinic_staff') router.replace('/patients')
+    if (user?.role === 'client_staff') router.replace('/patients')
   }, [user, router])
 
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [activeTab, setActiveTab] = useState('overview')
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const today = startOfDay(new Date())

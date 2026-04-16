@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     default: '대시보드',
     template: '%s',
   },
-  description: 'Samantha — Medical Marketing Intelligence Dashboard',
+  description: 'Agatha — Marketing Intelligence Dashboard',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

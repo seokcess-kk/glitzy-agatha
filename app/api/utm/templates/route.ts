@@ -4,12 +4,12 @@
  * POST: 템플릿 생성
  */
 
-import { withClinicFilter, applyClinicFilter, apiError, apiSuccess, ClinicContext } from '@/lib/api-middleware'
+import { withClientFilter, applyClientFilter, apiError, apiSuccess, ClientContext } from '@/lib/api-middleware'
 import { serverSupabase } from '@/lib/supabase'
 import { sanitizeUtmParam } from '@/lib/utm'
 import { parseId, sanitizeString, sanitizeUrl } from '@/lib/security'
 
-export const GET = withClinicFilter(async (req: Request, { clinicId, assignedClinicIds }: ClinicContext) => {
+export const GET = withClientFilter(async (req: Request, { clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
 
   let query = supabase
@@ -18,7 +18,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: false })
 
-  const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
+  const filtered = applyClientFilter(query, { clientId, assignedClientIds })
   if (filtered === null) return apiSuccess({ templates: [] })
   query = filtered
 
@@ -31,7 +31,7 @@ export const GET = withClinicFilter(async (req: Request, { clinicId, assignedCli
   return apiSuccess({ templates: data || [] })
 })
 
-export const POST = withClinicFilter(async (req: Request, { user, clinicId }: ClinicContext) => {
+export const POST = withClientFilter(async (req: Request, { user, clientId }: ClientContext) => {
   let body
   try {
     body = await req.json()
@@ -45,13 +45,13 @@ export const POST = withClinicFilter(async (req: Request, { user, clinicId }: Cl
     return apiError('템플릿 이름이 필요합니다.')
   }
 
-  // clinic_id 결정 (superadmin은 body에서 지정 가능)
-  let targetClinicId = clinicId
-  if (user.role === 'superadmin' && body.clinic_id) {
-    targetClinicId = parseId(body.clinic_id)
+  // client_id 결정 (superadmin은 body에서 지정 가능)
+  let targetClientId = clientId
+  if (user.role === 'superadmin' && body.client_id) {
+    targetClientId = parseId(body.client_id)
   }
-  if (!targetClinicId) {
-    return apiError('clinic_id가 필요합니다.')
+  if (!targetClientId) {
+    return apiError('client_id가 필요합니다.')
   }
 
   const supabase = serverSupabase()
@@ -60,7 +60,7 @@ export const POST = withClinicFilter(async (req: Request, { user, clinicId }: Cl
   const { data: existing } = await supabase
     .from('utm_templates')
     .select('id')
-    .eq('clinic_id', targetClinicId)
+    .eq('client_id', targetClientId)
     .eq('name', name)
     .single()
 
@@ -73,12 +73,12 @@ export const POST = withClinicFilter(async (req: Request, { user, clinicId }: Cl
     await supabase
       .from('utm_templates')
       .update({ is_default: false })
-      .eq('clinic_id', targetClinicId)
+      .eq('client_id', targetClientId)
       .eq('is_default', true)
   }
 
   const insertData = {
-    clinic_id: targetClinicId,
+    client_id: targetClientId,
     name,
     base_url: sanitizeUrl(body.base_url, 500) || null,
     utm_source: sanitizeUtmParam(body.utm_source, 50),

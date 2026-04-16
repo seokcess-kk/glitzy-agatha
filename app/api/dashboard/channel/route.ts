@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, applyClinicFilter, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
 import { sourceToChannel } from '@/lib/platform'
 import { getKstDateString } from '@/lib/date'
@@ -9,17 +9,17 @@ import { getKstDateString } from '@/lib/date'
  * utm_source 원본 기준 세분화 집계 (google_search, meta_feed 등)
  * 광고 지출은 platform(meta_ads) 기준 → sourceToChannel로 채널 매칭
  */
-export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startParam = url.searchParams.get('startDate')
   const endParam = url.searchParams.get('endDate')
-  // agency_staff 배정 병원 0개 → 빈 결과
-  if (assignedClinicIds !== null && assignedClinicIds.length === 0) {
+  // agency_staff 배정 클라이언트 0개 → 빈 결과
+  if (assignedClientIds !== null && assignedClientIds.length === 0) {
     return apiSuccess([])
   }
 
-  const ctx = { clinicId, assignedClinicIds }
+  const ctx = { clientId, assignedClientIds }
 
   // KPI와 동일한 날짜 범위 변환: ISO → KST 기준 [start, end) 패턴
   const startKst = startParam ? getKstDateString(new Date(startParam)) : null
@@ -36,9 +36,9 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
   // 1. 리드 데이터 조회 (utm_source 포함) — KPI와 동일한 gte/lt 패턴
   let leadsQuery = supabase
     .from('leads')
-    .select('id, customer_id, utm_source, created_at')
+    .select('id, contact_id, utm_source, created_at')
     .limit(5000)
-  leadsQuery = applyClinicFilter(leadsQuery, ctx)!
+  leadsQuery = applyClientFilter(leadsQuery, ctx)!
   if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
   if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
@@ -46,16 +46,16 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
   let adStatsQuery = supabase
     .from('ad_campaign_stats')
     .select('platform, spend_amount, clicks, impressions, stat_date')
-  adStatsQuery = applyClinicFilter(adStatsQuery, ctx)!
+  adStatsQuery = applyClientFilter(adStatsQuery, ctx)!
   if (startKst) adStatsQuery = adStatsQuery.gte('stat_date', startKst)
   if (endKst) adStatsQuery = adStatsQuery.lte('stat_date', endKst)
 
   // 3. 결제 데이터 — payment_date(DATE 컬럼)는 KST 날짜 문자열로 비교
   let paymentsQuery = supabase
     .from('payments')
-    .select('payment_amount, customer_id, payment_date')
+    .select('payment_amount, contact_id, payment_date')
     .limit(5000)
-  paymentsQuery = applyClinicFilter(paymentsQuery, ctx)!
+  paymentsQuery = applyClientFilter(paymentsQuery, ctx)!
   if (startKst) paymentsQuery = paymentsQuery.gte('payment_date', startKst)
   if (endKst) paymentsQuery = paymentsQuery.lte('payment_date', endKst)
 
@@ -67,7 +67,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
 
   // 채널별 리드 집계 — 플랫폼 단위 통합 (Meta, Google 등)
   const leadsByChannel: Record<string, Set<number>> = {}
-  const customerToChannel: Map<number, string> = new Map()
+  const contactToChannel: Map<number, string> = new Map()
 
   for (const lead of leadsRes.data || []) {
     const channel = normalizeChannel(lead.utm_source)
@@ -77,8 +77,8 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     }
     leadsByChannel[channel].add(lead.id)
 
-    if (!customerToChannel.has(lead.customer_id)) {
-      customerToChannel.set(lead.customer_id, channel)
+    if (!contactToChannel.has(lead.contact_id)) {
+      contactToChannel.set(lead.contact_id, channel)
     }
   }
 
@@ -95,16 +95,16 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
 
   // 채널별 매출 집계
   const revenueByChannel: Record<string, number> = {}
-  const payingCustomersByChannel: Record<string, Set<number>> = {}
+  const payingContactsByChannel: Record<string, Set<number>> = {}
 
   for (const payment of paymentsRes.data || []) {
-    const channel = customerToChannel.get(payment.customer_id) || 'Unknown'
+    const channel = contactToChannel.get(payment.contact_id) || 'Unknown'
     revenueByChannel[channel] = (revenueByChannel[channel] || 0) + Number(payment.payment_amount)
 
-    if (!payingCustomersByChannel[channel]) {
-      payingCustomersByChannel[channel] = new Set()
+    if (!payingContactsByChannel[channel]) {
+      payingContactsByChannel[channel] = new Set()
     }
-    payingCustomersByChannel[channel].add(payment.customer_id)
+    payingContactsByChannel[channel].add(payment.contact_id)
   }
 
   // 결과 생성 — 플랫폼 단위로 광고비 직접 매칭 (안분 불필요)
@@ -116,7 +116,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       const leads = leadsByChannel[ch]?.size || 0
       const spend = spendByChannel[ch] || 0
       const revenue = revenueByChannel[ch] || 0
-      const payingCustomers = payingCustomersByChannel[ch]?.size || 0
+      const payingContacts = payingContactsByChannel[ch]?.size || 0
       const clicks = clicksByChannel[ch] || 0
       const impressions = impressionsByChannel[ch] || 0
 
@@ -125,13 +125,13 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
         leads,
         spend,
         revenue,
-        payingCustomers,
+        payingContacts,
         clicks,
         impressions,
         cpl: leads > 0 ? Math.round(spend / leads) : 0,
         roas: spend > 0 ? Number((revenue / spend).toFixed(2)) : 0,
         ctr: impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0,
-        conversionRate: leads > 0 ? Number(((payingCustomers / leads) * 100).toFixed(1)) : 0,
+        conversionRate: leads > 0 ? Number(((payingContacts / leads) * 100).toFixed(1)) : 0,
       }
     })
     .sort((a, b) => b.leads - a.leads)

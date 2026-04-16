@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChannelBadge, EmptyState } from '@/components/common'
@@ -40,7 +40,7 @@ interface PlatformRow {
   impressions: number
   leads: number
   revenue: number
-  payingCustomers: number
+  payingContacts: number
   cpl: number
   cpc: number
   ctr: number
@@ -55,7 +55,7 @@ interface Props {
 }
 
 export default function PlatformComparisonTable({ startDate, endDate }: Props) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [rows, setRows] = useState<PlatformRow[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null)
@@ -64,7 +64,7 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
     setLoading(true)
     try {
       const qs = new URLSearchParams({ startDate, endDate })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
 
       const res = await fetch(`/api/ads/platform-summary?${qs}`)
       if (!res.ok) {
@@ -78,7 +78,7 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, selectedClinicId])
+  }, [startDate, endDate, selectedClientId])
 
   useEffect(() => {
     fetchData()

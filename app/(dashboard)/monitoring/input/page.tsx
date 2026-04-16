@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { PageHeader } from '@/components/common'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -39,7 +39,7 @@ export default function MonitoringInputPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const user = session?.user
-  const { selectedClinicId, setSelectedClinicId, clinics } = useClinic()
+  const { selectedClientId, setSelectedClientId, clients } = useClient()
 
   const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }))
   const [entries, setEntries] = useState<KeywordEntry[]>([])
@@ -62,7 +62,7 @@ export default function MonitoringInputPage() {
 
   // 키워드 + 기존 순위 로드
   useEffect(() => {
-    if (!selectedClinicId) {
+    if (!selectedClientId) {
       setEntries([])
       setLoading(false)
       return
@@ -71,14 +71,14 @@ export default function MonitoringInputPage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const params = new URLSearchParams({ clinic_id: String(selectedClinicId), active_only: 'true' })
+        const params = new URLSearchParams({ client_id: String(selectedClientId), active_only: 'true' })
         const kwRes = await fetch(`/api/monitoring/keywords?${params}`)
         const kwData = await kwRes.json()
         const keywords = Array.isArray(kwData) ? kwData : []
 
         // 기존 순위 조회 (해당 월)
         const month = date.slice(0, 7)
-        const rankParams = new URLSearchParams({ clinic_id: String(selectedClinicId), month })
+        const rankParams = new URLSearchParams({ client_id: String(selectedClientId), month })
         const rankRes = await fetch(`/api/monitoring/rankings?${rankParams}`)
         const rankData = await rankRes.json()
         let existingRankings = rankData.rankings || []
@@ -90,7 +90,7 @@ export default function MonitoringInputPage() {
         const prevMonth = prevDateStr.slice(0, 7)
 
         if (prevMonth !== month) {
-          const prevParams = new URLSearchParams({ clinic_id: String(selectedClinicId), month: prevMonth })
+          const prevParams = new URLSearchParams({ client_id: String(selectedClientId), month: prevMonth })
           const prevRes = await fetch(`/api/monitoring/rankings?${prevParams}`)
           const prevData = await prevRes.json()
           existingRankings = [...existingRankings, ...(prevData.rankings || [])]
@@ -125,7 +125,7 @@ export default function MonitoringInputPage() {
       }
     }
     fetchData()
-  }, [selectedClinicId, date, fetchKey])
+  }, [selectedClientId, date, fetchKey])
 
   const updateEntry = (idx: number, field: 'rank_position' | 'url', value: string) => {
     setEntries(prev => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e))
@@ -184,20 +184,20 @@ export default function MonitoringInputPage() {
     <>
       <PageHeader icon={FileEdit} title="순위 입력" description="일별 순위를 입력하세요" />
 
-      {/* 병원 + 날짜 선택 */}
+      {/* 클라이언트 + 날짜 선택 */}
       <div className="flex items-center gap-4 mb-6 flex-wrap">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">병원</Label>
+          <Label className="text-xs text-muted-foreground">클라이언트</Label>
           <Select
-            value={selectedClinicId ? String(selectedClinicId) : '_none'}
-            onValueChange={v => setSelectedClinicId(v === '_none' ? null : Number(v))}
+            value={selectedClientId ? String(selectedClientId) : '_none'}
+            onValueChange={v => setSelectedClientId(v === '_none' ? null : Number(v))}
           >
             <SelectTrigger className="w-[200px] bg-muted dark:bg-white/5 border-border dark:border-white/10 text-foreground">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_none" disabled className="text-muted-foreground">병원 선택</SelectItem>
-              {clinics.map(c => (
+              <SelectItem value="_none" disabled className="text-muted-foreground">클라이언트 선택</SelectItem>
+              {clients.map(c => (
                 <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
               ))}
             </SelectContent>
@@ -231,7 +231,7 @@ export default function MonitoringInputPage() {
         </Card>
       ) : entries.length === 0 ? (
         <Card variant="glass" className="p-12 text-center">
-          <p className="text-muted-foreground">{selectedClinicId ? '등록된 키워드가 없습니다.' : '병원을 선택해주세요.'}</p>
+          <p className="text-muted-foreground">{selectedClientId ? '등록된 키워드가 없습니다.' : '클라이언트을 선택해주세요.'}</p>
         </Card>
       ) : (
         <>

@@ -1,7 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, withAuth, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, withAuth, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 
-export const GET = withClinicFilter(async (req, { clinicId, assignedClinicIds }) => {
+export const GET = withClientFilter(async (req, { clientId, assignedClientIds }) => {
   const url = new URL(req.url)
   const month = url.searchParams.get('month') // YYYY-MM
   const category = url.searchParams.get('category')
@@ -20,9 +20,9 @@ export const GET = withClinicFilter(async (req, { clinicId, assignedClinicIds })
   // 키워드 조회 (비활성 포함 — 순위 현황에서 과거 데이터 확인용)
   let kwQuery = supabase
     .from('monitoring_keywords')
-    .select('id, keyword, category, clinic_id, is_active')
+    .select('id, keyword, category, client_id, is_active')
 
-  const kwFiltered = applyClinicFilter(kwQuery, { clinicId, assignedClinicIds })
+  const kwFiltered = applyClientFilter(kwQuery, { clientId, assignedClientIds })
   if (kwFiltered === null) return apiSuccess({ keywords: [], rankings: [] })
   kwQuery = kwFiltered
   if (category) kwQuery = kwQuery.eq('category', category)
@@ -60,28 +60,28 @@ export const POST = withAuth(async (req, { user }) => {
 
   const supabase = serverSupabase()
 
-  // 키워드 존재 확인 + 병원 접근 검증
+  // 키워드 존재 확인 + 클라이언트 접근 검증
   const { data: keyword } = await supabase
     .from('monitoring_keywords')
-    .select('id, clinic_id')
+    .select('id, client_id')
     .eq('id', keyword_id)
     .single()
 
   if (!keyword) return apiError('키워드를 찾을 수 없습니다.', 404)
 
-  // 역할별 병원 접근 검증
+  // 역할별 클라이언트 접근 검증
   if (user.role === 'agency_staff') {
     const { data: assignment } = await supabase
-      .from('user_clinic_assignments')
+      .from('user_client_assignments')
       .select('id')
       .eq('user_id', parseInt(user.id, 10))
-      .eq('clinic_id', keyword.clinic_id)
+      .eq('client_id', keyword.client_id)
       .single()
-    if (!assignment) return apiError('배정되지 않은 병원입니다.', 403)
-  } else if (user.role === 'clinic_admin') {
-    // clinic_admin: 자기 병원 키워드만 허용
-    if (keyword.clinic_id !== Number(user.clinic_id)) {
-      return apiError('자신의 병원 키워드만 수정 가능합니다.', 403)
+    if (!assignment) return apiError('배정되지 않은 클라이언트입니다.', 403)
+  } else if (user.role === 'client_admin') {
+    // client_admin: 자기 클라이언트 키워드만 허용
+    if (keyword.client_id !== Number(user.client_id)) {
+      return apiError('자신의 클라이언트 키워드만 수정 가능합니다.', 403)
     }
   } else if (user.role !== 'superadmin') {
     return apiError('순위 입력 권한이 없습니다.', 403)

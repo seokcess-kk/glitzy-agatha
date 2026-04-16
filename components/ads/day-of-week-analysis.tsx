@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common'
@@ -83,7 +83,7 @@ function CplLabel(props: ChartLabelProps) {
 }
 
 export default function DayOfWeekAnalysis({ startDate, endDate }: Props) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [data, setData] = useState<DayAnalysisResponse | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -91,7 +91,7 @@ export default function DayOfWeekAnalysis({ startDate, endDate }: Props) {
     setLoading(true)
     try {
       const qs = new URLSearchParams({ startDate, endDate })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
 
       const res = await fetch(`/api/ads/day-analysis?${qs}`)
       if (!res.ok) {
@@ -105,7 +105,7 @@ export default function DayOfWeekAnalysis({ startDate, endDate }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, selectedClinicId])
+  }, [startDate, endDate, selectedClientId])
 
   useEffect(() => {
     fetchData()

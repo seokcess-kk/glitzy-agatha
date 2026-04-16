@@ -55,7 +55,7 @@ export const PUT = withAuth(async (req, { user }) => {
   // 활동 로그
   logActivity(supabase, {
     userId: user.id,
-    clinicId: user.clinic_id,
+    clientId: user.client_id,
     action: 'password_change',
     targetTable: 'users',
     targetId: dbUser.id,

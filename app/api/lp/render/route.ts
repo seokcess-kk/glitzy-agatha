@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const supabase = serverSupabase()
   const { data: landingPage } = await supabase
     .from('landing_pages')
-    .select('*, clinic:clinics(id, name)')
+    .select('*, client:clients(id, name)')
     .eq('id', lpId)
     .eq('is_active', true)
     .single()
@@ -62,14 +62,14 @@ export async function GET(req: NextRequest) {
   }
 
   // 데이터 주입 (</head> 앞에 스크립트 삽입)
-  const clinicName = landingPage.clinic?.name || ''
+  const clientName = landingPage.client?.name || ''
   const redirectUrl = landingPage.redirect_url || ''
   const dataScript = `
 <script>
   window.__LP_DATA__ = {
-    clinicId: ${landingPage.clinic_id || 'null'},
+    clientId: ${landingPage.client_id || 'null'},
     landingPageId: ${landingPage.id},
-    clinicName: "${clinicName.replace(/"/g, '\\"')}",
+    clientName: "${clientName.replace(/"/g, '\\"')}",
     redirectUrl: "${redirectUrl.replace(/"/g, '\\"')}"
   };
 </script>`
@@ -217,8 +217,8 @@ export async function GET(req: NextRequest) {
         event: 'form_submit',
         lead_event_id: eventId,
         landing_page_id: lpData.landingPageId || null,
-        clinic_id: lpData.clinicId || null,
-        clinic_name: lpData.clinicName || ''
+        client_id: lpData.clientId || null,
+        client_name: lpData.clientName || ''
       });
 
       // HTML 내부의 alert() 중복 표시 억제 (우리 오버레이로 대체)

@@ -30,25 +30,25 @@ test.describe('대시보드', () => {
 test.describe('대시보드 - Superadmin', () => {
   test.use({ userRole: 'superadmin' })
 
-  test('전체 병원 데이터 조회 가능', async ({ authenticatedPage }) => {
+  test('전체 클라이언트 데이터 조회 가능', async ({ authenticatedPage }) => {
     const dashboard = new DashboardPage(authenticatedPage)
     await dashboard.goto()
 
-    // superadmin은 병원 선택 드롭다운이 표시되어야 함
-    const clinicSelector = authenticatedPage.locator(
-      '[data-testid="clinic-selector"], select:has-text("병원")'
+    // superadmin은 클라이언트 선택 드롭다운이 표시되어야 함
+    const clientSelector = authenticatedPage.locator(
+      '[data-testid="client-selector"], select:has-text("클라이언트")'
     )
 
-    // 병원 선택기가 있거나 전체 데이터가 표시되어야 함
-    const hasClinicSelector = await clinicSelector.isVisible().catch(() => false)
+    // 클라이언트 선택기가 있거나 전체 데이터가 표시되어야 함
+    const hasClientSelector = await clientSelector.isVisible().catch(() => false)
     const hasMainContent = await dashboard.mainContent.isVisible()
 
-    expect(hasClinicSelector || hasMainContent).toBeTruthy()
+    expect(hasClientSelector || hasMainContent).toBeTruthy()
   })
 
-  test('특정 병원 필터링 (clinic_id 쿼리 파라미터)', async ({ authenticatedPage }) => {
-    // URL에 clinic_id 파라미터로 접근
-    await authenticatedPage.goto('/?clinic_id=1')
+  test('특정 클라이언트 필터링 (client_id 쿼리 파라미터)', async ({ authenticatedPage }) => {
+    // URL에 client_id 파라미터로 접근
+    await authenticatedPage.goto('/?client_id=1')
     await authenticatedPage.waitForLoadState('networkidle')
 
     // 페이지가 정상 로드되어야 함
@@ -57,21 +57,21 @@ test.describe('대시보드 - Superadmin', () => {
   })
 })
 
-test.describe('대시보드 - Clinic Admin', () => {
-  test.use({ userRole: 'clinic_admin' })
+test.describe('대시보드 - Client Admin', () => {
+  test.use({ userRole: 'client_admin' })
 
-  test('자신의 병원 데이터만 조회', async ({ authenticatedPage }) => {
+  test('자신의 클라이언트 데이터만 조회', async ({ authenticatedPage }) => {
     const dashboard = new DashboardPage(authenticatedPage)
     await dashboard.goto()
     await dashboard.expectDashboardLoaded()
 
-    // clinic_admin은 병원 선택기가 없어야 함 (자동으로 자기 병원만)
-    const clinicSelector = authenticatedPage.locator('[data-testid="clinic-selector"]')
-    const isSelectorVisible = await clinicSelector.isVisible().catch(() => false)
+    // client_admin은 클라이언트 선택기가 없어야 함 (자동으로 자기 클라이언트만)
+    const clientSelector = authenticatedPage.locator('[data-testid="client-selector"]')
+    const isSelectorVisible = await clientSelector.isVisible().catch(() => false)
 
-    // 병원 선택기가 없거나, 비활성화되어 있어야 함
+    // 클라이언트 선택기가 없거나, 비활성화되어 있어야 함
     if (isSelectorVisible) {
-      await expect(clinicSelector).toBeDisabled()
+      await expect(clientSelector).toBeDisabled()
     }
   })
 })

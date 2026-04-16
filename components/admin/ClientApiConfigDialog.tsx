@@ -21,8 +21,8 @@ import {
 } from '@/lib/platform'
 
 interface Props {
-  clinicId: number
-  clinicName: string
+  clientId: number
+  clientName: string
   open: boolean
   onClose: () => void
   onUpdated?: () => void
@@ -57,7 +57,7 @@ function isMaskedValue(value: string): boolean {
   return value.startsWith('****')
 }
 
-export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onClose, onUpdated }: Props) {
+export default function ClientApiConfigDialog({ clientId, clientName, open, onClose, onUpdated }: Props) {
   const initConfigs = () => Object.fromEntries(API_CONFIG_PLATFORMS.map(p => [p, { ...EMPTY_CONFIG }])) as Record<Platform, PlatformConfig>
   const initFormValues = () => Object.fromEntries(API_CONFIG_PLATFORMS.map(p => [p, {}])) as Record<Platform, Record<string, string>>
   const initTestResults = () => Object.fromEntries(API_CONFIG_PLATFORMS.map(p => [p, { loading: false, success: null, message: '' }])) as Record<Platform, TestResultState>
@@ -74,7 +74,7 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
   const fetchConfigs = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/clinics/${clinicId}/api-configs`)
+      const res = await fetch(`/api/admin/clients/${clientId}/api-configs`)
       if (!res.ok) throw new Error('조회 실패')
       const data = await res.json()
       const items: Array<{
@@ -114,7 +114,7 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
     } finally {
       setLoading(false)
     }
-  }, [clinicId])
+  }, [clientId])
 
   useEffect(() => {
     if (open) {
@@ -153,7 +153,7 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
 
     setSaving(platform)
     try {
-      const res = await fetch(`/api/admin/clinics/${clinicId}/api-configs`, {
+      const res = await fetch(`/api/admin/clients/${clientId}/api-configs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform, config: finalConfig, is_active: configs[platform].is_active }),
@@ -180,7 +180,7 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
     }))
 
     try {
-      const res = await fetch(`/api/admin/clinics/${clinicId}/api-configs/test`, {
+      const res = await fetch(`/api/admin/clients/${clientId}/api-configs/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform }),
@@ -227,7 +227,7 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
 
     setDeleting(platform)
     try {
-      const res = await fetch(`/api/admin/clinics/${clinicId}/api-configs`, {
+      const res = await fetch(`/api/admin/clients/${clientId}/api-configs`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform }),
@@ -380,7 +380,7 @@ export default function ClinicApiConfigDialog({ clinicId, clinicName, open, onCl
     <Dialog open={open} onOpenChange={val => { if (!val) onClose() }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{clinicName} &mdash; API 설정</DialogTitle>
+          <DialogTitle>{clientName} &mdash; API 설정</DialogTitle>
         </DialogHeader>
 
         {loading ? (

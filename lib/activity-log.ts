@@ -4,7 +4,7 @@ const logger = createLogger('ActivityLog')
 
 interface LogActivityParams {
   userId: number | string
-  clinicId?: number | null
+  clientId?: number | null
   action: string
   targetTable: string
   targetId?: number | null
@@ -21,7 +21,7 @@ export async function logActivity(
   try {
     await supabase.from('activity_logs').insert({
       user_id: typeof params.userId === 'string' ? Number(params.userId) : params.userId,
-      clinic_id: params.clinicId ?? null,
+      client_id: params.clientId ?? null,
       action: params.action,
       target_table: params.targetTable,
       target_id: params.targetId ?? null,

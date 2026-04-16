@@ -42,12 +42,12 @@ const CONCURRENCY_LIMIT = 5
 /**
  * 광고 성과 이상치 감지
  * @param supabase Supabase 클라이언트
- * @param clinicId 병원 ID
+ * @param clientId 클라이언트 ID
  * @returns 감지된 이상치 목록
  */
 export async function detectAdsAnomalies(
   supabase: AnySupabaseClient,
-  clinicId: number,
+  clientId: number,
 ): Promise<AnomalyResult[]> {
   const today = new Date()
 
@@ -64,12 +64,12 @@ export async function detectAdsAnomalies(
   const { data: stats, error } = await supabase
     .from('ad_campaign_stats')
     .select('campaign_name, platform, spend_amount, clicks, impressions, stat_date')
-    .eq('clinic_id', clinicId)
+    .eq('client_id', clientId)
     .gte('stat_date', sevenDaysAgoStr)
     .lte('stat_date', yesterdayStr)
 
   if (error) {
-    logger.error('이상치 감지용 데이터 조회 실패', error, { clinicId })
+    logger.error('이상치 감지용 데이터 조회 실패', error, { clientId })
     return []
   }
 
@@ -145,37 +145,37 @@ export async function detectAdsAnomalies(
   }
 
   if (anomalies.length > 0) {
-    logger.info(`이상치 ${anomalies.length}건 감지`, { clinicId, types: anomalies.map(a => a.type) })
+    logger.info(`이상치 ${anomalies.length}건 감지`, { clientId, types: anomalies.map(a => a.type) })
   }
 
   return anomalies
 }
 
 /**
- * 전체 활성 병원의 이상치 감지 및 요약 메시지 생성
+ * 전체 활성 클라이언트의 이상치 감지 및 요약 메시지 생성
  * 동시 실행 제한(5개)으로 DB 부하 제어
  */
-export async function detectAllClinicAnomalies(
+export async function detectAllClientAnomalies(
   supabase: AnySupabaseClient,
 ): Promise<{ totalAnomalies: number; summaryMessage: string }> {
-  const { data: clinics, error } = await supabase
-    .from('clinics')
+  const { data: clients, error } = await supabase
+    .from('clients')
     .select('id, name')
     .eq('is_active', true)
 
-  if (error || !clinics || clinics.length === 0) {
+  if (error || !clients || clients.length === 0) {
     return { totalAnomalies: 0, summaryMessage: '' }
   }
 
   // 동시성 제한 병렬 실행
-  const allAnomalies: { clinicName: string; anomalies: AnomalyResult[] }[] = []
+  const allAnomalies: { clientName: string; anomalies: AnomalyResult[] }[] = []
 
-  for (let i = 0; i < clinics.length; i += CONCURRENCY_LIMIT) {
-    const batch = clinics.slice(i, i + CONCURRENCY_LIMIT)
+  for (let i = 0; i < clients.length; i += CONCURRENCY_LIMIT) {
+    const batch = clients.slice(i, i + CONCURRENCY_LIMIT)
     const results = await Promise.allSettled(
-      batch.map(async (clinic: { id: number; name: string }) => {
-        const anomalies = await detectAdsAnomalies(supabase, clinic.id)
-        return { clinicName: clinic.name, anomalies }
+      batch.map(async (client: { id: number; name: string }) => {
+        const anomalies = await detectAdsAnomalies(supabase, client.id)
+        return { clientName: client.name, anomalies }
       })
     )
     for (const result of results) {
@@ -192,7 +192,7 @@ export async function detectAllClinicAnomalies(
 
   // SMS용 요약 (최대 3건)
   const lines = allAnomalies.flatMap(c =>
-    c.anomalies.map(a => `[${c.clinicName}] ${a.message}`)
+    c.anomalies.map(a => `[${c.clientName}] ${a.message}`)
   )
   const display = lines.slice(0, 3)
   const remaining = lines.length - display.length

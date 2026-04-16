@@ -308,7 +308,7 @@ function buildJourneyEvents(
 }
 
 // Props 타입
-interface CustomerJourneyProps {
+interface ContactJourneyProps {
   leads: any[]
   bookings: any[]
   consultations: any[]
@@ -317,13 +317,13 @@ interface CustomerJourneyProps {
 }
 
 // 메인 컴포넌트
-export function CustomerJourney({
+export function ContactJourney({
   leads,
   bookings,
   consultations,
   payments,
   className = '',
-}: CustomerJourneyProps) {
+}: ContactJourneyProps) {
   const events = useMemo(
     () => buildJourneyEvents(leads, bookings, consultations, payments),
     [leads, bookings, consultations, payments]

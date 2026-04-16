@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, applyClinicFilter, apiSuccess, apiError } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiSuccess, apiError } from '@/lib/api-middleware'
 import { getKstDateString, toUtcDate } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 
@@ -14,7 +14,7 @@ const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'] as const
  * - ad_campaign_stats.stat_date → 요일별 광고 지출 집계
  * - day: 0(일) ~ 6(토), dayLabel: "일"~"토"
  */
-export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')
@@ -33,8 +33,8 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     tsEnd = d.toISOString()
   }
 
-  // agency_staff 배정 병원 0개 → 빈 결과
-  const emptyCheck = applyClinicFilter(supabase.from('leads').select('id', { count: 'exact', head: true }), { clinicId, assignedClinicIds })
+  // agency_staff 배정 클라이언트 0개 → 빈 결과
+  const emptyCheck = applyClientFilter(supabase.from('leads').select('id', { count: 'exact', head: true }), { clientId, assignedClientIds })
   if (emptyCheck === null) {
     return apiSuccess({ byDay: buildEmptyResult() })
   }
@@ -44,7 +44,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     let leadsQuery = supabase
       .from('leads')
       .select('created_at')
-    const filteredLeads = applyClinicFilter(leadsQuery, { clinicId, assignedClinicIds })
+    const filteredLeads = applyClientFilter(leadsQuery, { clientId, assignedClientIds })
     if (filteredLeads === null) return apiSuccess({ byDay: buildEmptyResult() })
     leadsQuery = filteredLeads
     if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
@@ -54,7 +54,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     let adStatsQuery = supabase
       .from('ad_campaign_stats')
       .select('stat_date, spend_amount')
-    const filteredAdStats = applyClinicFilter(adStatsQuery, { clinicId, assignedClinicIds })
+    const filteredAdStats = applyClientFilter(adStatsQuery, { clientId, assignedClientIds })
     if (filteredAdStats === null) return apiSuccess({ byDay: buildEmptyResult() })
     adStatsQuery = filteredAdStats
     if (dateStart) adStatsQuery = adStatsQuery.gte('stat_date', dateStart)
@@ -63,11 +63,11 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     const [leadsRes, adStatsRes] = await Promise.all([leadsQuery, adStatsQuery])
 
     if (leadsRes.error) {
-      logger.error('리드 조회 실패', leadsRes.error, { clinicId })
+      logger.error('리드 조회 실패', leadsRes.error, { clientId })
       return apiError('리드 조회 중 오류가 발생했습니다.', 500)
     }
     if (adStatsRes.error) {
-      logger.error('광고 통계 조회 실패', adStatsRes.error, { clinicId })
+      logger.error('광고 통계 조회 실패', adStatsRes.error, { clientId })
       return apiError('광고 통계 조회 중 오류가 발생했습니다.', 500)
     }
 
@@ -110,7 +110,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
 
     return apiSuccess({ byDay })
   } catch (error) {
-    logger.error('요일별 분석 API 오류', error, { clinicId })
+    logger.error('요일별 분석 API 오류', error, { clientId })
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 })

@@ -40,9 +40,9 @@ import { PageHeader } from '@/components/common'
 
 const ROLE_LABELS: Record<string, string> = {
   superadmin: '슈퍼어드민',
-  clinic_admin: '병원 관리자',
-  clinic_staff: '병원 담당자',
-  agency_staff: '실행사 담당자',
+  client_admin: '클라이언트 관리자',
+  client_staff: '클라이언트 담당자',
+  agency_staff: '에이전시 담당자',
 }
 
 const MENU_OPTIONS = [
@@ -66,17 +66,17 @@ export default function UsersPage() {
   const user = session?.user
 
   const [users, setUsers] = useState<any[]>([])
-  const [clinics, setClinics] = useState<any[]>([])
+  const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [permDialogOpen, setPermDialogOpen] = useState(false)
   const [permUserId, setPermUserId] = useState<number | null>(null)
-  const [permClinicIds, setPermClinicIds] = useState<number[]>([])
+  const [permClientIds, setPermClientIds] = useState<number[]>([])
   const [permMenuKeys, setPermMenuKeys] = useState<string[]>([])
   const [permSaving, setPermSaving] = useState(false)
   const [form, setForm] = useState({
-    username: '', password: '', role: 'clinic_admin', clinic_id: '',
-    assigned_clinic_ids: [] as number[], menu_permissions: [] as string[],
+    username: '', password: '', role: 'client_admin', client_id: '',
+    assigned_client_ids: [] as number[], menu_permissions: [] as string[],
   })
   const [saving, setSaving] = useState(false)
 
@@ -89,10 +89,10 @@ export default function UsersPage() {
       setLoading(true)
       const [uRes, cRes] = await Promise.all([
         fetch('/api/admin/users').then(r => r.json()),
-        fetch('/api/admin/clinics').then(r => r.json()),
+        fetch('/api/admin/clients').then(r => r.json()),
       ])
       setUsers(Array.isArray(uRes) ? uRes : [])
-      setClinics(Array.isArray(cRes) ? cRes : [])
+      setClients(Array.isArray(cRes) ? cRes : [])
     } catch {
       toast.error('데이터 로드 실패')
     } finally {
@@ -113,10 +113,10 @@ export default function UsersPage() {
         username: form.username,
         password: form.password,
         role: form.role,
-        clinic_id: form.clinic_id ? Number(form.clinic_id) : null,
+        client_id: form.client_id ? Number(form.client_id) : null,
       }
       if (form.role === 'agency_staff') {
-        body.assigned_clinic_ids = form.assigned_clinic_ids
+        body.assigned_client_ids = form.assigned_client_ids
         body.menu_permissions = form.menu_permissions
       }
       const res = await fetch('/api/admin/users', {
@@ -128,7 +128,7 @@ export default function UsersPage() {
         const err = await res.json()
         throw new Error(err.error)
       }
-      setForm({ username: '', password: '', role: 'clinic_admin', clinic_id: '', assigned_clinic_ids: [], menu_permissions: [] })
+      setForm({ username: '', password: '', role: 'client_admin', client_id: '', assigned_client_ids: [], menu_permissions: [] })
       setDialogOpen(false)
       toast.success('계정이 생성되었습니다.')
       fetchData()
@@ -165,7 +165,7 @@ export default function UsersPage() {
       const res = await fetch(`/api/admin/users/${userId}/permissions`)
       if (res.ok) {
         const data = await res.json()
-        setPermClinicIds(data.assigned_clinic_ids || [])
+        setPermClientIds(data.assigned_client_ids || [])
         setPermMenuKeys(data.menu_permissions || [])
       }
     } catch {
@@ -182,7 +182,7 @@ export default function UsersPage() {
       const res = await fetch(`/api/admin/users/${permUserId}/permissions`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assigned_clinic_ids: permClinicIds, menu_permissions: permMenuKeys }),
+        body: JSON.stringify({ assigned_client_ids: permClientIds, menu_permissions: permMenuKeys }),
       })
       if (!res.ok) {
         const err = await res.json()
@@ -197,7 +197,7 @@ export default function UsersPage() {
     }
   }
 
-  const toggleClinicId = (id: number, list: number[], setter: (v: number[]) => void) => {
+  const toggleClientId = (id: number, list: number[], setter: (v: number[]) => void) => {
     setter(list.includes(id) ? list.filter(x => x !== id) : [...list, id])
   }
 
@@ -240,29 +240,29 @@ export default function UsersPage() {
             </div>
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">역할 *</Label>
-              <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v, clinic_id: '', assigned_clinic_ids: [], menu_permissions: [] }))}>
+              <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v, client_id: '', assigned_client_ids: [], menu_permissions: [] }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="clinic_staff">병원 담당자</SelectItem>
-                  <SelectItem value="clinic_admin">병원 관리자</SelectItem>
-                  <SelectItem value="agency_staff">실행사 담당자</SelectItem>
+                  <SelectItem value="client_staff">클라이언트 담당자</SelectItem>
+                  <SelectItem value="client_admin">클라이언트 관리자</SelectItem>
+                  <SelectItem value="agency_staff">에이전시 담당자</SelectItem>
                   <SelectItem value="superadmin">슈퍼어드민</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* clinic_admin / clinic_staff: 단일 병원 선택 */}
-            {(form.role === 'clinic_admin' || form.role === 'clinic_staff') && (
+            {/* client_admin / client_staff: 단일 클라이언트 선택 */}
+            {(form.role === 'client_admin' || form.role === 'client_staff') && (
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">담당 병원 *</Label>
-                <Select value={form.clinic_id} onValueChange={v => setForm(f => ({ ...f, clinic_id: v }))}>
+                <Label className="text-xs text-muted-foreground">담당 클라이언트 *</Label>
+                <Select value={form.client_id} onValueChange={v => setForm(f => ({ ...f, client_id: v }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="선택" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clinics.map((c: any) => (
+                    {clients.map((c: any) => (
                       <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -270,17 +270,17 @@ export default function UsersPage() {
               </div>
             )}
 
-            {/* agency_staff: 다중 병원 + 메뉴 권한 */}
+            {/* agency_staff: 다중 클라이언트 + 메뉴 권한 */}
             {form.role === 'agency_staff' && (
               <>
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">배정 병원 * (복수 선택)</Label>
+                  <Label className="text-xs text-muted-foreground">배정 클라이언트 * (복수 선택)</Label>
                   <div className="grid grid-cols-2 gap-2 max-h-[160px] overflow-y-auto border border-border dark:border-white/10 rounded-lg p-3">
-                    {clinics.map((c: any) => (
+                    {clients.map((c: any) => (
                       <label key={c.id} className="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer hover:text-foreground">
                         <Checkbox
-                          checked={form.assigned_clinic_ids.includes(c.id)}
-                          onCheckedChange={() => toggleClinicId(c.id, form.assigned_clinic_ids, (v) => setForm(f => ({ ...f, assigned_clinic_ids: v })))}
+                          checked={form.assigned_client_ids.includes(c.id)}
+                          onCheckedChange={() => toggleClientId(c.id, form.assigned_client_ids, (v) => setForm(f => ({ ...f, assigned_client_ids: v })))}
                         />
                         {c.name}
                       </label>
@@ -321,13 +321,13 @@ export default function UsersPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">배정 병원</Label>
+              <Label className="text-xs text-muted-foreground">배정 클라이언트</Label>
               <div className="grid grid-cols-2 gap-2 max-h-[160px] overflow-y-auto border border-border dark:border-white/10 rounded-lg p-3">
-                {clinics.map((c: any) => (
+                {clients.map((c: any) => (
                   <label key={c.id} className="flex items-center gap-2 text-sm text-foreground/80 cursor-pointer hover:text-foreground">
                     <Checkbox
-                      checked={permClinicIds.includes(c.id)}
-                      onCheckedChange={() => toggleClinicId(c.id, permClinicIds, setPermClinicIds)}
+                      checked={permClientIds.includes(c.id)}
+                      onCheckedChange={() => toggleClientId(c.id, permClientIds, setPermClientIds)}
                     />
                     {c.name}
                   </label>
@@ -373,7 +373,7 @@ export default function UsersPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
-                {['아이디', '역할', '담당 병원', '생성일', '활성화', '관리'].map(h => (
+                {['아이디', '역할', '담당 클라이언트', '생성일', '활성화', '관리'].map(h => (
                   <TableHead key={h} className="text-xs text-muted-foreground font-medium">{h === '관리' ? '' : h}</TableHead>
                 ))}
               </TableRow>
@@ -388,13 +388,13 @@ export default function UsersPage() {
                     className={
                       u.role === 'superadmin' ? 'bg-purple-500/20 text-purple-400 border-0' :
                       u.role === 'agency_staff' ? 'bg-orange-500/20 text-orange-400 border-0' :
-                      u.role === 'clinic_staff' ? 'bg-muted text-muted-foreground border-0' : ''
+                      u.role === 'client_staff' ? 'bg-muted text-muted-foreground border-0' : ''
                     }
                   >
                     {ROLE_LABELS[u.role] || u.role}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground text-xs">{u.clinic?.name || (u.role === 'agency_staff' ? '다중 배정' : '-')}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">{u.client?.name || (u.role === 'agency_staff' ? '다중 배정' : '-')}</TableCell>
                 <TableCell className="text-muted-foreground text-xs">{formatDate(u.created_at)}</TableCell>
                 <TableCell>
                   <Switch

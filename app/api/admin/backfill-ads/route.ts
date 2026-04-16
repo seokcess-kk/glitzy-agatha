@@ -1,4 +1,4 @@
-import { syncClinic } from '@/lib/services/adSyncManager'
+import { syncClient } from '@/lib/services/adSyncManager'
 import { apiError, apiSuccess } from '@/lib/api-middleware'
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
@@ -14,7 +14,7 @@ export const maxDuration = 300
  *   curl -X POST http://localhost:3000/api/admin/backfill-ads \
  *     -H "Authorization: Bearer $CRON_SECRET" \
  *     -H "Content-Type: application/json" \
- *     -d '{"clinicId": 1, "startDate": "2026-03-01", "endDate": "2026-03-25"}'
+ *     -d '{"clientId": 1, "startDate": "2026-03-01", "endDate": "2026-03-25"}'
  */
 export async function POST(req: Request) {
   if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -28,12 +28,12 @@ export async function POST(req: Request) {
     return apiError('유효한 JSON body가 필요합니다.', 400)
   }
 
-  const clinicId = typeof body.clinicId === 'number' ? body.clinicId : Number(body.clinicId)
+  const clientId = typeof body.clientId === 'number' ? body.clientId : Number(body.clientId)
   const startDate = typeof body.startDate === 'string' ? body.startDate : ''
   const endDate = typeof body.endDate === 'string' ? body.endDate : ''
 
-  if (!clinicId || isNaN(clinicId) || !startDate || !endDate) {
-    return apiError('clinicId(숫자), startDate, endDate 필수', 400)
+  if (!clientId || isNaN(clientId) || !startDate || !endDate) {
+    return apiError('clientId(숫자), startDate, endDate 필수', 400)
   }
 
   // YYYY-MM-DD 형식 검증
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   if (diffDays < 0) return apiError('시작일이 종료일보다 늦습니다.', 400)
   if (diffDays > 90) return apiError('최대 90일까지 가능합니다.', 400)
 
-  logger.info('Backfill 시작', { clinicId, startDate, endDate, days: diffDays + 1 })
+  logger.info('Backfill 시작', { clientId, startDate, endDate, days: diffDays + 1 })
 
   try {
     const allResults: { date: string; platform: string; count: number; error: string | null }[] = []
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       const currentDate = new Date(d)
       const dateStr = getKstDateString(currentDate)
 
-      const results = await syncClinic(clinicId, currentDate)
+      const results = await syncClient(clientId, currentDate)
 
       for (const r of results) {
         allResults.push({
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       }
 
       logger.info(`Backfill ${dateStr} 완료`, {
-        clinicId,
+        clientId,
         results: results.map(r => `${r.platform}: ${r.count}건${r.error ? ` (${r.error})` : ''}`),
       })
     }
@@ -81,17 +81,17 @@ export async function POST(req: Request) {
     const totalCount = allResults.reduce((sum, r) => sum + r.count, 0)
     const errorCount = allResults.filter(r => r.error).length
 
-    logger.info('Backfill 완료', { clinicId, totalCount, errorCount, days: diffDays + 1 })
+    logger.info('Backfill 완료', { clientId, totalCount, errorCount, days: diffDays + 1 })
 
     return apiSuccess({
-      clinicId,
+      clientId,
       syncedDays: diffDays + 1,
       totalCount,
       errorCount,
       results: allResults,
     })
   } catch (error) {
-    logger.error('Backfill 실패', error, { clinicId, startDate, endDate })
+    logger.error('Backfill 실패', error, { clientId, startDate, endDate })
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 }

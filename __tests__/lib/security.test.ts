@@ -8,7 +8,7 @@ import {
   isValidBookingStatus,
   isValidConsultationStatus,
   isValidPaymentAmount,
-  checkClinicAccess,
+  checkClientAccess,
   type SessionUser,
 } from '@/lib/security'
 
@@ -143,22 +143,22 @@ describe('isValidPaymentAmount', () => {
   })
 })
 
-describe('checkClinicAccess', () => {
-  const superadmin: SessionUser = { id: '1', username: 'admin', role: 'superadmin', clinic_id: null, password_version: 1 }
-  const clinicAdmin: SessionUser = { id: '2', username: 'doc', role: 'clinic_admin', clinic_id: 10, password_version: 1 }
+describe('checkClientAccess', () => {
+  const superadmin: SessionUser = { id: '1', username: 'admin', role: 'superadmin', client_id: null, password_version: 1 }
+  const clientAdmin: SessionUser = { id: '2', username: 'doc', role: 'client_admin', client_id: 10, password_version: 1 }
 
-  it('superadmin은 모든 clinic 접근 가능', () => {
-    expect(checkClinicAccess(10, superadmin)).toBe(true)
-    expect(checkClinicAccess(99, superadmin)).toBe(true)
-    expect(checkClinicAccess(null, superadmin)).toBe(true)
+  it('superadmin은 모든 client 접근 가능', () => {
+    expect(checkClientAccess(10, superadmin)).toBe(true)
+    expect(checkClientAccess(99, superadmin)).toBe(true)
+    expect(checkClientAccess(null, superadmin)).toBe(true)
   })
 
-  it('clinic_admin은 자기 clinic만 접근 가능', () => {
-    expect(checkClinicAccess(10, clinicAdmin)).toBe(true)
-    expect(checkClinicAccess(99, clinicAdmin)).toBe(false)
+  it('client_admin은 자기 client만 접근 가능', () => {
+    expect(checkClientAccess(10, clientAdmin)).toBe(true)
+    expect(checkClientAccess(99, clientAdmin)).toBe(false)
   })
 
-  it('clinic_admin은 미배정 리소스 접근 불가', () => {
-    expect(checkClinicAccess(null, clinicAdmin)).toBe(false)
+  it('client_admin은 미배정 리소스 접근 불가', () => {
+    expect(checkClientAccess(null, clientAdmin)).toBe(false)
   })
 })

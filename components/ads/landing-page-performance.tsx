@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common'
@@ -25,7 +25,7 @@ interface LandingPageRow {
   name: string
   isActive: boolean
   leads: number
-  customers: number
+  contacts: number
   revenue: number
   conversionRate: number
 }
@@ -36,7 +36,7 @@ interface Props {
 }
 
 export default function LandingPagePerformance({ startDate, endDate }: Props) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [rows, setRows] = useState<LandingPageRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -44,7 +44,7 @@ export default function LandingPagePerformance({ startDate, endDate }: Props) {
     setLoading(true)
     try {
       const qs = new URLSearchParams({ startDate, endDate })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
 
       const res = await fetch(`/api/ads/landing-page-performance?${qs}`)
       if (!res.ok) {
@@ -58,7 +58,7 @@ export default function LandingPagePerformance({ startDate, endDate }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, selectedClinicId])
+  }, [startDate, endDate, selectedClientId])
 
   useEffect(() => {
     fetchData()
@@ -119,7 +119,7 @@ export default function LandingPagePerformance({ startDate, endDate }: Props) {
                     {row.leads.toLocaleString()}
                   </TableCell>
                   <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                    {row.customers.toLocaleString()}
+                    {row.contacts.toLocaleString()}
                   </TableCell>
                   <TableCell className="py-2.5 text-right tabular-nums text-sm font-medium">
                     <span className={row.conversionRate >= 5 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground/80'}>

@@ -122,8 +122,8 @@ test.describe('리드 - 멀티테넌트', () => {
   test.describe('Superadmin', () => {
     test.use({ userRole: 'superadmin' })
 
-    test('다른 병원 리드 조회 가능 (clinic_id 파라미터)', async ({ authenticatedPage }) => {
-      await authenticatedPage.goto('/leads?clinic_id=1')
+    test('다른 클라이언트 리드 조회 가능 (client_id 파라미터)', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/leads?client_id=1')
       await authenticatedPage.waitForLoadState('networkidle')
 
       const leadsPage = new LeadsPage(authenticatedPage)
@@ -137,10 +137,10 @@ test.describe('리드 - 멀티테넌트', () => {
     })
   })
 
-  test.describe('Clinic Admin', () => {
-    test.use({ userRole: 'clinic_admin' })
+  test.describe('Client Admin', () => {
+    test.use({ userRole: 'client_admin' })
 
-    test('자신의 병원 리드만 조회', async ({ authenticatedPage }) => {
+    test('자신의 클라이언트 리드만 조회', async ({ authenticatedPage }) => {
       const leadsPage = new LeadsPage(authenticatedPage)
       await leadsPage.goto()
       await leadsPage.waitForTableLoad()

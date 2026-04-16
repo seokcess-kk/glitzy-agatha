@@ -44,8 +44,8 @@ export class DashboardPage {
     }
   }
 
-  async expectClinicIdVisible(clinicId: number) {
-    // superadmin이 특정 병원 데이터를 조회할 때 URL 확인
-    await expect(this.page).toHaveURL(new RegExp(`clinic_id=${clinicId}`))
+  async expectClientIdVisible(clientId: number) {
+    // superadmin이 특정 클라이언트 데이터를 조회할 때 URL 확인
+    await expect(this.page).toHaveURL(new RegExp(`client_id=${clientId}`))
   }
 }

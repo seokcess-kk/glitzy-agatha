@@ -1,5 +1,5 @@
 /**
- * 병원별 광고 매체 API 키 관리
+ * 클라이언트별 광고 매체 API 키 관리
  * - GET: 설정 조회 (민감 필드 마스킹)
  * - POST: 매체별 API 키 저장 (upsert)
  * - DELETE: 매체 설정 삭제
@@ -47,27 +47,27 @@ function validateConfigValues(config: Record<string, unknown>): string | null {
 }
 
 /**
- * GET: 해당 병원의 광고 매체 설정 조회
+ * GET: 해당 클라이언트의 광고 매체 설정 조회
  */
 export const GET = withSuperAdmin(async (req: Request) => {
   const url = new URL(req.url)
   const segments = url.pathname.split('/')
-  // pathname: /api/admin/clinics/[id]/api-configs
-  const idSegment = segments[segments.indexOf('clinics') + 1]
-  const clinicId = parseId(idSegment)
-  if (!clinicId) return apiError('유효한 병원 ID가 필요합니다.')
+  // pathname: /api/admin/clients/[id]/api-configs
+  const idSegment = segments[segments.indexOf('clients') + 1]
+  const clientId = parseId(idSegment)
+  if (!clientId) return apiError('유효한 클라이언트 ID가 필요합니다.')
 
   const supabase = serverSupabase()
 
   try {
     const { data, error } = await supabase
-      .from('clinic_api_configs')
+      .from('client_api_configs')
       .select('platform, config, is_active, last_tested_at, last_test_result')
-      .eq('clinic_id', clinicId)
+      .eq('client_id', clientId)
       .in('platform', API_CONFIG_PLATFORMS as unknown as string[])
 
     if (error) {
-      logger.error('clinic_api_configs 조회 실패', error, { clinicId })
+      logger.error('client_api_configs 조회 실패', error, { clientId })
       return apiError('서버 오류가 발생했습니다.', 500)
     }
 
@@ -88,7 +88,7 @@ export const GET = withSuperAdmin(async (req: Request) => {
 
     return apiSuccess(result)
   } catch (error) {
-    logger.error('API 설정 조회 중 예외', error, { clinicId })
+    logger.error('API 설정 조회 중 예외', error, { clientId })
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 })
@@ -99,9 +99,9 @@ export const GET = withSuperAdmin(async (req: Request) => {
 export const POST = withSuperAdmin(async (req: Request) => {
   const url = new URL(req.url)
   const segments = url.pathname.split('/')
-  const idSegment = segments[segments.indexOf('clinics') + 1]
-  const clinicId = parseId(idSegment)
-  if (!clinicId) return apiError('유효한 병원 ID가 필요합니다.')
+  const idSegment = segments[segments.indexOf('clients') + 1]
+  const clientId = parseId(idSegment)
+  if (!clientId) return apiError('유효한 클라이언트 ID가 필요합니다.')
 
   let body: { platform?: unknown; config?: unknown; is_active?: unknown }
   try {
@@ -140,27 +140,27 @@ export const POST = withSuperAdmin(async (req: Request) => {
 
   try {
     const { error } = await supabase
-      .from('clinic_api_configs')
+      .from('client_api_configs')
       .upsert(
         {
-          clinic_id: clinicId,
+          client_id: clientId,
           platform,
           config: configValue,
           is_active: isActive,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: 'clinic_id,platform' }
+        { onConflict: 'client_id,platform' }
       )
 
     if (error) {
-      logger.error('clinic_api_configs upsert 실패', error, { clinicId, platform })
+      logger.error('client_api_configs upsert 실패', error, { clientId, platform })
       return apiError('서버 오류가 발생했습니다.', 500)
     }
 
-    logger.info('API 설정 저장 완료', { clinicId, platform })
+    logger.info('API 설정 저장 완료', { clientId, platform })
     return apiSuccess({ success: true, platform })
   } catch (error) {
-    logger.error('API 설정 저장 중 예외', error, { clinicId, platform })
+    logger.error('API 설정 저장 중 예외', error, { clientId, platform })
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 })
@@ -171,9 +171,9 @@ export const POST = withSuperAdmin(async (req: Request) => {
 export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
   const url = new URL(req.url)
   const segments = url.pathname.split('/')
-  const idSegment = segments[segments.indexOf('clinics') + 1]
-  const clinicId = parseId(idSegment)
-  if (!clinicId) return apiError('유효한 병원 ID가 필요합니다.')
+  const idSegment = segments[segments.indexOf('clients') + 1]
+  const clientId = parseId(idSegment)
+  if (!clientId) return apiError('유효한 클라이언트 ID가 필요합니다.')
 
   let body: { platform?: unknown }
   try {
@@ -193,31 +193,31 @@ export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
   try {
     // 삭제 전 스냅샷 보관
     const { data: existing } = await supabase
-      .from('clinic_api_configs')
+      .from('client_api_configs')
       .select('id')
-      .eq('clinic_id', clinicId)
+      .eq('client_id', clientId)
       .eq('platform', platform)
       .maybeSingle()
 
     if (existing?.id) {
-      await archiveBeforeDelete(supabase, 'clinic_api_configs', existing.id, user.id, clinicId)
+      await archiveBeforeDelete(supabase, 'client_api_configs', existing.id, user.id, clientId)
     }
 
     const { error } = await supabase
-      .from('clinic_api_configs')
+      .from('client_api_configs')
       .delete()
-      .eq('clinic_id', clinicId)
+      .eq('client_id', clientId)
       .eq('platform', platform)
 
     if (error) {
-      logger.error('clinic_api_configs 삭제 실패', error, { clinicId, platform })
+      logger.error('client_api_configs 삭제 실패', error, { clientId, platform })
       return apiError('서버 오류가 발생했습니다.', 500)
     }
 
-    logger.info('API 설정 삭제 완료', { clinicId, platform })
+    logger.info('API 설정 삭제 완료', { clientId, platform })
     return apiSuccess({ success: true, platform })
   } catch (error) {
-    logger.error('API 설정 삭제 중 예외', error, { clinicId, platform })
+    logger.error('API 설정 삭제 중 예외', error, { clientId, platform })
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 })

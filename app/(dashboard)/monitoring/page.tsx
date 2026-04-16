@@ -33,7 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { PageHeader } from '@/components/common'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -76,7 +76,7 @@ export default function MonitoringPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const user = session?.user
-  const { selectedClinicId, setSelectedClinicId, clinics } = useClinic()
+  const { selectedClientId, setSelectedClientId, clients } = useClient()
 
   const [category, setCategory] = useState('all')
   const [month, setMonth] = useState(() => {
@@ -102,10 +102,10 @@ export default function MonitoringPage() {
   const [deleting, setDeleting] = useState(false)
   const [togglingId, setTogglingId] = useState<number | null>(null)
 
-  const canEdit = user?.role === 'superadmin' || user?.role === 'agency_staff' || user?.role === 'clinic_admin'
+  const canEdit = user?.role === 'superadmin' || user?.role === 'agency_staff' || user?.role === 'client_admin'
 
   useEffect(() => {
-    if (user?.role === 'clinic_staff') router.replace('/patients')
+    if (user?.role === 'client_staff') router.replace('/patients')
   }, [user, router])
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export default function MonitoringPage() {
       try {
         const params = new URLSearchParams({ month })
         if (category !== 'all') params.set('category', category)
-        if (selectedClinicId) params.set('clinic_id', String(selectedClinicId))
+        if (selectedClientId) params.set('client_id', String(selectedClientId))
         const res = await fetch(`/api/monitoring/rankings?${params}`)
         const data = await res.json()
         if (res.ok) {
@@ -130,7 +130,7 @@ export default function MonitoringPage() {
       }
     }
     fetchData()
-  }, [month, category, selectedClinicId, fetchKey])
+  }, [month, category, selectedClientId, fetchKey])
 
   const refetch = useCallback(() => setFetchKey(k => k + 1), [])
 
@@ -274,13 +274,13 @@ export default function MonitoringPage() {
   // 키워드 관리 기능
   const handleAddKeyword = async () => {
     if (!addForm.keyword.trim()) { toast.error('키워드를 입력해주세요.'); return }
-    if (!selectedClinicId) { toast.error('병원을 선택해주세요.'); return }
+    if (!selectedClientId) { toast.error('클라이언트을 선택해주세요.'); return }
     setAddSaving(true)
     try {
       const res = await fetch('/api/monitoring/keywords', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clinic_id: selectedClinicId, ...addForm }),
+        body: JSON.stringify({ client_id: selectedClientId, ...addForm }),
       })
       if (!res.ok) { const err = await res.json(); throw new Error(err.error) }
       setAddForm({ keyword: '', category: 'place', url: '' })
@@ -326,7 +326,7 @@ export default function MonitoringPage() {
     } finally { setDeleting(false); setDeleteTarget(null) }
   }
 
-  if (user?.role === 'clinic_staff') return null
+  if (user?.role === 'client_staff') return null
 
   return (
     <>
@@ -335,18 +335,18 @@ export default function MonitoringPage() {
       {/* 필터 */}
       <div className="flex items-center gap-4 mb-4 flex-wrap">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">병원</Label>
+          <Label className="text-xs text-muted-foreground">클라이언트</Label>
           <Select
-            value={selectedClinicId ? String(selectedClinicId) : '_none'}
-            onValueChange={v => setSelectedClinicId(v === '_none' ? null : Number(v))}
+            value={selectedClientId ? String(selectedClientId) : '_none'}
+            onValueChange={v => setSelectedClientId(v === '_none' ? null : Number(v))}
             disabled={editMode}
           >
             <SelectTrigger className="w-[200px] bg-muted dark:bg-white/5 border-border dark:border-white/10 text-foreground">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_none">전체 병원</SelectItem>
-              {clinics.map(c => (
+              <SelectItem value="_none">전체 클라이언트</SelectItem>
+              {clients.map(c => (
                 <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
               ))}
             </SelectContent>
@@ -392,8 +392,8 @@ export default function MonitoringPage() {
         </div>
       </div>
 
-      {/* 액션 바 — canEdit && 병원 선택 시 */}
-      {canEdit && selectedClinicId && !loading && (
+      {/* 액션 바 — canEdit && 클라이언트 선택 시 */}
+      {canEdit && selectedClientId && !loading && (
         <div className="flex items-center gap-2 mb-6">
           {!editMode && (
             <Button
@@ -425,10 +425,10 @@ export default function MonitoringPage() {
         </div>
       )}
 
-      {/* 병원 미선택 + 키워드 있을 때 안내 */}
-      {canEdit && !selectedClinicId && !loading && keywords.length > 0 && (
+      {/* 클라이언트 미선택 + 키워드 있을 때 안내 */}
+      {canEdit && !selectedClientId && !loading && keywords.length > 0 && (
         <div className="mb-6 px-4 py-2.5 rounded-lg bg-muted/50 border border-border dark:border-white/10 text-xs text-muted-foreground">
-          병원을 선택하면 순위 수정 및 키워드 관리를 할 수 있습니다.
+          클라이언트을 선택하면 순위 수정 및 키워드 관리를 할 수 있습니다.
         </div>
       )}
 
@@ -508,7 +508,7 @@ export default function MonitoringPage() {
       ) : keywords.length === 0 ? (
         <Card variant="glass" className="p-12 text-center">
           <p className="text-muted-foreground mb-4">등록된 키워드가 없습니다.</p>
-          {canEdit && selectedClinicId && (
+          {canEdit && selectedClientId && (
             <Button size="sm" onClick={() => setAddDialogOpen(true)} className="bg-brand-600 hover:bg-brand-700">
               <Plus size={14} className="mr-1" />키워드 추가
             </Button>

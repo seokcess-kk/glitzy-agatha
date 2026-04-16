@@ -1,7 +1,7 @@
 /**
  * API 라우트 공통 미들웨어
  * - 인증 검증
- * - clinic_id 필터링
+ * - client_id 필터링
  * - superadmin 권한 검증
  */
 
@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { timingSafeEqual } from 'crypto'
 import { authOptions } from './auth'
-import { getClinicId } from './session'
+import { getClientId } from './session'
 import { SessionUser } from './security'
 import { serverSupabase } from './supabase'
 
@@ -21,22 +21,22 @@ export interface AuthContext {
   user: AuthUser
 }
 
-export interface ClinicContext extends AuthContext {
-  clinicId: number | null
-  /** agency_staff가 clinic_id 미지정 시, 배정된 병원 ID 목록. 그 외 역할은 null */
-  assignedClinicIds: number[] | null
+export interface ClientContext extends AuthContext {
+  clientId: number | null
+  /** agency_staff가 client_id 미지정 시, 배정된 클라이언트 ID 목록. 그 외 역할은 null */
+  assignedClientIds: number[] | null
 }
 
 // 핸들러 타입
 type AuthHandler = (req: Request, context: AuthContext) => Promise<NextResponse>
-type ClinicHandler = (req: Request, context: ClinicContext) => Promise<NextResponse>
+type ClientHandler = (req: Request, context: ClientContext) => Promise<NextResponse>
 type SuperAdminHandler = (req: Request, context: AuthContext) => Promise<NextResponse>
-type ClinicAdminHandler = (req: Request, context: ClinicContext) => Promise<NextResponse>
+type ClientAdminHandler = (req: Request, context: ClientContext) => Promise<NextResponse>
 
 // 인증 실패 응답 (매번 새 Response 생성 — Response body는 1회만 소비 가능)
 const UNAUTHORIZED = () => NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 const FORBIDDEN_SUPERADMIN = () => NextResponse.json({ error: 'Forbidden: superadmin only' }, { status: 403 })
-const FORBIDDEN_CLINIC_ADMIN = () => NextResponse.json({ error: 'Forbidden: clinic_admin 이상 권한 필요' }, { status: 403 })
+const FORBIDDEN_CLIENT_ADMIN = () => NextResponse.json({ error: 'Forbidden: client_admin 이상 권한 필요' }, { status: 403 })
 
 /**
  * 세션에서 인증된 사용자 추출 + password_version 검증
@@ -68,15 +68,15 @@ async function getAuthUser(): Promise<AuthUser | null> {
 }
 
 /**
- * agency_staff의 배정 병원 ID 목록 조회
+ * agency_staff의 배정 클라이언트 ID 목록 조회
  */
-async function getAssignedClinicIds(userId: string): Promise<number[]> {
+async function getAssignedClientIds(userId: string): Promise<number[]> {
   const supabase = serverSupabase()
   const { data } = await supabase
-    .from('user_clinic_assignments')
-    .select('clinic_id')
+    .from('user_client_assignments')
+    .select('client_id')
     .eq('user_id', parseInt(userId, 10))
-  return (data || []).map((d: any) => d.clinic_id)
+  return (data || []).map((d: any) => d.client_id)
 }
 
 /**
@@ -92,26 +92,26 @@ export function withAuth(handler: AuthHandler) {
 }
 
 /**
- * 인증 + clinic_id 필터 래퍼
- * - clinicId가 자동으로 추출됨
- * - superadmin은 ?clinic_id=X 파라미터로 특정 병원 조회 가능
- * - agency_staff는 ?clinic_id=X (배정된 병원만) 또는 미지정 시 assignedClinicIds 제공
- * - clinic_admin은 자신의 병원만 조회
+ * 인증 + client_id 필터 래퍼
+ * - clientId가 자동으로 추출됨
+ * - superadmin은 ?client_id=X 파라미터로 특정 클라이언트 조회 가능
+ * - agency_staff는 ?client_id=X (배정된 클라이언트만) 또는 미지정 시 assignedClientIds 제공
+ * - client_admin은 자신의 클라이언트만 조회
  */
-export function withClinicFilter(handler: ClinicHandler) {
+export function withClientFilter(handler: ClientHandler) {
   return async (req: Request): Promise<NextResponse> => {
     const user = await getAuthUser()
     if (!user) return UNAUTHORIZED()
 
-    const clinicId = await getClinicId(req.url)
+    const clientId = await getClientId(req.url)
 
-    // agency_staff가 clinic_id 미지정 시: 배정된 병원 목록을 제공
-    let assignedClinicIds: number[] | null = null
-    if (user.role === 'agency_staff' && clinicId === null) {
-      assignedClinicIds = await getAssignedClinicIds(user.id)
+    // agency_staff가 client_id 미지정 시: 배정된 클라이언트 목록을 제공
+    let assignedClientIds: number[] | null = null
+    if (user.role === 'agency_staff' && clientId === null) {
+      assignedClientIds = await getAssignedClientIds(user.id)
     }
 
-    return handler(req, { user, clinicId, assignedClinicIds })
+    return handler(req, { user, clientId, assignedClientIds })
   }
 }
 
@@ -129,40 +129,40 @@ export function withSuperAdmin(handler: SuperAdminHandler) {
 }
 
 /**
- * clinic_admin 이상 권한 래퍼
- * - superadmin 또는 clinic_admin만 접근 가능
- * - clinic_staff, agency_staff는 차단
+ * client_admin 이상 권한 래퍼
+ * - superadmin 또는 client_admin만 접근 가능
+ * - client_staff, agency_staff는 차단
  */
-export function withClinicAdmin(handler: ClinicAdminHandler) {
+export function withClientAdmin(handler: ClientAdminHandler) {
   return async (req: Request): Promise<NextResponse> => {
     const user = await getAuthUser()
     if (!user) return UNAUTHORIZED()
-    if (user.role !== 'superadmin' && user.role !== 'clinic_admin') return FORBIDDEN_CLINIC_ADMIN()
+    if (user.role !== 'superadmin' && user.role !== 'client_admin') return FORBIDDEN_CLIENT_ADMIN()
 
-    const clinicId = await getClinicId(req.url)
-    return handler(req, { user, clinicId, assignedClinicIds: null })
+    const clientId = await getClientId(req.url)
+    return handler(req, { user, clientId, assignedClientIds: null })
   }
 }
 
 /**
- * Supabase 쿼리에 clinic_id 필터를 적용하는 헬퍼
- * - clinicId가 있으면 eq('clinic_id', clinicId) 적용
- * - agency_staff가 clinicId 미지정이면 in('clinic_id', assignedClinicIds) 적용
- * - superadmin이 clinicId 미지정이면 필터 없음 (전체 조회)
+ * Supabase 쿼리에 client_id 필터를 적용하는 헬퍼
+ * - clientId가 있으면 eq('client_id', clientId) 적용
+ * - agency_staff가 clientId 미지정이면 in('client_id', assignedClientIds) 적용
+ * - superadmin이 clientId 미지정이면 필터 없음 (전체 조회)
  *
- * @returns 필터 적용된 쿼리, 또는 agency_staff 배정 병원이 0개면 null (빈 결과 반환용)
+ * @returns 필터 적용된 쿼리, 또는 agency_staff 배정 클라이언트이 0개면 null (빈 결과 반환용)
  */
-export function applyClinicFilter<T extends { eq: Function; in: Function }>(
+export function applyClientFilter<T extends { eq: Function; in: Function }>(
   query: T,
-  { clinicId, assignedClinicIds }: Pick<ClinicContext, 'clinicId' | 'assignedClinicIds'>,
-  column: string = 'clinic_id'
+  { clientId, assignedClientIds }: Pick<ClientContext, 'clientId' | 'assignedClientIds'>,
+  column: string = 'client_id'
 ): T | null {
-  if (clinicId) {
-    return query.eq(column, clinicId)
+  if (clientId) {
+    return query.eq(column, clientId)
   }
-  if (assignedClinicIds !== null) {
-    if (assignedClinicIds.length === 0) return null
-    return query.in(column, assignedClinicIds)
+  if (assignedClientIds !== null) {
+    if (assignedClientIds.length === 0) return null
+    return query.in(column, assignedClientIds)
   }
   return query
 }
@@ -184,7 +184,7 @@ export function applyDateRange<T extends { gte: Function; lte: Function }>(
 
 /**
  * 외부 서비스 API 래퍼 (SERVICE_KEY 기반 인증)
- * - glitzy-web 등 외부 서비스에서 Samantha 데이터를 조회할 때 사용
+ * - glitzy-web 등 외부 서비스에서 Agatha 데이터를 조회할 때 사용
  * - Authorization: Bearer {EXTERNAL_SERVICE_KEY} 헤더 검증
  */
 type ExternalHandler = (req: Request) => Promise<NextResponse>

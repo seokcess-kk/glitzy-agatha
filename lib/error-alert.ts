@@ -69,7 +69,7 @@ export async function sendErrorAlert(
     return
   }
 
-  const text = `[Samantha 시스템 알림]\n${message}\n타입: ${errorType}\n시각: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`
+  const text = `[Agatha 시스템 알림]\n${message}\n타입: ${errorType}\n시각: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`
 
   await Promise.all(
     phones.map(phone =>

@@ -39,7 +39,7 @@ export const GET = withSuperAdmin(async (req: Request) => {
     const supabase = serverSupabase()
     const { data, error } = await supabase
       .from('landing_pages')
-      .select('*, clinic:clinics(id, name)')
+      .select('*, client:clients(id, name)')
       .order('created_at', { ascending: false })
 
     if (error) return apiError(error.message, 500)
@@ -76,7 +76,7 @@ async function generateUniqueLpId(supabase: ReturnType<typeof serverSupabase>): 
 export const POST = withSuperAdmin(async (req: Request) => {
   try {
     const body = await req.json()
-    const { name, file_name, original_file_name, clinic_id, description, is_active, gtm_id, redirect_url } = body
+    const { name, file_name, original_file_name, client_id, description, is_active, gtm_id, redirect_url } = body
 
     if (!name || !file_name) {
       return apiError('이름과 파일명은 필수입니다.', 400)
@@ -93,22 +93,22 @@ export const POST = withSuperAdmin(async (req: Request) => {
       return apiError(`파일을 찾을 수 없습니다: ${safeFileName}`, 400)
     }
 
-    // clinic_id 유효성 검증 (제공된 경우)
-    let validClinicId: number | null = null
-    if (clinic_id) {
-      validClinicId = parseId(clinic_id)
-      if (validClinicId === null) {
-        return apiError('유효하지 않은 병원 ID입니다.', 400)
+    // client_id 유효성 검증 (제공된 경우)
+    let validClientId: number | null = null
+    if (client_id) {
+      validClientId = parseId(client_id)
+      if (validClientId === null) {
+        return apiError('유효하지 않은 클라이언트 ID입니다.', 400)
       }
 
-      const { data: clinic } = await supabase
-        .from('clinics')
+      const { data: client } = await supabase
+        .from('clients')
         .select('id')
-        .eq('id', validClinicId)
+        .eq('id', validClientId)
         .single()
 
-      if (!clinic) {
-        return apiError('존재하지 않는 병원입니다.', 400)
+      if (!client) {
+        return apiError('존재하지 않는 클라이언트입니다.', 400)
       }
     }
 
@@ -122,13 +122,13 @@ export const POST = withSuperAdmin(async (req: Request) => {
         name: sanitizeString(name, 100),
         file_name: sanitizeString(safeFileName, 100),
         original_file_name: original_file_name ? sanitizeString(original_file_name, 200) : null,
-        clinic_id: validClinicId,
+        client_id: validClientId,
         description: description ? sanitizeString(description, 500) : null,
         gtm_id: gtm_id ? sanitizeString(gtm_id, 20) : null,
         redirect_url: redirect_url ? sanitizeUrl(redirect_url, 2000) || null : null,
         is_active: is_active !== false,
       })
-      .select('*, clinic:clinics(id, name)')
+      .select('*, client:clients(id, name)')
       .single()
 
     if (error) return apiError(error.message, 500)

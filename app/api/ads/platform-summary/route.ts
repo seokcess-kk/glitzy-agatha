@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, applyClinicFilter, apiSuccess, apiError } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiSuccess, apiError } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
@@ -11,9 +11,9 @@ const logger = createLogger('AdsPlatformSummary')
  * 채널별 광고 성과 요약 API
  * - ad_campaign_stats에서 플랫폼별 spend/clicks/impressions 집계
  * - leads의 utm_source로 채널별 리드 수 집계
- * - payments를 customer→channel 매핑을 통해 채널별 매출 집계
+ * - payments를 contact→channel 매핑을 통해 채널별 매출 집계
  */
-export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')
@@ -32,8 +32,8 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     tsEnd = d.toISOString()
   }
 
-  // agency_staff 배정 병원 0개 → 빈 결과
-  const emptyCheck = applyClinicFilter(supabase.from('leads').select('id', { count: 'exact', head: true }), { clinicId, assignedClinicIds })
+  // agency_staff 배정 클라이언트 0개 → 빈 결과
+  const emptyCheck = applyClientFilter(supabase.from('leads').select('id', { count: 'exact', head: true }), { clientId, assignedClientIds })
   if (emptyCheck === null) return apiSuccess([])
 
   try {
@@ -41,27 +41,27 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     let adStatsQuery = supabase
       .from('ad_campaign_stats')
       .select('platform, campaign_type, spend_amount, clicks, impressions, stat_date')
-    const filteredAdStats = applyClinicFilter(adStatsQuery, { clinicId, assignedClinicIds })
+    const filteredAdStats = applyClientFilter(adStatsQuery, { clientId, assignedClientIds })
     if (filteredAdStats === null) return apiSuccess([])
     adStatsQuery = filteredAdStats
     if (dateStart) adStatsQuery = adStatsQuery.gte('stat_date', dateStart)
     if (dateEnd) adStatsQuery = adStatsQuery.lte('stat_date', dateEnd)
 
-    // 2. 리드 조회 (utm_source, customer_id)
+    // 2. 리드 조회 (utm_source, contact_id)
     let leadsQuery = supabase
       .from('leads')
-      .select('id, customer_id, utm_source, created_at')
-    const filteredLeads = applyClinicFilter(leadsQuery, { clinicId, assignedClinicIds })
+      .select('id, contact_id, utm_source, created_at')
+    const filteredLeads = applyClientFilter(leadsQuery, { clientId, assignedClientIds })
     if (filteredLeads === null) return apiSuccess([])
     leadsQuery = filteredLeads
     if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
     if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
-    // 3. 결제 조회 (customer_id, payment_amount)
+    // 3. 결제 조회 (contact_id, payment_amount)
     let paymentsQuery = supabase
       .from('payments')
-      .select('customer_id, payment_amount, payment_date')
-    const filteredPayments = applyClinicFilter(paymentsQuery, { clinicId, assignedClinicIds })
+      .select('contact_id, payment_amount, payment_date')
+    const filteredPayments = applyClientFilter(paymentsQuery, { clientId, assignedClientIds })
     if (filteredPayments === null) return apiSuccess([])
     paymentsQuery = filteredPayments
     if (dateStart) paymentsQuery = paymentsQuery.gte('payment_date', dateStart)
@@ -74,15 +74,15 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     ])
 
     if (adStatsRes.error) {
-      logger.error('광고 통계 조회 실패', adStatsRes.error, { clinicId })
+      logger.error('광고 통계 조회 실패', adStatsRes.error, { clientId })
       return apiError('광고 통계 조회 중 오류가 발생했습니다.', 500)
     }
     if (leadsRes.error) {
-      logger.error('리드 조회 실패', leadsRes.error, { clinicId })
+      logger.error('리드 조회 실패', leadsRes.error, { clientId })
       return apiError('리드 조회 중 오류가 발생했습니다.', 500)
     }
     if (paymentsRes.error) {
-      logger.error('결제 조회 실패', paymentsRes.error, { clinicId })
+      logger.error('결제 조회 실패', paymentsRes.error, { clientId })
       return apiError('결제 조회 중 오류가 발생했습니다.', 500)
     }
 
@@ -111,10 +111,10 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       adBySource[channel][sourceKey].impressions += Number(row.impressions) || 0
     }
 
-    // 채널별 리드 집계 + 소스별 리드 집계 + customer→channel 첫 유입 채널 매핑
+    // 채널별 리드 집계 + 소스별 리드 집계 + contact→channel 첫 유입 채널 매핑
     const leadsByChannel: Record<string, number> = {}
     const leadsBySource: Record<string, Record<string, number>> = {} // channel → source → count
-    const customerToChannel = new Map<number, string>()
+    const contactToChannel = new Map<number, string>()
     for (const lead of leadsRes.data || []) {
       const channel = normalizeChannel(lead.utm_source)
       const rawSource = lead.utm_source || 'unknown'
@@ -124,21 +124,21 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       if (!leadsBySource[channel]) leadsBySource[channel] = {}
       leadsBySource[channel][rawSource] = (leadsBySource[channel][rawSource] || 0) + 1
 
-      if (!customerToChannel.has(lead.customer_id)) {
-        customerToChannel.set(lead.customer_id, channel)
+      if (!contactToChannel.has(lead.contact_id)) {
+        contactToChannel.set(lead.contact_id, channel)
       }
     }
 
     // 채널별 매출 + 결제 고객 수 집계
     const revenueByChannel: Record<string, number> = {}
-    const payingCustomersByChannel: Record<string, Set<number>> = {}
+    const payingContactsByChannel: Record<string, Set<number>> = {}
     for (const payment of paymentsRes.data || []) {
-      const channel = customerToChannel.get(payment.customer_id) || 'Unknown'
+      const channel = contactToChannel.get(payment.contact_id) || 'Unknown'
       revenueByChannel[channel] = (revenueByChannel[channel] || 0) + (Number(payment.payment_amount) || 0)
-      if (!payingCustomersByChannel[channel]) {
-        payingCustomersByChannel[channel] = new Set()
+      if (!payingContactsByChannel[channel]) {
+        payingContactsByChannel[channel] = new Set()
       }
-      payingCustomersByChannel[channel].add(payment.customer_id)
+      payingContactsByChannel[channel].add(payment.contact_id)
     }
 
     // 모든 채널 목록 (광고 채널 + 리드 채널 합집합)
@@ -154,7 +154,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
         const { spend = 0, clicks = 0, impressions = 0 } = adByChannel[channel] || {}
         const leads = leadsByChannel[channel] || 0
         const revenue = revenueByChannel[channel] || 0
-        const payingCustomers = payingCustomersByChannel[channel]?.size || 0
+        const payingContacts = payingContactsByChannel[channel]?.size || 0
 
         // 소스별 세분화 데이터 생성
         const adSources = adBySource[channel] || {}
@@ -186,12 +186,12 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
           impressions,
           leads,
           revenue,
-          payingCustomers,
+          payingContacts,
           cpl: leads > 0 ? Math.round(spend / leads) : 0,
           cpc: clicks > 0 ? Math.round(spend / clicks) : 0,
           ctr: impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0,
           roas: spend > 0 ? Number((revenue / spend).toFixed(2)) : 0,
-          conversionRate: leads > 0 ? Number(((payingCustomers / leads) * 100).toFixed(1)) : 0,
+          conversionRate: leads > 0 ? Number(((payingContacts / leads) * 100).toFixed(1)) : 0,
           sources,
         }
       })
@@ -199,7 +199,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
 
     return apiSuccess(result)
   } catch (error) {
-    logger.error('플랫폼 요약 API 오류', error, { clinicId })
+    logger.error('플랫폼 요약 API 오류', error, { clientId })
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 })

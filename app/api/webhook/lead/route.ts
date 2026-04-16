@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     campaignId?: string
     source?: string
     inflowUrl?: string
-    clinic_id?: number | string
+    client_id?: number | string
     utm_source?: string
     utm_medium?: string
     utm_campaign?: string
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
         .insert({
           payload: body,
           status: 'received',
-          clinic_id: body.clinic_id ? parseId(body.clinic_id) : null,
+          client_id: body.client_id ? parseId(body.client_id) : null,
           idempotency_key: body.idempotency_key || null,
         })
         .select('id')
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
     campaignId,
     source,
     inflowUrl,
-    clinic_id,
+    client_id,
     utm_source,
     utm_medium,
     utm_campaign,
@@ -143,15 +143,15 @@ export async function POST(req: Request) {
     return apiError('유효하지 않은 URL 형식입니다.', 400)
   }
 
-  if (clinic_id === undefined || clinic_id === null || clinic_id === '') {
-    await updateRawLog(supabase, rawLogId, { status: 'failed', error_message: 'clinic_id 누락' })
-    return apiError('clinic_id는 필수입니다.', 400)
+  if (client_id === undefined || client_id === null || client_id === '') {
+    await updateRawLog(supabase, rawLogId, { status: 'failed', error_message: 'client_id 누락' })
+    return apiError('client_id는 필수입니다.', 400)
   }
 
-  const validClinicId = parseId(clinic_id)
-  if (validClinicId === null) {
-    await updateRawLog(supabase, rawLogId, { status: 'failed', error_message: 'clinic_id 무효' })
-    return apiError('유효하지 않은 clinic_id입니다.', 400)
+  const validClientId = parseId(client_id)
+  if (validClientId === null) {
+    await updateRawLog(supabase, rawLogId, { status: 'failed', error_message: 'client_id 무효' })
+    return apiError('유효하지 않은 client_id입니다.', 400)
   }
 
   // --- 데이터 가공 ---
@@ -169,29 +169,29 @@ export async function POST(req: Request) {
 
   // --- 처리 ---
   try {
-    // 1. 고객 조회/생성 (clinic_id 기준으로 격리)
-    const { data: existingCustomer } = await supabase
-      .from('customers')
+    // 1. 고객 조회/생성 (client_id 기준으로 격리)
+    const { data: existingContact } = await supabase
+      .from('contacts')
       .select('*')
       .eq('phone_number', normalizedPhone)
-      .eq('clinic_id', validClinicId)
+      .eq('client_id', validClientId)
       .maybeSingle()
 
-    let customer = existingCustomer
-    if (!customer) {
-      const { data: newCustomer, error } = await supabase
-        .from('customers')
+    let contact = existingContact
+    if (!contact) {
+      const { data: newContact, error } = await supabase
+        .from('contacts')
         .insert({
           phone_number: normalizedPhone,
           name: sanitizedName,
           first_source: finalSource,
           first_campaign_id: finalUtm.utm_campaign || sanitizedCampaignId,
-          clinic_id: validClinicId,
+          client_id: validClientId,
         })
         .select()
         .single()
       if (error) throw error
-      customer = newCustomer
+      contact = newContact
     }
 
     // landing_page_id 유효성 검증
@@ -204,8 +204,8 @@ export async function POST(req: Request) {
     const { data: lead, error: leadError } = await supabase
       .from('leads')
       .insert({
-        customer_id: customer.id,
-        clinic_id: validClinicId,
+        contact_id: contact.id,
+        client_id: validClientId,
         utm_source: finalUtm.utm_source,
         utm_medium: finalUtm.utm_medium,
         utm_campaign: finalUtm.utm_campaign,
@@ -227,29 +227,29 @@ export async function POST(req: Request) {
     // 3. SMS 알림 — fire-and-forget (응답 차단 방지, sendSmsWithLog가 내부에서 DB 로그+재시도 처리)
     ;(async () => {
       try {
-        const { data: clinic } = await supabase
-          .from('clinics')
+        const { data: client } = await supabase
+          .from('clients')
           .select('notify_phone, notify_phones, notify_enabled, name')
-          .eq('id', validClinicId)
+          .eq('id', validClientId)
           .single()
 
-        if (clinic?.notify_enabled && process.env.SOLAPI_API_KEY) {
+        if (client?.notify_enabled && process.env.SOLAPI_API_KEY) {
           const phones: string[] =
-            (clinic.notify_phones && clinic.notify_phones.length > 0)
-              ? clinic.notify_phones
-              : (clinic.notify_phone ? [clinic.notify_phone] : [])
+            (client.notify_phones && client.notify_phones.length > 0)
+              ? client.notify_phones
+              : (client.notify_phone ? [client.notify_phone] : [])
 
           if (phones.length > 0) {
             const { sendSmsWithLog } = await import('@/lib/solapi')
-            const smsText = `[${clinic.name}] 상담 유입\n이름: ${sanitizedName || '미입력'}\n연락처: ${normalizedPhone}`
-            const clinicId = validClinicId
+            const smsText = `[${client.name}] 상담 유입\n이름: ${sanitizedName || '미입력'}\n연락처: ${normalizedPhone}`
+            const clientId = validClientId
 
             const results = await Promise.all(
               phones.map(phone =>
                 sendSmsWithLog(supabase, {
                   to: phone,
                   text: smsText,
-                  clinicId,
+                  clientId,
                   leadId: lead.id,
                 }).catch(() => ({ success: false, logId: undefined, error: 'catch' }))
               )
@@ -288,7 +288,7 @@ export async function POST(req: Request) {
     const isValidEventId = event_id && /^[a-zA-Z0-9\-]{1,100}$/.test(event_id)
     const capiEventId = isValidEventId ? event_id : crypto.randomUUID()
     sendCapiEvent(supabase, {
-      clinicId: validClinicId,
+      clientId: validClientId,
       leadId: lead.id,
       eventName: 'Lead',
       eventId: capiEventId,
@@ -305,16 +305,16 @@ export async function POST(req: Request) {
       success: true,
       message: '리드가 등록되고 담당자 알림 및 챗봇 발송이 스케줄되었습니다.',
       leadId: lead.id,
-      customerId: customer.id,
-      isNewCustomer: !existingCustomer,
+      contactId: contact.id,
+      isNewContact: !existingContact,
       utm: finalUtm,
       eventId: capiEventId,
     })
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err)
-    logger.error('리드 처리 실패', err as Error, { rawLogId, clinic_id: validClinicId })
+    logger.error('리드 처리 실패', err as Error, { rawLogId, client_id: validClientId })
     await updateRawLog(supabase, rawLogId, { status: 'failed', error_message: errorMsg })
-    sendErrorAlert('lead_webhook_fail', `리드 처리 실패: ${errorMsg}`, { rawLogId, clinic_id: validClinicId }).catch(() => {})
+    sendErrorAlert('lead_webhook_fail', `리드 처리 실패: ${errorMsg}`, { rawLogId, client_id: validClientId }).catch(() => {})
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 }

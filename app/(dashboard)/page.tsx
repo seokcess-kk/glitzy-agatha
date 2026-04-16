@@ -8,7 +8,7 @@ import { startOfMonth, startOfDay } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/common'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { useKpiData, useTrendData, useFunnelChannelData, useRecentLeads } from '@/hooks/use-dashboard-data'
 import { getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
 
@@ -24,10 +24,10 @@ export default function DashboardPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const sessionUser = session?.user
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
 
   useEffect(() => {
-    if (sessionUser?.role === 'clinic_staff') router.replace('/patients')
+    if (sessionUser?.role === 'client_staff') router.replace('/patients')
   }, [sessionUser, router])
 
   // 기본값: 이번 달
@@ -41,10 +41,10 @@ export default function DashboardPage() {
   const endDate = dateRange.to ? getKstDayEndISO(dateRange.to) : getKstDayEndISO(new Date())
 
   // 섹션별 독립 데이터 페칭
-  const kpi = useKpiData(selectedClinicId, startDate, endDate)
-  const trendData = useTrendData(selectedClinicId, startDate, endDate)
-  const funnelChannel = useFunnelChannelData(selectedClinicId, startDate, endDate)
-  const recentLeadsData = useRecentLeads(selectedClinicId)
+  const kpi = useKpiData(selectedClientId, startDate, endDate)
+  const trendData = useTrendData(selectedClientId, startDate, endDate)
+  const funnelChannel = useFunnelChannelData(selectedClientId, startDate, endDate)
+  const recentLeadsData = useRecentLeads(selectedClientId)
 
   // 마지막 업데이트 시간 추적
   useEffect(() => {

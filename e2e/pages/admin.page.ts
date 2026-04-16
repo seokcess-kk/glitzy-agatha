@@ -14,7 +14,7 @@ export class AdminUsersPage {
   readonly usernameInput: Locator
   readonly passwordInput: Locator
   readonly roleSelect: Locator
-  readonly clinicSelect: Locator
+  readonly clientSelect: Locator
   readonly dialogCreateButton: Locator
   readonly dialogCancelButton: Locator
   // Toggle buttons
@@ -34,7 +34,7 @@ export class AdminUsersPage {
     this.usernameInput = page.locator('[role="dialog"] input[name="username"], [role="dialog"] input[placeholder*="아이디"]')
     this.passwordInput = page.locator('[role="dialog"] input[name="password"], [role="dialog"] input[type="password"]')
     this.roleSelect = page.locator('[role="dialog"] select, [role="dialog"] button:has-text("역할")')
-    this.clinicSelect = page.locator('[role="dialog"] select:nth-of-type(2), [role="dialog"] button:has-text("병원")')
+    this.clientSelect = page.locator('[role="dialog"] select:nth-of-type(2), [role="dialog"] button:has-text("클라이언트")')
     this.dialogCreateButton = page.locator('[role="dialog"] button:has-text("생성"), [role="dialog"] button:has-text("추가")')
     this.dialogCancelButton = page.locator('[role="dialog"] button:has-text("취소")')
     // Toggle
@@ -64,13 +64,13 @@ export class AdminUsersPage {
   }
 }
 
-export class AdminClinicsPage {
+export class AdminClientsPage {
   readonly page: Page
   readonly pageTitle: Locator
   readonly mainContent: Locator
-  readonly createClinicButton: Locator
-  readonly clinicsTable: Locator
-  readonly clinicsTableRows: Locator
+  readonly createClientButton: Locator
+  readonly clientsTable: Locator
+  readonly clientsTableRows: Locator
   readonly loadingState: Locator
   readonly emptyState: Locator
   // Create Dialog
@@ -84,11 +84,11 @@ export class AdminClinicsPage {
     this.page = page
     this.pageTitle = page.locator('h1')
     this.mainContent = page.locator('main')
-    this.createClinicButton = page.locator('button:has-text("병원 등록"), button:has-text("병원 추가")')
-    this.clinicsTable = page.locator('table')
-    this.clinicsTableRows = page.locator('table tbody tr')
+    this.createClientButton = page.locator('button:has-text("클라이언트 등록"), button:has-text("클라이언트 추가")')
+    this.clientsTable = page.locator('table')
+    this.clientsTableRows = page.locator('table tbody tr')
     this.loadingState = page.locator('text=로딩 중')
-    this.emptyState = page.locator('text=등록된 병원이 없습니다')
+    this.emptyState = page.locator('text=등록된 클라이언트이 없습니다')
     // Dialog
     this.dialog = page.locator('[role="dialog"]')
     this.nameInput = page.locator('[role="dialog"] input[name="name"], [role="dialog"] input[placeholder*="성형외과"]')
@@ -98,7 +98,7 @@ export class AdminClinicsPage {
   }
 
   async goto() {
-    await this.page.goto('/admin/clinics')
+    await this.page.goto('/admin/clients')
     await this.page.waitForLoadState('networkidle')
   }
 
@@ -107,12 +107,12 @@ export class AdminClinicsPage {
   }
 
   async openCreateDialog() {
-    await this.createClinicButton.click()
+    await this.createClientButton.click()
     await expect(this.dialog).toBeVisible()
   }
 
-  async getClinicCount(): Promise<number> {
-    return this.clinicsTableRows.count()
+  async getClientCount(): Promise<number> {
+    return this.clientsTableRows.count()
   }
 
   async expectPageLoaded() {
@@ -133,7 +133,7 @@ export class AdminAdCreativesPage {
   readonly dialog: Locator
   readonly nameInput: Locator
   readonly utmContentInput: Locator
-  readonly clinicSelect: Locator
+  readonly clientSelect: Locator
   readonly platformSelect: Locator
   readonly dialogSaveButton: Locator
   readonly dialogCancelButton: Locator
@@ -154,7 +154,7 @@ export class AdminAdCreativesPage {
     this.dialog = page.locator('[role="dialog"]')
     this.nameInput = page.locator('[role="dialog"] input[name="name"], [role="dialog"] input[placeholder*="소재"]')
     this.utmContentInput = page.locator('[role="dialog"] input[name="utm_content"], [role="dialog"] input[placeholder*="utm_content"]')
-    this.clinicSelect = page.locator('[role="dialog"] select').first()
+    this.clientSelect = page.locator('[role="dialog"] select').first()
     this.platformSelect = page.locator('[role="dialog"] select').nth(1)
     this.dialogSaveButton = page.locator('[role="dialog"] button:has-text("저장"), [role="dialog"] button:has-text("등록")')
     this.dialogCancelButton = page.locator('[role="dialog"] button:has-text("취소")')
@@ -200,7 +200,7 @@ export class AdminLandingPagesPage {
   readonly dialog: Locator
   readonly nameInput: Locator
   readonly fileSelect: Locator
-  readonly clinicSelect: Locator
+  readonly clientSelect: Locator
   readonly descriptionInput: Locator
   readonly activeToggle: Locator
   readonly dialogSaveButton: Locator
@@ -223,7 +223,7 @@ export class AdminLandingPagesPage {
     this.dialog = page.locator('[role="dialog"]')
     this.nameInput = page.locator('[role="dialog"] input[name="name"], [role="dialog"] input[placeholder*="프로모션"]')
     this.fileSelect = page.locator('[role="dialog"] select').first()
-    this.clinicSelect = page.locator('[role="dialog"] select').nth(1)
+    this.clientSelect = page.locator('[role="dialog"] select').nth(1)
     this.descriptionInput = page.locator('[role="dialog"] textarea')
     this.activeToggle = page.locator('[role="dialog"] button[role="switch"]')
     this.dialogSaveButton = page.locator('[role="dialog"] button:has-text("저장"), [role="dialog"] button:has-text("등록")')

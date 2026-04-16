@@ -1,21 +1,21 @@
-import { withClinicAdmin, ClinicContext, apiSuccess, apiError } from '@/lib/api-middleware'
-import { syncClinic, syncAllClinics } from '@/lib/services/adSyncManager'
+import { withClientAdmin, ClientContext, apiSuccess, apiError } from '@/lib/api-middleware'
+import { syncClient, syncAllClients } from '@/lib/services/adSyncManager'
 
 export const maxDuration = 120
 
-// clinic_admin 이상만 수동 동기화 가능 (clinic_staff 차단)
-export const POST = withClinicAdmin(async (req: Request, { user, clinicId }: ClinicContext) => {
+// client_admin 이상만 수동 동기화 가능 (client_staff 차단)
+export const POST = withClientAdmin(async (req: Request, { user, clientId }: ClientContext) => {
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
 
-  if (clinicId) {
-    // 특정 병원 동기화
-    const results = await syncClinic(clinicId, yesterday)
+  if (clientId) {
+    // 특정 클라이언트 동기화
+    const results = await syncClient(clientId, yesterday)
     return apiSuccess({
       success: true,
       results: results.map(r => ({
-        clinicId: r.clinicId,
-        clinicName: r.clinicName,
+        clientId: r.clientId,
+        clientName: r.clientName,
         platform: r.platform,
         count: r.count,
         error: r.error || null,
@@ -23,17 +23,17 @@ export const POST = withClinicAdmin(async (req: Request, { user, clinicId }: Cli
     })
   }
 
-  // clinicId 미지정 시 전체 동기화 — superadmin만 허용
+  // clientId 미지정 시 전체 동기화 — superadmin만 허용
   if (user.role !== 'superadmin') {
     return apiError('전체 동기화는 superadmin만 가능합니다.', 403)
   }
 
-  const results = await syncAllClinics(yesterday)
+  const results = await syncAllClients(yesterday)
   return apiSuccess({
     success: true,
     results: results.map(r => ({
-      clinicId: r.clinicId,
-      clinicName: r.clinicName,
+      clientId: r.clientId,
+      clientName: r.clientName,
       platform: r.platform,
       count: r.count,
       error: r.error || null,

@@ -42,7 +42,7 @@ interface LandingPage {
   id: number
   name: string
   file_name: string
-  clinic_id: number | null
+  client_id: number | null
 }
 
 interface AdCreative {
@@ -55,13 +55,13 @@ interface AdCreative {
   utm_campaign: string | null
   utm_term: string | null
   platform: string | null
-  clinic_id: number
+  client_id: number
   landing_page_id: number | null
   is_active: boolean
   file_name: string | null
   file_type: string | null
   created_at: string
-  clinic?: { id: number; name: string } | null
+  client?: { id: number; name: string } | null
   landing_page?: { id: number; name: string; file_name: string } | null
 }
 
@@ -84,13 +84,13 @@ export default function AdCreativesPage() {
 
   const [adCreatives, setAdCreatives] = useState<AdCreative[]>([])
   const [landingPages, setLandingPages] = useState<LandingPage[]>([])
-  const [clinics, setClinics] = useState<any[]>([])
+  const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<AdCreative | null>(null)
   const [form, setForm] = useState({
     name: '', description: '', utm_content: '', utm_source: '', utm_medium: '', utm_campaign: '', utm_term: '',
-    platform: '', clinic_id: '', landing_page_id: '', is_active: true,
+    platform: '', client_id: '', landing_page_id: '', is_active: true,
     file_name: '' as string | null, file_type: '' as string | null,
   })
   const [saving, setSaving] = useState(false)
@@ -117,7 +117,7 @@ export default function AdCreativesPage() {
       const [acRes, lpRes, cRes] = await Promise.all([
         fetch('/api/admin/ad-creatives').then(r => r.json()),
         fetch('/api/admin/landing-pages').then(r => r.json()),
-        fetch('/api/admin/clinics').then(r => r.json()),
+        fetch('/api/admin/clients').then(r => r.json()),
       ])
       setAdCreatives(Array.isArray(acRes) ? acRes : [])
       if (lpRes.landingPages) {
@@ -125,7 +125,7 @@ export default function AdCreativesPage() {
       } else {
         setLandingPages(Array.isArray(lpRes) ? lpRes : [])
       }
-      setClinics(Array.isArray(cRes) ? cRes : [])
+      setClients(Array.isArray(cRes) ? cRes : [])
     } catch {
       toast.error('데이터 로드 실패')
     } finally {
@@ -205,8 +205,8 @@ export default function AdCreativesPage() {
   }
 
   const handleSave = async () => {
-    if (!form.name || !form.utm_content || !form.clinic_id) {
-      toast.error('소재명, UTM Content, 병원을 입력해주세요.')
+    if (!form.name || !form.utm_content || !form.client_id) {
+      toast.error('소재명, UTM Content, 클라이언트을 입력해주세요.')
       return
     }
     setSaving(true)
@@ -219,7 +219,7 @@ export default function AdCreativesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          clinic_id: form.clinic_id && form.clinic_id !== 'none' ? Number(form.clinic_id) : null,
+          client_id: form.client_id && form.client_id !== 'none' ? Number(form.client_id) : null,
           landing_page_id: form.landing_page_id && form.landing_page_id !== 'none' ? Number(form.landing_page_id) : null,
           platform: form.platform && form.platform !== 'none' ? form.platform : null,
         }),
@@ -243,7 +243,7 @@ export default function AdCreativesPage() {
     if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl)
     setForm({
       name: '', description: '', utm_content: '', utm_source: '', utm_medium: '', utm_campaign: '', utm_term: '',
-      platform: '', clinic_id: '', landing_page_id: '', is_active: true, file_name: null, file_type: null,
+      platform: '', client_id: '', landing_page_id: '', is_active: true, file_name: null, file_type: null,
     })
     setEditing(null)
     setPreviewUrl(null)
@@ -261,7 +261,7 @@ export default function AdCreativesPage() {
       utm_campaign: creative.utm_campaign || '',
       utm_term: creative.utm_term || '',
       platform: creativePlatform,
-      clinic_id: String(creative.clinic_id),
+      client_id: String(creative.client_id),
       landing_page_id: creative.landing_page_id ? String(creative.landing_page_id) : '',
       is_active: creative.is_active,
       file_name: creative.file_name,
@@ -316,8 +316,8 @@ export default function AdCreativesPage() {
     }
   }
 
-  const filteredLandingPages = form.clinic_id
-    ? landingPages.filter(lp => lp.clinic_id === Number(form.clinic_id) || !lp.clinic_id)
+  const filteredLandingPages = form.client_id
+    ? landingPages.filter(lp => lp.client_id === Number(form.client_id) || !lp.client_id)
     : landingPages
 
   const getCreativeUtmUrl = (creative: AdCreative): string | null => {
@@ -435,13 +435,13 @@ export default function AdCreativesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">병원 *</Label>
-                <Select value={form.clinic_id} onValueChange={v => setForm(f => ({ ...f, clinic_id: v, landing_page_id: '' }))}>
+                <Label className="text-xs text-muted-foreground">클라이언트 *</Label>
+                <Select value={form.client_id} onValueChange={v => setForm(f => ({ ...f, client_id: v, landing_page_id: '' }))}>
                   <SelectTrigger>
-                    <SelectValue placeholder="병원 선택" />
+                    <SelectValue placeholder="클라이언트 선택" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clinics.map((c: any) => (
+                    {clients.map((c: any) => (
                       <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -539,10 +539,10 @@ export default function AdCreativesPage() {
               <Select
                 value={form.landing_page_id}
                 onValueChange={v => setForm(f => ({ ...f, landing_page_id: v }))}
-                disabled={!form.clinic_id}
+                disabled={!form.client_id}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={form.clinic_id ? "랜딩 페이지 선택" : "병원을 먼저 선택하세요"} />
+                  <SelectValue placeholder={form.client_id ? "랜딩 페이지 선택" : "클라이언트을 먼저 선택하세요"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">미지정</SelectItem>
@@ -613,7 +613,7 @@ export default function AdCreativesPage() {
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
                 <TableHead className="text-xs text-muted-foreground font-medium w-[76px]">소재</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">소재명 / UTM Content</TableHead>
-                <TableHead className="text-xs text-muted-foreground font-medium">플랫폼 / 병원</TableHead>
+                <TableHead className="text-xs text-muted-foreground font-medium">플랫폼 / 클라이언트</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">상태</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium w-[120px]">작업</TableHead>
               </TableRow>
@@ -669,7 +669,7 @@ export default function AdCreativesPage() {
                         <div className="text-muted-foreground text-xs">
                           {PLATFORM_OPTIONS.find(p => p.value === creative.platform || p.value === apiToCreativePlatform(creative.platform || ''))?.label || creative.platform || '-'}
                         </div>
-                        <div className="text-muted-foreground text-xs mt-0.5">{creative.clinic?.name || '-'}</div>
+                        <div className="text-muted-foreground text-xs mt-0.5">{creative.client?.name || '-'}</div>
                       </TableCell>
                       <TableCell>
                         <div onClick={e => e.stopPropagation()}>

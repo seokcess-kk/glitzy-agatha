@@ -25,9 +25,9 @@ interface LandingPage {
   id: number
   name: string
   file_name: string
-  clinic_id: number | null
+  client_id: number | null
   is_active: boolean
-  clinic?: { id: number; name: string } | null
+  client?: { id: number; name: string } | null
 }
 
 interface AdCreative {
@@ -39,10 +39,10 @@ interface AdCreative {
   utm_campaign: string | null
   utm_term: string | null
   platform: string | null
-  clinic_id: number
+  client_id: number
   landing_page_id: number | null
   is_active: boolean
-  clinic?: { id: number; name: string } | null
+  client?: { id: number; name: string } | null
   landing_page?: { id: number; name: string } | null
 }
 
@@ -345,7 +345,7 @@ function UtmGenerator({ onBack }: { onBack: () => void }) {
   const [adCreatives, setAdCreatives] = useState<AdCreative[]>([])
   const [adCreativesLoading, setAdCreativesLoading] = useState(true)
   const [selectedCreative, setSelectedCreative] = useState<string>('')
-  const [selectedClinicId, setSelectedClinicId] = useState<number | null>(null)
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null)
 
   // 필터링된 링크 목록 (메모이제이션)
   const filteredLinks = useMemo(() => {
@@ -499,7 +499,7 @@ function UtmGenerator({ onBack }: { onBack: () => void }) {
           utm_content: contentVal || null,
           utm_term: term || null,
           label,
-          clinic_id: selectedClinicId, // 소재에서 선택된 clinic_id 사용
+          client_id: selectedClientId, // 소재에서 선택된 client_id 사용
         }),
       })
 
@@ -627,8 +627,8 @@ function UtmGenerator({ onBack }: { onBack: () => void }) {
     if (creativeId && creativeId !== 'manual') {
       const creative = adCreatives.find(c => c.id === Number(creativeId))
       if (creative) {
-        // clinic_id 저장 (링크 저장 시 사용)
-        setSelectedClinicId(creative.clinic_id)
+        // client_id 저장 (링크 저장 시 사용)
+        setSelectedClientId(creative.client_id)
 
         // utm_content 자동 설정
         setContent(creative.utm_content)
@@ -668,7 +668,7 @@ function UtmGenerator({ onBack }: { onBack: () => void }) {
         toast.success(`"${creative.name}" 소재가 적용되었습니다.`)
       }
     } else {
-      setSelectedClinicId(null)
+      setSelectedClientId(null)
     }
   }
 
@@ -783,7 +783,7 @@ function UtmGenerator({ onBack }: { onBack: () => void }) {
                   <SelectItem value="manual">직접 입력</SelectItem>
                   {landingPages.map(lp => (
                     <SelectItem key={lp.id} value={String(lp.id)}>
-                      {lp.name} {lp.clinic?.name ? `(${lp.clinic.name})` : '(미배정)'}
+                      {lp.name} {lp.client?.name ? `(${lp.client.name})` : '(미배정)'}
                     </SelectItem>
                   ))}
                 </SelectContent>

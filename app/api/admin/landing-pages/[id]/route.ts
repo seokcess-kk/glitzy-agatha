@@ -24,7 +24,7 @@ export const GET = withSuperAdmin(async (req: Request, { user }: AuthContext) =>
   const supabase = serverSupabase()
   const { data, error } = await supabase
     .from('landing_pages')
-    .select('*, clinic:clinics(id, name)')
+    .select('*, client:clients(id, name)')
     .eq('id', lpId)
     .single()
 
@@ -43,7 +43,7 @@ export const PUT = withSuperAdmin(async (req: Request, { user }: AuthContext) =>
     }
 
     const body = await req.json()
-    const { name, file_name, original_file_name, clinic_id, description, is_active, gtm_id, redirect_url } = body
+    const { name, file_name, original_file_name, client_id, description, is_active, gtm_id, redirect_url } = body
 
     const supabase = serverSupabase()
 
@@ -70,25 +70,25 @@ export const PUT = withSuperAdmin(async (req: Request, { user }: AuthContext) =>
       }
     }
 
-    // clinic_id 유효성 검증
-    let validClinicId: number | null | undefined = undefined
-    if (clinic_id !== undefined) {
-      if (clinic_id === null || clinic_id === '') {
-        validClinicId = null
+    // client_id 유효성 검증
+    let validClientId: number | null | undefined = undefined
+    if (client_id !== undefined) {
+      if (client_id === null || client_id === '') {
+        validClientId = null
       } else {
-        validClinicId = parseId(clinic_id)
-        if (validClinicId === null) {
-          return apiError('유효하지 않은 병원 ID입니다.', 400)
+        validClientId = parseId(client_id)
+        if (validClientId === null) {
+          return apiError('유효하지 않은 클라이언트 ID입니다.', 400)
         }
 
-        const { data: clinic } = await supabase
-          .from('clinics')
+        const { data: client } = await supabase
+          .from('clients')
           .select('id')
-          .eq('id', validClinicId)
+          .eq('id', validClientId)
           .single()
 
-        if (!clinic) {
-          return apiError('존재하지 않는 병원입니다.', 400)
+        if (!client) {
+          return apiError('존재하지 않는 클라이언트입니다.', 400)
         }
       }
     }
@@ -100,7 +100,7 @@ export const PUT = withSuperAdmin(async (req: Request, { user }: AuthContext) =>
     if (name !== undefined) updateData.name = sanitizeString(name, 100)
     if (file_name !== undefined) updateData.file_name = sanitizeString(file_name, 100)
     if (original_file_name !== undefined) updateData.original_file_name = original_file_name ? sanitizeString(original_file_name, 200) : null
-    if (validClinicId !== undefined) updateData.clinic_id = validClinicId
+    if (validClientId !== undefined) updateData.client_id = validClientId
     if (description !== undefined) updateData.description = description ? sanitizeString(description, 500) : null
     if (gtm_id !== undefined) updateData.gtm_id = gtm_id ? sanitizeString(gtm_id, 20) : null
     if (redirect_url !== undefined) updateData.redirect_url = redirect_url ? sanitizeUrl(redirect_url, 2000) || null : null
@@ -110,7 +110,7 @@ export const PUT = withSuperAdmin(async (req: Request, { user }: AuthContext) =>
       .from('landing_pages')
       .update(updateData)
       .eq('id', lpId)
-      .select('*, clinic:clinics(id, name)')
+      .select('*, client:clients(id, name)')
       .single()
 
     if (error) return apiError(error.message, 500)

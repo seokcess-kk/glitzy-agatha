@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { getKstDateString } from '@/lib/date'
 
 /**
@@ -8,7 +8,7 @@ import { getKstDateString } from '@/lib/date'
  * - 각 고객의 모든 유입(leads) 이력 포함
  * - startDate 파라미터로 기간 필터링 가능
  */
-export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')
@@ -33,7 +33,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
 
   // 고객 기준으로 조회, leads를 포함 (landing_page 정보 포함)
   let query = supabase
-    .from('customers')
+    .from('contacts')
     .select(`
       *,
       leads(*, landing_page:landing_pages(id, name)),
@@ -44,19 +44,19 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     .order('created_at', { ascending: false })
     .limit(limit)
 
-  const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
+  const filtered = applyClientFilter(query, { clientId, assignedClientIds })
   if (filtered === null) return apiSuccess([])
   query = filtered
   if (tsStart) query = query.gte('created_at', tsStart)
   if (tsEnd) query = query.lt('created_at', tsEnd)
 
-  const { data: customers, error } = await query
+  const { data: contacts, error } = await query
 
   if (error) return apiError(error.message, 500)
 
   // leads가 있는 고객만 필터링 + 정렬 (최근 리드 기준)
   const lpId = landingPageId ? Number(landingPageId) : null
-  const customersWithLeads = (customers || [])
+  const contactsWithLeads = (contacts || [])
     .filter(c => c.leads && c.leads.length > 0)
     .filter(c => {
       if (lpId) return c.leads.some((l: any) => l.landing_page_id === lpId)
@@ -76,12 +76,12 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       return {
         // 고객 정보
         id: c.id,
-        customer_id: c.id,
+        contact_id: c.id,
         phone_number: c.phone_number,
         name: c.name,
         first_source: c.first_source,
         first_campaign_id: c.first_campaign_id,
-        clinic_id: c.clinic_id,
+        client_id: c.client_id,
         created_at: c.created_at,
 
         // 최신 리드 정보 (목록 표시용)
@@ -100,7 +100,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
         lead_count: sortedLeads.length,
 
         // 고객 정보 (기존 구조 호환)
-        customer: {
+        contact: {
           id: c.id,
           phone_number: c.phone_number,
           name: c.name,
@@ -119,5 +119,5 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       return bTime - aTime
     })
 
-  return apiSuccess(customersWithLeads)
+  return apiSuccess(contactsWithLeads)
 })

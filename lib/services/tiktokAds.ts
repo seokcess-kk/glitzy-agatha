@@ -16,7 +16,7 @@ interface TikTokReportRow {
 }
 
 export interface TikTokAdsOptions {
-  clinicId?: number
+  clientId?: number
   advertiserId?: string
   accessToken?: string
 }
@@ -77,12 +77,12 @@ async function fetchTikTokReport(params: {
 
 /**
  * TikTok access_token 자동 갱신
- * - clinic_api_configs에서 refresh_token 확인
+ * - client_api_configs에서 refresh_token 확인
  * - token_obtained_at이 23시간 이상이면 갱신
  * - 갱신 성공 시 DB 업데이트 후 새 access_token 반환
  */
 async function refreshTikTokTokenIfNeeded(
-  clinicId: number,
+  clientId: number,
   currentToken: string
 ): Promise<string> {
   const appId = process.env.TIKTOK_APP_ID
@@ -92,9 +92,9 @@ async function refreshTikTokTokenIfNeeded(
   const supabase = serverSupabase()
 
   const { data: configRow } = await supabase
-    .from('clinic_api_configs')
+    .from('client_api_configs')
     .select('config')
-    .eq('clinic_id', clinicId)
+    .eq('client_id', clientId)
     .eq('platform', 'tiktok_ads')
     .eq('is_active', true)
     .maybeSingle()
@@ -119,7 +119,7 @@ async function refreshTikTokTokenIfNeeded(
 
   if (elapsed < TWENTY_THREE_HOURS) return currentToken
 
-  logger.info('TikTok access_token 갱신 시도', { clinicId })
+  logger.info('TikTok access_token 갱신 시도', { clientId })
 
   try {
     const response = await fetch(TIKTOK_REFRESH_URL, {
@@ -135,7 +135,7 @@ async function refreshTikTokTokenIfNeeded(
     const data = await response.json()
 
     if (data.code !== 0 || !data.data?.access_token) {
-      logger.error('TikTok 토큰 갱신 실패', new Error(data.message || 'Unknown'), { clinicId })
+      logger.error('TikTok 토큰 갱신 실패', new Error(data.message || 'Unknown'), { clientId })
       return currentToken
     }
 
@@ -153,15 +153,15 @@ async function refreshTikTokTokenIfNeeded(
     const configValue = encryptionKey ? encryptApiConfig(newConfig) : newConfig
 
     await supabase
-      .from('clinic_api_configs')
+      .from('client_api_configs')
       .update({ config: configValue, updated_at: new Date().toISOString() })
-      .eq('clinic_id', clinicId)
+      .eq('client_id', clientId)
       .eq('platform', 'tiktok_ads')
 
-    logger.info('TikTok access_token 갱신 완료', { clinicId })
+    logger.info('TikTok access_token 갱신 완료', { clientId })
     return data.data.access_token as string
   } catch (error) {
-    logger.error('TikTok 토큰 갱신 중 예외', error, { clinicId })
+    logger.error('TikTok 토큰 갱신 중 예외', error, { clientId })
     return currentToken
   }
 }
@@ -176,13 +176,13 @@ export async function fetchTikTokAds(date = new Date(), options?: TikTokAdsOptio
   const advertiserId = options?.advertiserId || process.env.TIKTOK_ADVERTISER_ID
   let accessToken = options?.accessToken || process.env.TIKTOK_ACCESS_TOKEN
   if (!advertiserId || !accessToken) {
-    logger.warn('Missing TIKTOK_ADVERTISER_ID or TIKTOK_ACCESS_TOKEN', { clinicId: options?.clinicId })
+    logger.warn('Missing TIKTOK_ADVERTISER_ID or TIKTOK_ACCESS_TOKEN', { clientId: options?.clientId })
     return { platform: 'tiktok_ads', count: 0, error: 'Missing credentials' }
   }
 
-  // OAuth2 모드: clinicId가 있으면 토큰 자동 갱신 시도
-  if (options?.clinicId) {
-    accessToken = await refreshTikTokTokenIfNeeded(options.clinicId, accessToken)
+  // OAuth2 모드: clientId가 있으면 토큰 자동 갱신 시도
+  if (options?.clientId) {
+    accessToken = await refreshTikTokTokenIfNeeded(options.clientId, accessToken)
   }
 
   const supabase = serverSupabase()
@@ -206,28 +206,28 @@ export async function fetchTikTokAds(date = new Date(), options?: TikTokAdsOptio
         clicks: parseInt(r.metrics.clicks || '0'),
         impressions: parseInt(r.metrics.impressions || '0'),
         stat_date: dateStr,
-        clinic_id: options?.clinicId || null,
+        client_id: options?.clientId || null,
       }))
 
-      const onConflict = options?.clinicId
-        ? 'clinic_id,platform,campaign_id,stat_date'
+      const onConflict = options?.clientId
+        ? 'client_id,platform,campaign_id,stat_date'
         : 'platform,campaign_id,stat_date'
       const { error } = await supabase
         .from('ad_campaign_stats')
         .upsert(dbRows, { onConflict })
 
       if (error) {
-        logger.error('DB upsert error', error, { clinicId: options?.clinicId })
+        logger.error('DB upsert error', error, { clientId: options?.clientId })
       }
     }
 
     const duration = Date.now() - startTime
-    logger.info('Sync completed', { action: 'sync', count: rows.length, duration, clinicId: options?.clinicId })
+    logger.info('Sync completed', { action: 'sync', count: rows.length, duration, clientId: options?.clientId })
 
     return { platform: 'tiktok_ads', count: rows.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    logger.error('Sync failed', error, { action: 'sync', duration: Date.now() - startTime, clinicId: options?.clinicId })
+    logger.error('Sync failed', error, { action: 'sync', duration: Date.now() - startTime, clientId: options?.clientId })
     return { platform: 'tiktok_ads', count: 0, error: message }
   }
 }
@@ -242,7 +242,7 @@ export async function fetchTikTokAdStats(date = new Date(), options?: TikTokAdsO
   const advertiserId = options?.advertiserId || process.env.TIKTOK_ADVERTISER_ID
   const accessToken = options?.accessToken || process.env.TIKTOK_ACCESS_TOKEN
   if (!advertiserId || !accessToken) {
-    logger.warn('Missing TikTok credentials for ad stats', { clinicId: options?.clinicId })
+    logger.warn('Missing TikTok credentials for ad stats', { clientId: options?.clientId })
     return { platform: 'tiktok_ads', count: 0, error: 'Missing credentials' }
   }
 
@@ -271,28 +271,28 @@ export async function fetchTikTokAdStats(date = new Date(), options?: TikTokAdsO
       clicks: parseInt(r.metrics.clicks || '0'),
       impressions: parseInt(r.metrics.impressions || '0'),
       stat_date: dateStr,
-      clinic_id: options?.clinicId || null,
+      client_id: options?.clientId || null,
       utm_content: null,
     }))
 
-    const onConflict = options?.clinicId
-      ? 'clinic_id,platform,ad_id,stat_date'
+    const onConflict = options?.clientId
+      ? 'client_id,platform,ad_id,stat_date'
       : 'platform,ad_id,stat_date'
     const { error } = await supabase
       .from('ad_stats')
       .upsert(dbRows, { onConflict })
 
     if (error) {
-      logger.error('ad_stats upsert error', error, { clinicId: options?.clinicId })
+      logger.error('ad_stats upsert error', error, { clientId: options?.clientId })
     }
 
     const duration = Date.now() - startTime
-    logger.info('Ad stats sync completed', { action: 'ad_sync', count: rows.length, duration, clinicId: options?.clinicId })
+    logger.info('Ad stats sync completed', { action: 'ad_sync', count: rows.length, duration, clientId: options?.clientId })
 
     return { platform: 'tiktok_ads', count: rows.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    logger.error('Ad stats sync failed', error, { action: 'ad_sync', duration: Date.now() - startTime, clinicId: options?.clinicId })
+    logger.error('Ad stats sync failed', error, { action: 'ad_sync', duration: Date.now() - startTime, clientId: options?.clientId })
     return { platform: 'tiktok_ads', count: 0, error: message }
   }
 }

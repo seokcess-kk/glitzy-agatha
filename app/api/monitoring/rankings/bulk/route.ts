@@ -26,32 +26,32 @@ export const POST = withAuth(async (req, { user }) => {
   const supabase = serverSupabase()
   const userId = parseInt(user.id, 10)
 
-  // 키워드 ID 수집 → 병원 접근 검증
+  // 키워드 ID 수집 → 클라이언트 접근 검증
   const keywordIds = [...new Set(rankings.map((r: any) => r.keyword_id))]
   const { data: keywords } = await supabase
     .from('monitoring_keywords')
-    .select('id, clinic_id')
+    .select('id, client_id')
     .in('id', keywordIds)
 
   if (!keywords?.length) return apiError('유효한 키워드가 없습니다.', 400)
 
-  // 역할별 병원 접근 검증
+  // 역할별 클라이언트 접근 검증
   if (user.role === 'agency_staff') {
     const { data: assignments } = await supabase
-      .from('user_clinic_assignments')
-      .select('clinic_id')
+      .from('user_client_assignments')
+      .select('client_id')
       .eq('user_id', userId)
-    const assignedIds = new Set((assignments || []).map((a: any) => a.clinic_id))
+    const assignedIds = new Set((assignments || []).map((a: any) => a.client_id))
 
-    const clinicIds = new Set(keywords.map(k => k.clinic_id))
-    for (const cid of clinicIds) {
-      if (!assignedIds.has(cid)) return apiError('배정되지 않은 병원의 키워드가 포함되어 있습니다.', 403)
+    const clientIds = new Set(keywords.map(k => k.client_id))
+    for (const cid of clientIds) {
+      if (!assignedIds.has(cid)) return apiError('배정되지 않은 클라이언트의 키워드가 포함되어 있습니다.', 403)
     }
-  } else if (user.role === 'clinic_admin') {
-    // clinic_admin: 자기 병원 키워드만 허용
-    const clinicIds = new Set(keywords.map(k => k.clinic_id))
-    if (clinicIds.size !== 1 || !clinicIds.has(Number(user.clinic_id))) {
-      return apiError('자신의 병원 키워드만 수정 가능합니다.', 403)
+  } else if (user.role === 'client_admin') {
+    // client_admin: 자기 클라이언트 키워드만 허용
+    const clientIds = new Set(keywords.map(k => k.client_id))
+    if (clientIds.size !== 1 || !clientIds.has(Number(user.client_id))) {
+      return apiError('자신의 클라이언트 키워드만 수정 가능합니다.', 403)
     }
   } else if (user.role !== 'superadmin') {
     return apiError('순위 입력 권한이 없습니다.', 403)

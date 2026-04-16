@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState, StatsCard } from '@/components/common'
@@ -35,7 +35,7 @@ interface LandingPageRow {
   isActive: boolean
   leads: number
   bookings: number
-  customers: number
+  contacts: number
   revenue: number
   leadToBookingRate: number
   conversionRate: number
@@ -86,7 +86,7 @@ function BarTooltip({ active, payload }: ChartTooltipProps) {
 }
 
 export default function LandingPageAnalysis({ startDate, endDate, mode = 'delivery' }: Props) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [data, setData] = useState<AnalysisData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -94,7 +94,7 @@ export default function LandingPageAnalysis({ startDate, endDate, mode = 'delive
     setLoading(true)
     try {
       const qs = new URLSearchParams({ startDate, endDate })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
 
       const res = await fetch(`/api/ads/landing-page-analysis?${qs}`)
       if (!res.ok) {
@@ -108,7 +108,7 @@ export default function LandingPageAnalysis({ startDate, endDate, mode = 'delive
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, selectedClinicId])
+  }, [startDate, endDate, selectedClientId])
 
   useEffect(() => {
     fetchData()
@@ -333,7 +333,7 @@ export default function LandingPageAnalysis({ startDate, endDate, mode = 'delive
                         </span>
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.customers.toLocaleString()}
+                        {row.contacts.toLocaleString()}
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm font-medium">
                         <span className={row.conversionRate >= 5 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground/80'}>

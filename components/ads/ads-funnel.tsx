@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common'
@@ -38,7 +38,7 @@ interface Props {
 }
 
 export default function AdsFunnel({ startDate, endDate }: Props) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
 
   const [adsLoading, setAdsLoading] = useState(true)
   const [funnelLoading, setFunnelLoading] = useState(true)
@@ -54,7 +54,7 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
     try {
       const days = String(Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1))
       const qs = new URLSearchParams({ days })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
 
       const res = await fetch(`/api/ads/stats?${qs}`)
       if (!res.ok) return
@@ -69,13 +69,13 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
     } finally {
       setAdsLoading(false)
     }
-  }, [startDate, endDate, selectedClinicId])
+  }, [startDate, endDate, selectedClientId])
 
   const fetchFunnelData = useCallback(async () => {
     setFunnelLoading(true)
     try {
       const qs = new URLSearchParams({ groupBy: 'total', startDate, endDate })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
 
       const res = await fetch(`/api/dashboard/funnel?${qs}`)
       if (!res.ok) return
@@ -88,7 +88,7 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
     } finally {
       setFunnelLoading(false)
     }
-  }, [startDate, endDate, selectedClinicId])
+  }, [startDate, endDate, selectedClientId])
 
   useEffect(() => {
     fetchAdsStats()

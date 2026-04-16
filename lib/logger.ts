@@ -11,7 +11,7 @@ interface LogContext {
   service?: string
   action?: string
   userId?: string
-  clinicId?: number | null
+  clientId?: number | null
   [key: string]: unknown
 }
 

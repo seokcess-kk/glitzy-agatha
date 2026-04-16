@@ -42,7 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { EmptyState, PageHeader } from '@/components/common'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -56,7 +56,7 @@ export default function MonitoringKeywordsPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const user = session?.user
-  const { selectedClinicId, setSelectedClinicId, clinics } = useClinic()
+  const { selectedClientId, setSelectedClientId, clients } = useClient()
 
   const [keywords, setKeywords] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -71,14 +71,14 @@ export default function MonitoringKeywordsPage() {
   }, [user, router])
 
   const fetchKeywords = async () => {
-    if (!selectedClinicId) {
+    if (!selectedClientId) {
       setKeywords([])
       setLoading(false)
       return
     }
     setLoading(true)
     try {
-      const res = await fetch(`/api/monitoring/keywords?clinic_id=${selectedClinicId}`)
+      const res = await fetch(`/api/monitoring/keywords?client_id=${selectedClientId}`)
       const data = await res.json()
       setKeywords(Array.isArray(data) ? data : [])
     } catch {
@@ -88,15 +88,15 @@ export default function MonitoringKeywordsPage() {
     }
   }
 
-  useEffect(() => { fetchKeywords() }, [selectedClinicId])
+  useEffect(() => { fetchKeywords() }, [selectedClientId])
 
   const handleAdd = async () => {
     if (!form.keyword.trim()) {
       toast.error('키워드를 입력해주세요.')
       return
     }
-    if (!selectedClinicId) {
-      toast.error('병원을 선택해주세요.')
+    if (!selectedClientId) {
+      toast.error('클라이언트을 선택해주세요.')
       return
     }
     setSaving(true)
@@ -104,7 +104,7 @@ export default function MonitoringKeywordsPage() {
       const res = await fetch('/api/monitoring/keywords', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clinic_id: selectedClinicId, ...form }),
+        body: JSON.stringify({ client_id: selectedClientId, ...form }),
       })
       if (!res.ok) {
         const err = await res.json()
@@ -175,19 +175,19 @@ export default function MonitoringKeywordsPage() {
     <>
       <PageHeader icon={TrendingUp} title="키워드 관리" description="순위 모니터링 키워드 등록 및 관리" />
 
-      {/* 병원 선택 */}
+      {/* 클라이언트 선택 */}
       <div className="mb-6">
-        <Label className="text-xs text-muted-foreground mb-1 block">병원</Label>
+        <Label className="text-xs text-muted-foreground mb-1 block">클라이언트</Label>
         <Select
-          value={selectedClinicId ? String(selectedClinicId) : '_none'}
-          onValueChange={v => setSelectedClinicId(v === '_none' ? null : Number(v))}
+          value={selectedClientId ? String(selectedClientId) : '_none'}
+          onValueChange={v => setSelectedClientId(v === '_none' ? null : Number(v))}
         >
           <SelectTrigger className="w-[200px] bg-muted dark:bg-white/5 border-border dark:border-white/10 text-foreground">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="_none" disabled className="text-muted-foreground">병원 선택</SelectItem>
-            {clinics.map(c => (
+            <SelectItem value="_none" disabled className="text-muted-foreground">클라이언트 선택</SelectItem>
+            {clients.map(c => (
               <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
             ))}
           </SelectContent>
@@ -262,9 +262,9 @@ export default function MonitoringKeywordsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {!selectedClinicId ? (
+      {!selectedClientId ? (
         <Card variant="glass" className="p-12 text-center">
-          <p className="text-muted-foreground">병원을 선택해주세요.</p>
+          <p className="text-muted-foreground">클라이언트을 선택해주세요.</p>
         </Card>
       ) : loading ? (
         <Card variant="glass" className="p-6">

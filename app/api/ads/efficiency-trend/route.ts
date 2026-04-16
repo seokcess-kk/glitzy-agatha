@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { getKstDateString } from '@/lib/date'
 
 const DEFAULT_DAYS = 28
@@ -15,7 +15,7 @@ interface DayEntry {
   ctr: number
 }
 
-export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
 
@@ -55,10 +55,10 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     .lt('created_at', tsEnd)
     .order('created_at')
 
-  const adFiltered = applyClinicFilter(adQuery, { clinicId, assignedClinicIds })
-  const leadFiltered = applyClinicFilter(leadQuery, { clinicId, assignedClinicIds })
+  const adFiltered = applyClientFilter(adQuery, { clientId, assignedClientIds })
+  const leadFiltered = applyClientFilter(leadQuery, { clientId, assignedClientIds })
 
-  // agency_staff 배정 병원 0개 → 빈 날짜 틀 반환
+  // agency_staff 배정 클라이언트 0개 → 빈 날짜 틀 반환
   if (adFiltered === null && leadFiltered === null) {
     return apiSuccess([...dayMap.values()])
   }

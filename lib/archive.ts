@@ -13,7 +13,7 @@ export async function archiveBeforeDelete(
   tableName: string,
   recordId: number,
   deletedBy: string | number,
-  clinicId?: number | null,
+  clientId?: number | null,
 ): Promise<void> {
   try {
     const { data } = await supabase
@@ -29,7 +29,7 @@ export async function archiveBeforeDelete(
       record_id: recordId,
       record_data: data,
       deleted_by: typeof deletedBy === 'string' ? parseInt(deletedBy, 10) : deletedBy,
-      clinic_id: clinicId ?? data.clinic_id ?? null,
+      client_id: clientId ?? data.client_id ?? null,
     })
   } catch (e) {
     logger.warn('삭제 스냅샷 보관 실패', { tableName, recordId, error: e })
@@ -45,7 +45,7 @@ export async function archiveBulkBeforeDelete(
   filterColumn: string,
   filterValue: number,
   deletedBy: string | number,
-  clinicId?: number | null,
+  clientId?: number | null,
 ): Promise<void> {
   try {
     const { data: records } = await supabase
@@ -60,7 +60,7 @@ export async function archiveBulkBeforeDelete(
       record_id: record.id,
       record_data: record,
       deleted_by: typeof deletedBy === 'string' ? parseInt(deletedBy, 10) : deletedBy,
-      clinic_id: clinicId ?? record.clinic_id ?? null,
+      client_id: clientId ?? record.client_id ?? null,
     }))
 
     await supabase.from('deleted_records').insert(inserts)

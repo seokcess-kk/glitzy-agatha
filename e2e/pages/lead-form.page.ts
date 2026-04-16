@@ -13,7 +13,7 @@ export class LeadFormPage {
   readonly utmMediumInput: Locator
   readonly utmCampaignInput: Locator
   readonly resultCard: Locator
-  readonly clinicWarning: Locator
+  readonly clientWarning: Locator
 
   constructor(page: Page) {
     this.page = page
@@ -28,7 +28,7 @@ export class LeadFormPage {
     this.utmMediumInput = page.locator('input[name="utm_medium"], input[placeholder*="utm_medium"]')
     this.utmCampaignInput = page.locator('input[name="utm_campaign"], input[placeholder*="utm_campaign"]')
     this.resultCard = page.locator('[class*="border-green"], [class*="border-red"]')
-    this.clinicWarning = page.locator('text=병원을 먼저 선택해주세요, [class*="border-amber"]')
+    this.clientWarning = page.locator('text=클라이언트을 먼저 선택해주세요, [class*="border-amber"]')
   }
 
   async goto(utmParams?: string) {

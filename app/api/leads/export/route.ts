@@ -4,12 +4,12 @@
  * - 전화번호 마스킹 (010-****-5678)
  * - UTF-8 BOM 포함 (한글 인코딩 호환)
  * - 최대 5000건 제한
- * - clinic_admin 이상 권한 필요 (개인정보 내보내기)
+ * - client_admin 이상 권한 필요 (개인정보 내보내기)
  */
 
 import { NextResponse } from 'next/server'
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicAdmin, ClinicContext, applyClinicFilter, apiError } from '@/lib/api-middleware'
+import { withClientAdmin, ClientContext, applyClientFilter, apiError } from '@/lib/api-middleware'
 import { sanitizeString } from '@/lib/security'
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString, toUtcDate } from '@/lib/date'
@@ -59,26 +59,26 @@ const STAGE_LABELS: Record<string, string> = {
   paid: '결제',
 }
 
-function getFunnelStageKey(customer: {
+function getFunnelStageKey(contact: {
   bookings?: { status: string }[]
   consultations?: { status: string }[]
   payments?: { payment_amount?: number }[]
 }): string {
-  if (customer.payments && customer.payments.length > 0) return 'paid'
-  const hasConsultDone = customer.consultations?.some(c =>
+  if (contact.payments && contact.payments.length > 0) return 'paid'
+  const hasConsultDone = contact.consultations?.some(c =>
     ['방문완료', '상담중', '시술확정'].includes(c.status)
   )
   if (hasConsultDone) return 'consulted'
-  const hasVisited = customer.bookings?.some(b =>
+  const hasVisited = contact.bookings?.some(b =>
     ['visited', 'treatment_confirmed'].includes(b.status)
   )
   if (hasVisited) return 'visited'
-  const hasBooked = customer.bookings?.some(b => b.status !== 'cancelled')
+  const hasBooked = contact.bookings?.some(b => b.status !== 'cancelled')
   if (hasBooked) return 'booked'
   return 'lead'
 }
 
-export const GET = withClinicAdmin(async (req: Request, { clinicId, assignedClinicIds, user }: ClinicContext) => {
+export const GET = withClientAdmin(async (req: Request, { clientId, assignedClientIds, user }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')
@@ -106,9 +106,9 @@ export const GET = withClinicAdmin(async (req: Request, { clinicId, assignedClin
 
   // 필요한 컬럼만 select
   let query = supabase
-    .from('customers')
+    .from('contacts')
     .select(`
-      id, name, phone_number, first_source, created_at, clinic_id,
+      id, name, phone_number, first_source, created_at, client_id,
       leads(id, utm_source, utm_campaign, landing_page_id, created_at, landing_page:landing_pages(id, name)),
       consultations(status),
       payments(payment_amount, treatment_name),
@@ -117,7 +117,7 @@ export const GET = withClinicAdmin(async (req: Request, { clinicId, assignedClin
     .order('created_at', { ascending: false })
     .limit(MAX_EXPORT)
 
-  const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
+  const filtered = applyClientFilter(query, { clientId, assignedClientIds })
   if (filtered === null) {
     return buildCsvResponse([])
   }
@@ -126,10 +126,10 @@ export const GET = withClinicAdmin(async (req: Request, { clinicId, assignedClin
   if (tsStart) query = query.gte('created_at', tsStart)
   if (tsEnd) query = query.lt('created_at', tsEnd)
 
-  const { data: customers, error } = await query
+  const { data: contacts, error } = await query
 
   if (error) {
-    logger.error('CSV 내보내기 데이터 조회 실패', error, { clinicId })
+    logger.error('CSV 내보내기 데이터 조회 실패', error, { clientId })
     return apiError('데이터 조회에 실패했습니다.', 500)
   }
 
@@ -138,7 +138,7 @@ export const GET = withClinicAdmin(async (req: Request, { clinicId, assignedClin
 
   const lpId = landingPageId ? Number(landingPageId) : null
 
-  for (const c of customers || []) {
+  for (const c of contacts || []) {
     if (!c.leads || c.leads.length === 0) continue
 
     // 랜딩페이지 필터: 해당 랜딩페이지로 유입된 리드가 있는 고객만
@@ -199,14 +199,14 @@ export const GET = withClinicAdmin(async (req: Request, { clinicId, assignedClin
   // 감사 로그 기록 (개인정보 내보내기)
   logActivity(supabase, {
     userId: parseInt(user.id, 10),
-    clinicId: clinicId || 0,
+    clientId: clientId || 0,
     action: 'leads_csv_export',
-    targetTable: 'customers',
+    targetTable: 'contacts',
     targetId: 0,
     detail: { rowCount: rows.length, filters: { channel, stage, startDate, endDate, landingPageId, utmCampaign } },
   }).catch(() => {})
 
-  logger.info('CSV 내보내기 완료', { clinicId, userId: user.id, rowCount: rows.length })
+  logger.info('CSV 내보내기 완료', { clientId, userId: user.id, rowCount: rows.length })
 
   return buildCsvResponse(rows)
 })

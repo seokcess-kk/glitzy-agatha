@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { formatDate } from '@/lib/date'
 import { EmptyState, PageHeader } from '@/components/common'
-import ClinicApiConfigDialog from '@/components/admin/ClinicApiConfigDialog'
+import ClientApiConfigDialog from '@/components/admin/ClientApiConfigDialog'
 import { API_CONFIG_PLATFORMS, API_PLATFORM_SHORT, type ApiPlatform } from '@/lib/platform'
 
 type Platform = ApiPlatform
@@ -40,12 +40,12 @@ interface ApiConfigSummary {
 const PLATFORM_SHORT = API_PLATFORM_SHORT
 const PLATFORMS = API_CONFIG_PLATFORMS
 
-export default function ClinicsPage() {
+export default function ClientsPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const user = session?.user
 
-  const [clinics, setClinics] = useState<any[]>([])
+  const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState({ name: '', slug: '' })
@@ -64,12 +64,12 @@ export default function ClinicsPage() {
     if (user && user.role !== 'superadmin') router.replace('/')
   }, [user, router])
 
-  const fetchClinics = async () => {
+  const fetchClients = async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/clinics')
+      const res = await fetch('/api/admin/clients')
       const data = await res.json()
-      setClinics(Array.isArray(data) ? data : [])
+      setClients(Array.isArray(data) ? data : [])
     } catch {
       toast.error('데이터 로드 실패')
     } finally {
@@ -77,12 +77,12 @@ export default function ClinicsPage() {
     }
   }
 
-  const fetchApiConfigSummaries = useCallback(async (clinicIds: number[]) => {
+  const fetchApiConfigSummaries = useCallback(async (clientIds: number[]) => {
     const summaries: Record<number, ApiConfigSummary[]> = {}
     await Promise.all(
-      clinicIds.map(async (id) => {
+      clientIds.map(async (id) => {
         try {
-          const res = await fetch(`/api/admin/clinics/${id}/api-configs`)
+          const res = await fetch(`/api/admin/clients/${id}/api-configs`)
           if (!res.ok) return
           const data = await res.json()
           const items = Array.isArray(data) ? data : (data.data || [])
@@ -98,22 +98,22 @@ export default function ClinicsPage() {
     setApiConfigSummaries(prev => ({ ...prev, ...summaries }))
   }, [])
 
-  useEffect(() => { fetchClinics() }, [])
+  useEffect(() => { fetchClients() }, [])
 
   useEffect(() => {
-    if (clinics.length > 0) {
-      fetchApiConfigSummaries(clinics.map((c: any) => c.id))
+    if (clients.length > 0) {
+      fetchApiConfigSummaries(clients.map((c: any) => c.id))
     }
-  }, [clinics, fetchApiConfigSummaries])
+  }, [clients, fetchApiConfigSummaries])
 
   const handleSave = async () => {
     if (!form.name || !form.slug) {
-      toast.error('병원명과 슬러그를 입력해주세요.')
+      toast.error('클라이언트명과 슬러그를 입력해주세요.')
       return
     }
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/clinics', {
+      const res = await fetch('/api/admin/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -124,8 +124,8 @@ export default function ClinicsPage() {
       }
       setForm({ name: '', slug: '' })
       setDialogOpen(false)
-      toast.success('병원이 등록되었습니다.')
-      fetchClinics()
+      toast.success('클라이언트이 등록되었습니다.')
+      fetchClients()
     } catch (e: any) {
       toast.error(e.message || '등록 실패')
     } finally {
@@ -133,31 +133,31 @@ export default function ClinicsPage() {
     }
   }
 
-  const toggleClinicActive = async (id: number, currentActive: boolean) => {
+  const toggleClientActive = async (id: number, currentActive: boolean) => {
     try {
-      const res = await fetch(`/api/admin/clinics/${id}`, {
+      const res = await fetch(`/api/admin/clients/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !currentActive }),
       })
       if (!res.ok) throw new Error()
       toast.success(currentActive ? '비활성화되었습니다.' : '활성화되었습니다.')
-      fetchClinics()
+      fetchClients()
     } catch {
       toast.error('상태 변경에 실패했습니다.')
     }
   }
 
-  const openNotifyDialog = (clinic: any) => {
-    setNotifyTarget(clinic)
+  const openNotifyDialog = (client: any) => {
+    setNotifyTarget(client)
     // notify_phones 우선, fallback: notify_phone
     const phones: string[] =
-      (clinic.notify_phones && clinic.notify_phones.length > 0)
-        ? [...clinic.notify_phones]
-        : (clinic.notify_phone ? [clinic.notify_phone] : [''])
+      (client.notify_phones && client.notify_phones.length > 0)
+        ? [...client.notify_phones]
+        : (client.notify_phone ? [client.notify_phone] : [''])
     if (phones.length === 0) phones.push('')
     setNotifyPhones(phones)
-    setNotifyEnabled(clinic.notify_enabled || false)
+    setNotifyEnabled(client.notify_enabled || false)
     setNotifyDialogOpen(true)
   }
 
@@ -187,7 +187,7 @@ export default function ClinicsPage() {
     }
     setNotifySaving(true)
     try {
-      const res = await fetch(`/api/admin/clinics/${notifyTarget.id}`, {
+      const res = await fetch(`/api/admin/clients/${notifyTarget.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -201,7 +201,7 @@ export default function ClinicsPage() {
       }
       toast.success('알림 설정이 저장되었습니다.')
       setNotifyDialogOpen(false)
-      fetchClinics()
+      fetchClients()
     } catch (e: any) {
       toast.error(e.message || '알림 설정 저장 실패')
     } finally {
@@ -210,16 +210,16 @@ export default function ClinicsPage() {
   }
 
   // 테이블에 표시할 알림 번호 목록
-  const getNotifyDisplay = (clinic: any) => {
+  const getNotifyDisplay = (client: any) => {
     const phones: string[] =
-      (clinic.notify_phones && clinic.notify_phones.length > 0)
-        ? clinic.notify_phones
-        : (clinic.notify_phone ? [clinic.notify_phone] : [])
+      (client.notify_phones && client.notify_phones.length > 0)
+        ? client.notify_phones
+        : (client.notify_phone ? [client.notify_phone] : [])
     return phones
   }
 
-  const getApiStatusColor = (clinicId: number, platform: Platform): string => {
-    const summaries = apiConfigSummaries[clinicId]
+  const getApiStatusColor = (clientId: number, platform: Platform): string => {
+    const summaries = apiConfigSummaries[clientId]
     if (!summaries) return 'bg-muted-foreground/30'
     const item = summaries.find(s => s.platform === platform)
     if (!item) return 'bg-muted-foreground/30'
@@ -238,16 +238,16 @@ export default function ClinicsPage() {
 
   return (
     <>
-      <PageHeader icon={Building2} title="병원 관리" description="병원 고객사 등록 및 관리" />
+      <PageHeader icon={Building2} title="클라이언트 관리" description="클라이언트 고객사 등록 및 관리" />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>신규 병원 등록</DialogTitle>
+            <DialogTitle>신규 클라이언트 등록</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">병원명 *</Label>
+              <Label className="text-xs text-muted-foreground">클라이언트명 *</Label>
               <Input
                 type="text"
                 value={form.name}
@@ -269,7 +269,7 @@ export default function ClinicsPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDialogOpen(false)}>취소</Button>
             <Button onClick={handleSave} disabled={saving} className="bg-brand-600 hover:bg-brand-700">
-              {saving ? '등록 중...' : '병원 등록'}
+              {saving ? '등록 중...' : '클라이언트 등록'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -337,9 +337,9 @@ export default function ClinicsPage() {
 
       {/* API 설정 다이얼로그 */}
       {apiConfigTarget && (
-        <ClinicApiConfigDialog
-          clinicId={apiConfigTarget.id}
-          clinicName={apiConfigTarget.name}
+        <ClientApiConfigDialog
+          clientId={apiConfigTarget.id}
+          clientName={apiConfigTarget.name}
           open={!!apiConfigTarget}
           onClose={() => setApiConfigTarget(null)}
           onUpdated={handleApiConfigUpdated}
@@ -348,21 +348,21 @@ export default function ClinicsPage() {
 
       <Card variant="glass" className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-foreground">병원 목록 ({clinics.length})</h2>
+          <h2 className="font-semibold text-foreground">클라이언트 목록 ({clients.length})</h2>
           <Button onClick={() => setDialogOpen(true)} size="sm" className="bg-brand-600 hover:bg-brand-700">
-            <Plus size={14} /> 병원 등록
+            <Plus size={14} /> 클라이언트 등록
           </Button>
         </div>
         {loading ? (
           <div className="space-y-2">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-12 rounded-xl" />)}</div>
-        ) : clinics.length === 0 ? (
-          <EmptyState icon={Building2} title="등록된 병원이 없습니다." />
+        ) : clients.length === 0 ? (
+          <EmptyState icon={Building2} title="등록된 클라이언트이 없습니다." />
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
                 <TableHead className="text-xs text-muted-foreground font-medium">ID</TableHead>
-                <TableHead className="text-xs text-muted-foreground font-medium">병원명</TableHead>
+                <TableHead className="text-xs text-muted-foreground font-medium">클라이언트명</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">슬러그</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">등록일</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">API 설정</TableHead>
@@ -372,7 +372,7 @@ export default function ClinicsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clinics.map((c: any) => {
+              {clients.map((c: any) => {
                 const phones = getNotifyDisplay(c)
                 return (
                   <TableRow key={c.id} className="border-b border-border dark:border-white/5">
@@ -419,7 +419,7 @@ export default function ClinicsPage() {
                     <TableCell>
                       <Switch
                         checked={c.is_active}
-                        onCheckedChange={() => toggleClinicActive(c.id, c.is_active)}
+                        onCheckedChange={() => toggleClientActive(c.id, c.is_active)}
                       />
                     </TableCell>
                     <TableCell>

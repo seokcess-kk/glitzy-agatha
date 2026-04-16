@@ -7,7 +7,7 @@ export { AdsPage } from './ads.page'
 export { LeadFormPage } from './lead-form.page'
 export {
   AdminUsersPage,
-  AdminClinicsPage,
+  AdminClientsPage,
   AdminAdCreativesPage,
   AdminLandingPagesPage,
 } from './admin.page'

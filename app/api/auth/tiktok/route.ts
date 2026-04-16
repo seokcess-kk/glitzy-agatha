@@ -1,7 +1,7 @@
 /**
  * TikTok OAuth2 인증 시작
  * - superadmin만 접근 가능
- * - clinic_id + CSRF 토큰을 state에 포함하여 TikTok 인증 페이지로 리다이렉트
+ * - client_id + CSRF 토큰을 state에 포함하여 TikTok 인증 페이지로 리다이렉트
  */
 
 import { NextResponse } from 'next/server'
@@ -17,10 +17,10 @@ const TIKTOK_AUTH_URL = 'https://business-api.tiktok.com/portal/auth'
 
 export const GET = withSuperAdmin(async (req: Request) => {
   const url = new URL(req.url)
-  const clinicId = parseId(url.searchParams.get('clinic_id'))
+  const clientId = parseId(url.searchParams.get('client_id'))
 
-  if (!clinicId) {
-    return apiError('clinic_id가 필요합니다.')
+  if (!clientId) {
+    return apiError('client_id가 필요합니다.')
   }
 
   const appId = process.env.TIKTOK_APP_ID
@@ -32,9 +32,9 @@ export const GET = withSuperAdmin(async (req: Request) => {
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
   const redirectUri = `${baseUrl}/api/auth/tiktok/callback`
 
-  // CSRF 방지용 state 토큰 생성 (clinic_id + 랜덤 토큰)
+  // CSRF 방지용 state 토큰 생성 (client_id + 랜덤 토큰)
   const csrfToken = randomBytes(32).toString('hex')
-  const state = JSON.stringify({ clinicId, csrfToken })
+  const state = JSON.stringify({ clientId, csrfToken })
   const stateBase64 = Buffer.from(state).toString('base64url')
 
   // DB에 state 토큰 저장 (콜백에서 검증용, 10분 만료)
@@ -43,13 +43,13 @@ export const GET = withSuperAdmin(async (req: Request) => {
     .from('oauth_states')
     .insert({
       state_token: csrfToken,
-      clinic_id: clinicId,
+      client_id: clientId,
       platform: 'tiktok',
       expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
     })
 
   if (error) {
-    logger.error('OAuth state 저장 실패', error, { clinicId })
+    logger.error('OAuth state 저장 실패', error, { clientId })
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 
@@ -59,7 +59,7 @@ export const GET = withSuperAdmin(async (req: Request) => {
   authUrl.searchParams.set('state', stateBase64)
   authUrl.searchParams.set('redirect_uri', redirectUri)
 
-  logger.info('TikTok OAuth 시작', { clinicId })
+  logger.info('TikTok OAuth 시작', { clientId })
 
   return NextResponse.redirect(authUrl.toString())
 })

@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { normalizeChannel } from '@/lib/channel'
@@ -32,7 +32,7 @@ function extractUtmId(inflowUrl: string | null): string | null {
  * 1차: ad_stats.utm_content 직접 매칭 (url_tags/effective_link 설정된 경우)
  * 2차: leads.inflow_url의 utm_id → campaign_id → ad_stats 캠페인별 집계 → 리드 비율 배분
  */
-export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')
@@ -51,7 +51,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     tsEnd = d.toISOString()
   }
 
-  if (assignedClinicIds !== null && assignedClinicIds.length === 0) {
+  if (assignedClientIds !== null && assignedClientIds.length === 0) {
     return apiSuccess({ creatives: [] })
   }
 
@@ -59,10 +59,10 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     // 1) leads — utm_content가 있는 리드 (inflow_url도 포함)
     let leadsQuery = supabase
       .from('leads')
-      .select('id, customer_id, utm_content, inflow_url, created_at')
+      .select('id, contact_id, utm_content, inflow_url, created_at')
       .not('utm_content', 'is', null)
 
-    const filteredLeads = applyClinicFilter(leadsQuery, { clinicId, assignedClinicIds })
+    const filteredLeads = applyClientFilter(leadsQuery, { clientId, assignedClientIds })
     if (!filteredLeads) return apiSuccess({ creatives: [] })
     leadsQuery = filteredLeads
 
@@ -74,15 +74,15 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       .from('ad_creatives')
       .select('id, name, utm_content, platform, landing_page_id, file_name, file_type')
 
-    const filteredCreatives = applyClinicFilter(creativesQuery, { clinicId, assignedClinicIds })
+    const filteredCreatives = applyClientFilter(creativesQuery, { clientId, assignedClientIds })
     if (filteredCreatives) creativesQuery = filteredCreatives
 
     // 3) payments — 리드 기준 귀속 (기간 필터 없음)
     let paymentsQuery = supabase
       .from('payments')
-      .select('id, payment_amount, customer_id')
+      .select('id, payment_amount, contact_id')
 
-    const filteredPayments = applyClinicFilter(paymentsQuery, { clinicId, assignedClinicIds })
+    const filteredPayments = applyClientFilter(paymentsQuery, { clientId, assignedClientIds })
     if (filteredPayments) paymentsQuery = filteredPayments
 
     // 4) ad_stats — campaign_id별 광고 지표 + utm_content별 직접 매칭 + ad_id별 (TikTok/Google)
@@ -90,7 +90,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       .from('ad_stats')
       .select('ad_id, ad_name, platform, campaign_id, utm_content, spend_amount, clicks, impressions')
 
-    const filteredAdStats = applyClinicFilter(adStatsQuery, { clinicId, assignedClinicIds })
+    const filteredAdStats = applyClientFilter(adStatsQuery, { clientId, assignedClientIds })
     if (filteredAdStats) adStatsQuery = filteredAdStats
     if (dateStart) adStatsQuery = adStatsQuery.gte('stat_date', dateStart)
     if (dateEnd) adStatsQuery = adStatsQuery.lte('stat_date', dateEnd)
@@ -104,17 +104,17 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     ])
 
     if (leadsRes.error) {
-      logger.error('리드 조회 실패', leadsRes.error, { clinicId })
+      logger.error('리드 조회 실패', leadsRes.error, { clientId })
       return apiError('리드 데이터 조회 실패', 500)
     }
     if (creativesRes.error) {
-      logger.warn('소재 메타데이터 조회 실패', { clinicId, error: creativesRes.error.message })
+      logger.warn('소재 메타데이터 조회 실패', { clientId, error: creativesRes.error.message })
     }
     if (paymentsRes.error) {
-      logger.warn('결제 데이터 조회 실패', { clinicId, error: paymentsRes.error.message })
+      logger.warn('결제 데이터 조회 실패', { clientId, error: paymentsRes.error.message })
     }
     if (adStatsRes.error) {
-      logger.warn('ad_stats 조회 실패', { clinicId, error: adStatsRes.error.message })
+      logger.warn('ad_stats 조회 실패', { clientId, error: adStatsRes.error.message })
     }
 
     const leads = leadsRes.data || []
@@ -134,7 +134,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     }
 
     // utm_content별 리드 집계 + campaign_id 매핑 (inflow_url의 utm_id)
-    const contentLeadMap = new Map<string, { leadIds: Set<number>; customerIds: Set<number> }>()
+    const contentLeadMap = new Map<string, { leadIds: Set<number>; contactIds: Set<number> }>()
     const contentCampaignMap = new Map<string, Map<string, number>>() // utm_content → (campaign_id → count)
 
     for (const lead of leads) {
@@ -142,11 +142,11 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       if (!raw) continue
       const content = raw.toLowerCase()
       if (!contentLeadMap.has(content)) {
-        contentLeadMap.set(content, { leadIds: new Set(), customerIds: new Set() })
+        contentLeadMap.set(content, { leadIds: new Set(), contactIds: new Set() })
       }
       const entry = contentLeadMap.get(content)!
       entry.leadIds.add(lead.id)
-      if (lead.customer_id) entry.customerIds.add(lead.customer_id)
+      if (lead.contact_id) entry.contactIds.add(lead.contact_id)
 
       // campaign_id 매핑
       const campId = extractUtmId(lead.inflow_url as string)
@@ -157,28 +157,28 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       }
     }
 
-    // customer_id → utm_content 매핑 (첫 리드 기준)
-    const customerUtmContentMap = new Map<number, string>()
+    // contact_id → utm_content 매핑 (첫 리드 기준)
+    const contactUtmContentMap = new Map<number, string>()
     for (const lead of leads) {
-      if (lead.customer_id && lead.utm_content) {
-        if (!customerUtmContentMap.has(lead.customer_id)) {
-          customerUtmContentMap.set(lead.customer_id, (lead.utm_content as string).toLowerCase())
+      if (lead.contact_id && lead.utm_content) {
+        if (!contactUtmContentMap.has(lead.contact_id)) {
+          contactUtmContentMap.set(lead.contact_id, (lead.utm_content as string).toLowerCase())
         }
       }
     }
 
     // utm_content별 결제 집계
-    const contentPaymentMap = new Map<string, { payingCustomers: Set<number>; revenue: number }>()
+    const contentPaymentMap = new Map<string, { payingContacts: Set<number>; revenue: number }>()
     for (const payment of payments) {
-      const customerId = payment.customer_id
-      if (!customerId) continue
-      const utmContent = customerUtmContentMap.get(customerId)
+      const contactId = payment.contact_id
+      if (!contactId) continue
+      const utmContent = contactUtmContentMap.get(contactId)
       if (!utmContent) continue
       if (!contentPaymentMap.has(utmContent)) {
-        contentPaymentMap.set(utmContent, { payingCustomers: new Set(), revenue: 0 })
+        contentPaymentMap.set(utmContent, { payingContacts: new Set(), revenue: 0 })
       }
       const entry = contentPaymentMap.get(utmContent)!
-      entry.payingCustomers.add(customerId)
+      entry.payingContacts.add(contactId)
       entry.revenue += Number(payment.payment_amount) || 0
     }
 
@@ -253,7 +253,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       utm_content: string; name: string; platform: string | null
       spend: number; clicks: number; impressions: number
       cpc: number; ctr: number; cpl: number
-      leads: number; customers: number; revenue: number; conversionRate: number
+      leads: number; contacts: number; revenue: number; conversionRate: number
       registered: boolean; file_name: string | null; file_type: string | null
       campaign_ids: string[]
     }[] = []
@@ -265,9 +265,9 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
       const adMetrics = getAdMetrics(utmContent)
 
       const leadCount = leadData?.leadIds.size || 0
-      const customerCount = paymentData?.payingCustomers.size || 0
+      const contactCount = paymentData?.payingContacts.size || 0
       const revenue = paymentData?.revenue || 0
-      const conversionRate = leadCount > 0 ? Math.round((customerCount / leadCount) * 1000) / 10 : 0
+      const conversionRate = leadCount > 0 ? Math.round((contactCount / leadCount) * 1000) / 10 : 0
 
       const { spend, clicks, impressions } = adMetrics
 
@@ -298,7 +298,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
         ctr: impressions > 0 ? Math.round((clicks / impressions) * 10000) / 100 : 0,
         cpl: leadCount > 0 ? Math.round(spend / leadCount) : 0,
         leads: leadCount,
-        customers: customerCount,
+        contacts: contactCount,
         revenue,
         conversionRate,
         registered: !!creative,
@@ -343,7 +343,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
         ctr: stats.impressions > 0 ? Math.round((stats.clicks / stats.impressions) * 10000) / 100 : 0,
         cpl: 0,
         leads: 0,
-        customers: 0,
+        contacts: 0,
         revenue: 0,
         conversionRate: 0,
         registered: false,
@@ -358,7 +358,7 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
 
     return apiSuccess({ creatives: allCreatives })
   } catch (error) {
-    logger.error('소재별 성과 조회 실패', error, { clinicId })
+    logger.error('소재별 성과 조회 실패', error, { clientId })
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 })

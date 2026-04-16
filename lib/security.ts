@@ -129,8 +129,8 @@ export function parseId(value: unknown): number | null {
 export interface SessionUser {
   id: string
   username: string
-  role: 'superadmin' | 'clinic_admin' | 'clinic_staff' | 'agency_staff' | 'demo_viewer'
-  clinic_id: number | null
+  role: 'superadmin' | 'client_admin' | 'client_staff' | 'agency_staff' | 'demo_viewer'
+  client_id: number | null
   password_version: number
 }
 
@@ -141,127 +141,127 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   return session.user as SessionUser
 }
 
-// 특정 리소스에 대한 clinic 접근 권한 확인
-export function checkClinicAccess(
-  resourceClinicId: number | null,
+// 특정 리소스에 대한 client 접근 권한 확인
+export function checkClientAccess(
+  resourceClientId: number | null,
   user: SessionUser
 ): boolean {
-  // superadmin은 모든 clinic 접근 가능
+  // superadmin은 모든 client 접근 가능
   if (user.role === 'superadmin') return true
 
-  // clinic_admin의 경우
-  // 리소스에 clinic_id가 없으면 (미배정) 접근 불가
-  if (resourceClinicId === null) return false
+  // client_admin의 경우
+  // 리소스에 client_id가 없으면 (미배정) 접근 불가
+  if (resourceClientId === null) return false
 
-  // 자신의 clinic만 접근 가능
-  return user.clinic_id === resourceClinicId
+  // 자신의 client만 접근 가능
+  return user.client_id === resourceClientId
 }
 
 // 예약(booking) 수정 권한 확인
 export async function canModifyBooking(
   bookingId: number,
   user: SessionUser
-): Promise<{ allowed: boolean; clinicId: number | null; error?: string }> {
+): Promise<{ allowed: boolean; clientId: number | null; error?: string }> {
   // superadmin은 모든 예약에 접근 가능 (DB 조회 생략)
   if (user.role === 'superadmin') {
-    return { allowed: true, clinicId: null }
+    return { allowed: true, clientId: null }
   }
 
   const supabase = serverSupabase()
 
   const { data: booking, error } = await supabase
     .from('bookings')
-    .select('clinic_id')
+    .select('client_id')
     .eq('id', bookingId)
     .single()
 
   if (error) {
     logger.error('DB error in canModifyBooking', error, { action: 'canModifyBooking' })
-    return { allowed: false, clinicId: null, error: '예약 조회 중 오류가 발생했습니다.' }
+    return { allowed: false, clientId: null, error: '예약 조회 중 오류가 발생했습니다.' }
   }
 
   if (!booking) {
-    return { allowed: false, clinicId: null, error: '예약을 찾을 수 없습니다.' }
+    return { allowed: false, clientId: null, error: '예약을 찾을 수 없습니다.' }
   }
 
-  // clinic_admin의 경우 자신의 병원 예약만 접근 가능
-  if (booking.clinic_id !== user.clinic_id) {
-    return { allowed: false, clinicId: booking.clinic_id, error: '해당 예약에 대한 권한이 없습니다.' }
+  // client_admin의 경우 자신의 클라이언트 예약만 접근 가능
+  if (booking.client_id !== user.client_id) {
+    return { allowed: false, clientId: booking.client_id, error: '해당 예약에 대한 권한이 없습니다.' }
   }
 
-  return { allowed: true, clinicId: booking.clinic_id }
+  return { allowed: true, clientId: booking.client_id }
 }
 
-// 고객(customer) 접근 권한 확인
-export async function canAccessCustomer(
-  customerId: number,
+// 고객(contact) 접근 권한 확인
+export async function canAccessContact(
+  contactId: number,
   user: SessionUser
-): Promise<{ allowed: boolean; clinicId: number | null; error?: string }> {
+): Promise<{ allowed: boolean; clientId: number | null; error?: string }> {
   const supabase = serverSupabase()
 
-  const { data: customer, error } = await supabase
-    .from('customers')
-    .select('clinic_id')
-    .eq('id', customerId)
+  const { data: contact, error } = await supabase
+    .from('contacts')
+    .select('client_id')
+    .eq('id', contactId)
     .single()
 
   if (error) {
-    logger.error('DB error in canAccessCustomer', error, { action: 'canAccessCustomer' })
-    return { allowed: false, clinicId: null, error: '고객 조회 중 오류가 발생했습니다.' }
+    logger.error('DB error in canAccessContact', error, { action: 'canAccessContact' })
+    return { allowed: false, clientId: null, error: '고객 조회 중 오류가 발생했습니다.' }
   }
 
-  if (!customer) {
-    return { allowed: false, clinicId: null, error: '고객을 찾을 수 없습니다.' }
+  if (!contact) {
+    return { allowed: false, clientId: null, error: '고객을 찾을 수 없습니다.' }
   }
 
-  // clinic_id가 null인 고객 (미배정)
-  if (customer.clinic_id === null) {
+  // client_id가 null인 고객 (미배정)
+  if (contact.client_id === null) {
     // superadmin만 미배정 고객 접근 가능
     if (user.role === 'superadmin') {
-      return { allowed: true, clinicId: null }
+      return { allowed: true, clientId: null }
     }
-    return { allowed: false, clinicId: null, error: '미배정 고객에 대한 권한이 없습니다.' }
+    return { allowed: false, clientId: null, error: '미배정 고객에 대한 권한이 없습니다.' }
   }
 
-  const allowed = checkClinicAccess(customer.clinic_id, user)
+  const allowed = checkClientAccess(contact.client_id, user)
   if (!allowed) {
-    return { allowed: false, clinicId: customer.clinic_id, error: '해당 고객에 대한 권한이 없습니다.' }
+    return { allowed: false, clientId: contact.client_id, error: '해당 고객에 대한 권한이 없습니다.' }
   }
 
-  return { allowed: true, clinicId: customer.clinic_id }
+  return { allowed: true, clientId: contact.client_id }
 }
 
 // 콘텐츠 포스트(content_posts) 접근 권한 확인
 export async function canAccessContentPost(
   postId: number,
   user: SessionUser
-): Promise<{ allowed: boolean; clinicId: number | null; error?: string }> {
+): Promise<{ allowed: boolean; clientId: number | null; error?: string }> {
   // superadmin은 모든 포스트에 접근 가능 (DB 조회 생략)
   if (user.role === 'superadmin') {
-    return { allowed: true, clinicId: null }
+    return { allowed: true, clientId: null }
   }
 
   const supabase = serverSupabase()
 
   const { data: post, error } = await supabase
     .from('content_posts')
-    .select('clinic_id')
+    .select('client_id')
     .eq('id', postId)
     .single()
 
   if (error) {
     logger.error('DB error in canAccessContentPost', error, { action: 'canAccessContentPost' })
-    return { allowed: false, clinicId: null, error: '포스트 조회 중 오류가 발생했습니다.' }
+    return { allowed: false, clientId: null, error: '포스트 조회 중 오류가 발생했습니다.' }
   }
 
   if (!post) {
-    return { allowed: false, clinicId: null, error: '포스트를 찾을 수 없습니다.' }
+    return { allowed: false, clientId: null, error: '포스트를 찾을 수 없습니다.' }
   }
 
-  // clinic_admin의 경우 자신의 병원 포스트만 접근 가능
-  if (post.clinic_id !== user.clinic_id) {
-    return { allowed: false, clinicId: post.clinic_id, error: '해당 포스트에 대한 권한이 없습니다.' }
+  // client_admin의 경우 자신의 클라이언트 포스트만 접근 가능
+  if (post.client_id !== user.client_id) {
+    return { allowed: false, clientId: post.client_id, error: '해당 포스트에 대한 권한이 없습니다.' }
   }
 
-  return { allowed: true, clinicId: post.clinic_id }
+  return { allowed: true, clientId: post.client_id }
 }

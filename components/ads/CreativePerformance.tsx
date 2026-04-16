@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChannelBadge, EmptyState } from '@/components/common'
@@ -36,7 +36,7 @@ interface CreativeData {
   ctr: number
   cpl: number
   leads: number
-  customers: number
+  contacts: number
   revenue: number
   conversionRate: number
   registered: boolean
@@ -71,7 +71,7 @@ function fmtShort(iso: string) {
 }
 
 export default function CreativePerformance({ startDate, endDate, campaignFilter }: Props) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [data, setData] = useState<CreativePerformanceResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [viewerOpen, setViewerOpen] = useState(false)
@@ -85,7 +85,7 @@ export default function CreativePerformance({ startDate, endDate, campaignFilter
     setLoading(true)
     try {
       const qs = new URLSearchParams({ startDate, endDate })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
 
       const res = await fetch(`/api/ads/creatives-performance?${qs}`)
       if (!res.ok) {
@@ -99,7 +99,7 @@ export default function CreativePerformance({ startDate, endDate, campaignFilter
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, selectedClinicId])
+  }, [startDate, endDate, selectedClientId])
 
   useEffect(() => { fetchData() }, [fetchData])
 

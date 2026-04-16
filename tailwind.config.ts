@@ -13,7 +13,7 @@ const config: Config = {
         sans: ['var(--font-inter)', 'Inter', 'sans-serif'],
       },
       colors: {
-        // Samantha brand — Blue 기반
+        // Agatha brand — Blue 기반
         brand: {
           50: '#eff6ff',
           100: '#dbeafe',

@@ -7,7 +7,7 @@ const SERVICE_NAME = 'MetaAds'
 const logger = createLogger(SERVICE_NAME)
 
 export interface MetaAdsOptions {
-  clinicId?: number
+  clientId?: number
   accountId?: string
   accessToken?: string
 }
@@ -20,7 +20,7 @@ export async function fetchMetaAds(date = new Date(), options?: MetaAdsOptions) 
   const accountId = options?.accountId || process.env.META_AD_ACCOUNT_ID
   const accessToken = options?.accessToken || process.env.META_ACCESS_TOKEN
   if (!accountId || !accessToken) {
-    logger.warn('Missing META_AD_ACCOUNT_ID or META_ACCESS_TOKEN', { clinicId: options?.clinicId })
+    logger.warn('Missing META_AD_ACCOUNT_ID or META_ACCESS_TOKEN', { clientId: options?.clientId })
     return { platform: 'meta_ads', count: 0, error: 'Missing credentials' }
   }
 
@@ -63,29 +63,29 @@ export async function fetchMetaAds(date = new Date(), options?: MetaAdsOptions) 
         clicks: parseInt(c.clicks || '0'),
         impressions: parseInt(c.impressions || '0'),
         stat_date: dateStr,
-        clinic_id: options?.clinicId || null,
+        client_id: options?.clientId || null,
       }))
 
-      // clinic_id가 NULL이면 partial unique index 사용 (폴백 모드)
-      const onConflict = options?.clinicId
-        ? 'clinic_id,platform,campaign_id,stat_date'
+      // client_id가 NULL이면 partial unique index 사용 (폴백 모드)
+      const onConflict = options?.clientId
+        ? 'client_id,platform,campaign_id,stat_date'
         : 'platform,campaign_id,stat_date'
       const { error } = await supabase
         .from('ad_campaign_stats')
         .upsert(rows, { onConflict })
 
       if (error) {
-        logger.error('DB upsert error', error, { clinicId: options?.clinicId })
+        logger.error('DB upsert error', error, { clientId: options?.clientId })
       }
     }
 
     const duration = Date.now() - startTime
-    logger.info('Sync completed', { action: 'sync', count: campaigns.length, duration, clinicId: options?.clinicId })
+    logger.info('Sync completed', { action: 'sync', count: campaigns.length, duration, clientId: options?.clientId })
 
     return { platform: 'meta_ads', count: campaigns.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    logger.error('Sync failed', error, { action: 'sync', duration: Date.now() - startTime, clinicId: options?.clinicId })
+    logger.error('Sync failed', error, { action: 'sync', duration: Date.now() - startTime, clientId: options?.clientId })
     return { platform: 'meta_ads', count: 0, error: message }
   }
 }
@@ -230,18 +230,18 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
       clicks: parseInt(a.clicks || '0'),
       impressions: parseInt(a.impressions || '0'),
       stat_date: dateStr,
-      clinic_id: options?.clinicId || null,
+      client_id: options?.clientId || null,
     }))
 
-    const onConflict = options?.clinicId
-      ? 'clinic_id,platform,ad_id,stat_date'
+    const onConflict = options?.clientId
+      ? 'client_id,platform,ad_id,stat_date'
       : 'platform,ad_id,stat_date'
     const { error } = await supabase
       .from('ad_stats')
       .upsert(rows, { onConflict })
 
     if (error) {
-      logger.error('ad_stats upsert error', error, { clinicId: options?.clinicId })
+      logger.error('ad_stats upsert error', error, { clientId: options?.clientId })
     }
 
     const duration = Date.now() - startTime
@@ -250,13 +250,13 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
       count: allAds.length,
       newUtmMappings: uncachedIds.length,
       duration,
-      clinicId: options?.clinicId,
+      clientId: options?.clientId,
     })
 
     return { platform: 'meta_ads', count: allAds.length }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    logger.error('Ad-level sync failed', error, { action: 'sync_ad_level', duration: Date.now() - startTime, clinicId: options?.clinicId })
+    logger.error('Ad-level sync failed', error, { action: 'sync_ad_level', duration: Date.now() - startTime, clientId: options?.clientId })
     return { platform: 'meta_ads', count: 0, error: message }
   }
 }

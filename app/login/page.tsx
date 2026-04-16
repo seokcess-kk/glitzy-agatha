@@ -53,8 +53,8 @@ export default function LoginPage() {
           <div className="w-14 h-14 bg-gradient-to-br from-brand-500 to-brand-700 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-brand-600/30">
             <Activity size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Samantha</h1>
-          <p className="text-sm text-muted-foreground mt-1">Medical Marketing Intelligence</p>
+          <h1 className="text-2xl font-bold text-foreground">Agatha</h1>
+          <p className="text-sm text-muted-foreground mt-1">Marketing Intelligence</p>
         </div>
 
         {/* 로그인 폼 */}

@@ -1,7 +1,7 @@
 import { test as base, Page } from '@playwright/test'
 
 // 사용자 역할 타입
-export type UserRole = 'superadmin' | 'clinic_admin'
+export type UserRole = 'superadmin' | 'client_admin'
 
 // 테스트 계정 정보
 export const TEST_USERS: Record<UserRole, { email: string; password: string }> = {
@@ -9,9 +9,9 @@ export const TEST_USERS: Record<UserRole, { email: string; password: string }> =
     email: process.env.E2E_SUPERADMIN_EMAIL || 'admin@glitzy.co.kr',
     password: process.env.E2E_SUPERADMIN_PASSWORD || 'test-password',
   },
-  clinic_admin: {
-    email: process.env.E2E_CLINIC_EMAIL || 'clinic@test.com',
-    password: process.env.E2E_CLINIC_PASSWORD || 'test-password',
+  client_admin: {
+    email: process.env.E2E_CLIENT_EMAIL || 'client@test.com',
+    password: process.env.E2E_CLIENT_PASSWORD || 'test-password',
   },
 }
 

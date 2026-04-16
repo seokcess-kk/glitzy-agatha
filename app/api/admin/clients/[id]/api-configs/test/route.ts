@@ -1,5 +1,5 @@
 /**
- * 병원별 광고 매체 API 연결 테스트
+ * 클라이언트별 광고 매체 API 연결 테스트
  * - POST: 저장된 API 키로 각 매체 연결 테스트 수행
  */
 
@@ -137,11 +137,11 @@ async function testTikTokAds(config: Record<string, unknown>): Promise<TestResul
 export const POST = withSuperAdmin(async (req: Request) => {
   const url = new URL(req.url)
   const segments = url.pathname.split('/')
-  // pathname: /api/admin/clinics/[id]/api-configs/test
-  const clinicsIdx = segments.indexOf('clinics')
-  const idSegment = segments[clinicsIdx + 1]
-  const clinicId = parseId(idSegment)
-  if (!clinicId) return apiError('유효한 병원 ID가 필요합니다.')
+  // pathname: /api/admin/clients/[id]/api-configs/test
+  const clientsIdx = segments.indexOf('clients')
+  const idSegment = segments[clientsIdx + 1]
+  const clientId = parseId(idSegment)
+  if (!clientId) return apiError('유효한 클라이언트 ID가 필요합니다.')
 
   let body: { platform?: unknown }
   try {
@@ -160,14 +160,14 @@ export const POST = withSuperAdmin(async (req: Request) => {
 
   // 저장된 설정 조회
   const { data: row, error: fetchError } = await supabase
-    .from('clinic_api_configs')
+    .from('client_api_configs')
     .select('config')
-    .eq('clinic_id', clinicId)
+    .eq('client_id', clientId)
     .eq('platform', platform)
     .maybeSingle()
 
   if (fetchError) {
-    logger.error('설정 조회 실패', fetchError, { clinicId, platform })
+    logger.error('설정 조회 실패', fetchError, { clientId, platform })
     return apiError('서버 오류가 발생했습니다.', 500)
   }
 
@@ -181,7 +181,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
     ? rawConfig as Record<string, unknown>
     : decryptApiConfig(rawConfig as string)
   if (!config) {
-    logger.error('설정 복호화 실패', new Error('decryptApiConfig returned null'), { clinicId, platform })
+    logger.error('설정 복호화 실패', new Error('decryptApiConfig returned null'), { clientId, platform })
     return apiError('API 설정 복호화에 실패했습니다.', 500)
   }
 
@@ -208,29 +208,29 @@ export const POST = withSuperAdmin(async (req: Request) => {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    logger.error('연결 테스트 예외', error, { clinicId, platform })
+    logger.error('연결 테스트 예외', error, { clientId, platform })
     result = { success: false, error: message, platform }
   }
 
   // 테스트 결과 DB 업데이트
   try {
     await supabase
-      .from('clinic_api_configs')
+      .from('client_api_configs')
       .update({
         last_tested_at: new Date().toISOString(),
         last_test_result: result.success ? 'success' : 'failed',
       })
-      .eq('clinic_id', clinicId)
+      .eq('client_id', clientId)
       .eq('platform', platform)
   } catch (updateError) {
-    logger.warn('테스트 결과 DB 업데이트 실패', { clinicId, platform, error: updateError })
+    logger.warn('테스트 결과 DB 업데이트 실패', { clientId, platform, error: updateError })
   }
 
   if (result.success) {
-    logger.info('연결 테스트 성공', { clinicId, platform, accountName: result.accountName })
+    logger.info('연결 테스트 성공', { clientId, platform, accountName: result.accountName })
     return apiSuccess({ success: true, accountName: result.accountName, platform })
   }
 
-  logger.warn('연결 테스트 실패', { clinicId, platform, error: result.error })
+  logger.warn('연결 테스트 실패', { clientId, platform, error: result.error })
   return apiSuccess({ success: false, error: result.error, platform })
 })

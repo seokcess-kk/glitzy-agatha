@@ -42,11 +42,11 @@ interface LandingPage {
   name: string
   file_name: string
   original_file_name: string | null
-  clinic_id: number | null
+  client_id: number | null
   description: string | null
   is_active: boolean
   created_at: string
-  clinic?: { id: number; name: string } | null
+  client?: { id: number; name: string } | null
 }
 
 export default function LandingPagesPage() {
@@ -56,13 +56,13 @@ export default function LandingPagesPage() {
 
   const [landingPages, setLandingPages] = useState<LandingPage[]>([])
   const [availableFiles, setAvailableFiles] = useState<string[]>([])
-  const [clinics, setClinics] = useState<any[]>([])
+  const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<Record<number, { lead_count: number; booking_count: number; paying_customers: number; revenue: number; booking_rate: number; conversion_rate: number }>>({})
+  const [stats, setStats] = useState<Record<number, { lead_count: number; booking_count: number; paying_contacts: number; revenue: number; booking_rate: number; conversion_rate: number }>>({})
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<LandingPage | null>(null)
-  const [form, setForm] = useState({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', redirect_url: '', is_active: true })
+  const [form, setForm] = useState({ name: '', file_name: '', client_id: '', description: '', gtm_id: '', redirect_url: '', is_active: true })
   const [saving, setSaving] = useState(false)
   const [fileMode, setFileMode] = useState<'select' | 'upload'>('select')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -78,7 +78,7 @@ export default function LandingPagesPage() {
       setLoading(true)
       const [lpRes, cRes, statsRes] = await Promise.all([
         fetch('/api/admin/landing-pages?includeFiles=true').then(r => r.json()),
-        fetch('/api/admin/clinics').then(r => r.json()),
+        fetch('/api/admin/clients').then(r => r.json()),
         fetch('/api/admin/landing-pages/stats').then(r => r.json()).catch(() => []),
       ])
       if (lpRes.landingPages) {
@@ -87,7 +87,7 @@ export default function LandingPagesPage() {
       } else {
         setLandingPages(Array.isArray(lpRes) ? lpRes : [])
       }
-      setClinics(Array.isArray(cRes) ? cRes : [])
+      setClients(Array.isArray(cRes) ? cRes : [])
       // 성과 통계를 landing_page_id 기준 맵으로 변환
       if (Array.isArray(statsRes)) {
         const map: Record<number, any> = {}
@@ -148,7 +148,7 @@ export default function LandingPagesPage() {
           ...form,
           file_name: fileName,
           ...(originalFileName && { original_file_name: originalFileName }),
-          clinic_id: form.clinic_id && form.clinic_id !== 'none' ? Number(form.clinic_id) : null,
+          client_id: form.client_id && form.client_id !== 'none' ? Number(form.client_id) : null,
         }),
       })
       if (!res.ok) {
@@ -156,7 +156,7 @@ export default function LandingPagesPage() {
         try { const err = await res.json(); errMsg = err.error || errMsg } catch {}
         throw new Error(errMsg)
       }
-      setForm({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', redirect_url: '', is_active: true })
+      setForm({ name: '', file_name: '', client_id: '', description: '', gtm_id: '', redirect_url: '', is_active: true })
       setUploadFile(null)
       setFileMode('select')
       setEditing(null)
@@ -178,7 +178,7 @@ export default function LandingPagesPage() {
     setForm({
       name: lp.name,
       file_name: lp.file_name,
-      clinic_id: lp.clinic_id ? String(lp.clinic_id) : '',
+      client_id: lp.client_id ? String(lp.client_id) : '',
       description: lp.description || '',
       gtm_id: (lp as any).gtm_id || '',
       redirect_url: (lp as any).redirect_url || '',
@@ -236,13 +236,13 @@ export default function LandingPagesPage() {
         description="정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
         onConfirm={confirmDelete}
       />
-      <PageHeader icon={FileText} title="랜딩 페이지" description="랜딩 페이지 등록 및 병원 배정" />
+      <PageHeader icon={FileText} title="랜딩 페이지" description="랜딩 페이지 등록 및 클라이언트 배정" />
 
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open)
         if (!open) {
           setEditing(null)
-          setForm({ name: '', file_name: '', clinic_id: '', description: '', gtm_id: '', redirect_url: '', is_active: true })
+          setForm({ name: '', file_name: '', client_id: '', description: '', gtm_id: '', redirect_url: '', is_active: true })
           setUploadFile(null)
           setFileMode('select')
         }
@@ -342,14 +342,14 @@ export default function LandingPagesPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">배정 병원</Label>
-              <Select value={form.clinic_id} onValueChange={v => setForm(f => ({ ...f, clinic_id: v }))}>
+              <Label className="text-xs text-muted-foreground">배정 클라이언트</Label>
+              <Select value={form.client_id} onValueChange={v => setForm(f => ({ ...f, client_id: v }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="선택 (미배정 가능)" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">미배정</SelectItem>
-                  {clinics.map((c: any) => (
+                  {clients.map((c: any) => (
                     <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -378,7 +378,7 @@ export default function LandingPagesPage() {
               <Input
                 value={form.redirect_url}
                 onChange={e => setForm(f => ({ ...f, redirect_url: e.target.value }))}
-                placeholder="https://your-clinic.com (미입력 시 이동 없음)"
+                placeholder="https://your-client.com (미입력 시 이동 없음)"
               />
               <p className="text-[10px] text-muted-foreground/60">리드 폼 제출 성공 후 자동 이동할 URL. 비워두면 완료 메시지만 표시됩니다.</p>
             </div>
@@ -417,7 +417,7 @@ export default function LandingPagesPage() {
                 <TableHead className="text-xs text-muted-foreground font-medium">ID</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">이름</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">파일명</TableHead>
-                <TableHead className="text-xs text-muted-foreground font-medium">배정 병원</TableHead>
+                <TableHead className="text-xs text-muted-foreground font-medium">배정 클라이언트</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">URL</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">리드</TableHead>
                 <TableHead className="text-xs text-muted-foreground font-medium">예약</TableHead>
@@ -433,7 +433,7 @@ export default function LandingPagesPage() {
                   <TableCell className="text-muted-foreground text-xs">#{lp.id}</TableCell>
                   <TableCell className="text-foreground font-medium">{lp.name}</TableCell>
                   <TableCell className="text-muted-foreground font-mono text-xs">{lp.original_file_name || lp.file_name}</TableCell>
-                  <TableCell className="text-muted-foreground text-xs">{lp.clinic?.name || '미배정'}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{lp.client?.name || '미배정'}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <code className="text-xs text-brand-400 bg-muted dark:bg-white/5 px-2 py-1 rounded">/lp?id={lp.id}</code>
@@ -465,8 +465,8 @@ export default function LandingPagesPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {stats[lp.id]?.paying_customers ? (
-                      <span className="text-emerald-400 text-sm">{stats[lp.id].paying_customers}<span className="text-muted-foreground/60 text-xs ml-1">({stats[lp.id].conversion_rate}%)</span></span>
+                    {stats[lp.id]?.paying_contacts ? (
+                      <span className="text-emerald-400 text-sm">{stats[lp.id].paying_contacts}<span className="text-muted-foreground/60 text-xs ml-1">({stats[lp.id].conversion_rate}%)</span></span>
                     ) : (
                       <span className="text-muted-foreground/60 text-xs">-</span>
                     )}

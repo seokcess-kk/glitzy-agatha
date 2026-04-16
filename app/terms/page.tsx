@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: '서비스 이용약관',
-  description: 'Samantha 대시보드 서비스 이용약관',
+  description: 'Agatha 대시보드 서비스 이용약관',
 }
 
 export default function TermsOfServicePage() {
@@ -26,7 +26,7 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">제1조 (목적)</h2>
             <p>
-              본 약관은 주식회사 글리지(이하 &ldquo;회사&rdquo;)가 제공하는 Samantha(Medical Marketing Intelligence) 대시보드
+              본 약관은 주식회사 글리지(이하 &ldquo;회사&rdquo;)가 제공하는 Agatha(Marketing Intelligence) 대시보드
               서비스(이하 &ldquo;서비스&rdquo;)의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항,
               기타 필요한 사항을 규정함을 목적으로 합니다.
             </p>
@@ -35,9 +35,9 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">제2조 (정의)</h2>
             <ul className="list-decimal pl-5 space-y-2">
-              <li>&ldquo;서비스&rdquo;란 회사가 제공하는 병원 마케팅 인텔리전스 대시보드 및 관련 부가 서비스를 의미합니다.</li>
+              <li>&ldquo;서비스&rdquo;란 회사가 제공하는 클라이언트 Marketing Intelligence 대시보드 및 관련 부가 서비스를 의미합니다.</li>
               <li>&ldquo;이용자&rdquo;란 본 약관에 따라 회사가 제공하는 서비스를 이용하는 자를 의미합니다.</li>
-              <li>&ldquo;병원&rdquo;이란 서비스에 등록된 의료기관 고객사(테넌트)를 의미합니다.</li>
+              <li>&ldquo;클라이언트&rdquo;이란 서비스에 등록된 의료기관 고객사(테넌트)를 의미합니다.</li>
               <li>&ldquo;계정&rdquo;이란 이용자가 서비스에 접속하기 위해 부여받은 아이디와 비밀번호를 의미합니다.</li>
             </ul>
           </section>
@@ -55,7 +55,7 @@ export default function TermsOfServicePage() {
             <h2 className="text-lg font-semibold text-foreground mb-3">제4조 (서비스의 제공)</h2>
             <p>회사는 다음과 같은 서비스를 제공합니다.</p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
-              <li>병원별 마케팅 성과 대시보드</li>
+              <li>클라이언트별 마케팅 성과 대시보드</li>
               <li>광고 플랫폼(Google, Meta, TikTok, Naver 등) 데이터 연동 및 분석</li>
               <li>리드 관리 및 고객 여정 추적</li>
               <li>예약·상담·결제 통합 관리</li>
@@ -90,10 +90,10 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">제7조 (데이터의 관리)</h2>
             <ul className="list-decimal pl-5 space-y-2">
-              <li>서비스에 등록된 병원 데이터의 소유권은 해당 병원에 있습니다.</li>
+              <li>서비스에 등록된 클라이언트 데이터의 소유권은 해당 클라이언트에 있습니다.</li>
               <li>회사는 서비스 제공 목적 범위 내에서만 데이터를 처리합니다.</li>
               <li>회사는 데이터의 안전한 보관을 위해 합리적인 기술적·관리적 보호 조치를 취합니다.</li>
-              <li>서비스 해지 시 병원 데이터는 관련 법령에 따른 보존 기간 경과 후 파기됩니다.</li>
+              <li>서비스 해지 시 클라이언트 데이터는 관련 법령에 따른 보존 기간 경과 후 파기됩니다.</li>
             </ul>
           </section>
 

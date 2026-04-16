@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, ClinicContext, applyClinicFilter, applyDateRange, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, applyDateRange, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 
@@ -8,7 +8,7 @@ import { getKstDateString } from '@/lib/date'
  * 퍼널 분석 API
  * Phase 2: Lead → Booking → Visit → Payment 전환율 분석
  */
-export const GET = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
+export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const url = new URL(req.url)
   const startParam = url.searchParams.get('startDate')
   const endParam = url.searchParams.get('endDate')
@@ -16,12 +16,12 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
 
   const supabase = serverSupabase()
 
-  // agency_staff 배정 병원 0개 → 빈 결과
-  if (assignedClinicIds !== null && assignedClinicIds.length === 0) {
+  // agency_staff 배정 클라이언트 0개 → 빈 결과
+  if (assignedClientIds !== null && assignedClientIds.length === 0) {
     return apiSuccess({ type: 'total', funnel: { stages: [], totalConversionRate: 0, summary: { leads: 0, payments: 0 } } })
   }
 
-  const ctx = { clinicId, assignedClinicIds }
+  const ctx = { clientId, assignedClientIds }
 
   // KPI와 동일한 날짜 범위 변환: ISO → KST 기준 [start, end) 패턴
   const startKst = startParam ? getKstDateString(new Date(startParam)) : null
@@ -37,34 +37,34 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
   // 데이터 조회 — 모든 timestamp 컬럼에 KPI와 동일한 gte/lt 패턴 적용
   let leadsQuery = supabase
     .from('leads')
-    .select('id, customer_id, utm_source, utm_campaign, created_at')
+    .select('id, contact_id, utm_source, utm_campaign, created_at')
     .limit(5000)
-  leadsQuery = applyClinicFilter(leadsQuery, ctx)!
+  leadsQuery = applyClientFilter(leadsQuery, ctx)!
   if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
   if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
   let bookingsQuery = supabase
     .from('bookings')
-    .select('id, customer_id, status, created_at')
+    .select('id, contact_id, status, created_at')
     .limit(5000)
-  bookingsQuery = applyClinicFilter(bookingsQuery, ctx)!
+  bookingsQuery = applyClientFilter(bookingsQuery, ctx)!
   if (tsStart) bookingsQuery = bookingsQuery.gte('created_at', tsStart)
   if (tsEnd) bookingsQuery = bookingsQuery.lt('created_at', tsEnd)
 
   let consultationsQuery = supabase
     .from('consultations')
-    .select('id, customer_id, status, created_at')
+    .select('id, contact_id, status, created_at')
     .limit(5000)
-  consultationsQuery = applyClinicFilter(consultationsQuery, ctx)!
+  consultationsQuery = applyClientFilter(consultationsQuery, ctx)!
   if (tsStart) consultationsQuery = consultationsQuery.gte('created_at', tsStart)
   if (tsEnd) consultationsQuery = consultationsQuery.lt('created_at', tsEnd)
 
   // payment_date(DATE 컬럼)는 KST 날짜 문자열로 비교
   let paymentsQuery = supabase
     .from('payments')
-    .select('id, customer_id, payment_amount, payment_date')
+    .select('id, contact_id, payment_amount, payment_date')
     .limit(5000)
-  paymentsQuery = applyClinicFilter(paymentsQuery, ctx)!
+  paymentsQuery = applyClientFilter(paymentsQuery, ctx)!
   if (startKst) paymentsQuery = paymentsQuery.gte('payment_date', startKst)
   if (endKst) paymentsQuery = paymentsQuery.lte('payment_date', endKst)
 
@@ -76,45 +76,45 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
   ])
 
   // 고객별 채널/캠페인 매핑
-  const customerChannel: Map<number, string> = new Map()
-  const customerCampaign: Map<number, string> = new Map()
+  const contactChannel: Map<number, string> = new Map()
+  const contactCampaign: Map<number, string> = new Map()
 
   for (const lead of leadsRes.data || []) {
-    if (!customerChannel.has(lead.customer_id)) {
-      customerChannel.set(lead.customer_id, normalizeChannel(lead.utm_source))
+    if (!contactChannel.has(lead.contact_id)) {
+      contactChannel.set(lead.contact_id, normalizeChannel(lead.utm_source))
     }
-    if (!customerCampaign.has(lead.customer_id) && lead.utm_campaign) {
-      customerCampaign.set(lead.customer_id, lead.utm_campaign)
+    if (!contactCampaign.has(lead.contact_id) && lead.utm_campaign) {
+      contactCampaign.set(lead.contact_id, lead.utm_campaign)
     }
   }
 
   // 단계별 고객 집합
-  const leadCustomers = new Set((leadsRes.data || []).map(l => l.customer_id))
-  const bookedCustomers = new Set(
+  const leadContacts = new Set((leadsRes.data || []).map(l => l.contact_id))
+  const bookedContacts = new Set(
     (bookingsRes.data || [])
       .filter(b => b.status !== 'cancelled')
-      .map(b => b.customer_id)
+      .map(b => b.contact_id)
   )
-  const visitedCustomers = new Set(
+  const visitedContacts = new Set(
     (bookingsRes.data || [])
       .filter(b => ['visited', 'treatment_confirmed'].includes(b.status))
-      .map(b => b.customer_id)
+      .map(b => b.contact_id)
   )
-  const consultedCustomers = new Set(
+  const consultedContacts = new Set(
     (consultationsRes.data || [])
       .filter(c => ['방문완료', '상담중', '시술확정'].includes(c.status))
-      .map(c => c.customer_id)
+      .map(c => c.contact_id)
   )
-  const paidCustomers = new Set((paymentsRes.data || []).map(p => p.customer_id))
+  const paidContacts = new Set((paymentsRes.data || []).map(p => p.contact_id))
 
   // 전체 퍼널 또는 그룹별 퍼널
   if (groupBy === 'total') {
     const funnel = buildFunnel(
-      leadCustomers,
-      bookedCustomers,
-      visitedCustomers,
-      consultedCustomers,
-      paidCustomers
+      leadContacts,
+      bookedContacts,
+      visitedContacts,
+      consultedContacts,
+      paidContacts
     )
     return apiSuccess({ type: 'total', funnel })
   }
@@ -128,18 +128,18 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
     paid: Set<number>
   }> = {}
 
-  const getGroupKey = (customerId: number): string => {
+  const getGroupKey = (contactId: number): string => {
     if (groupBy === 'channel') {
-      return customerChannel.get(customerId) || 'Unknown'
+      return contactChannel.get(contactId) || 'Unknown'
     } else if (groupBy === 'campaign') {
-      return customerCampaign.get(customerId) || 'Unknown'
+      return contactCampaign.get(contactId) || 'Unknown'
     }
     return 'Unknown'
   }
 
   // 리드 기준으로 그룹 초기화
   for (const lead of leadsRes.data || []) {
-    const key = getGroupKey(lead.customer_id)
+    const key = getGroupKey(lead.contact_id)
     if (!groups[key]) {
       groups[key] = {
         leads: new Set(),
@@ -149,25 +149,25 @@ export const GET = withClinicFilter(async (req: Request, { user, clinicId, assig
         paid: new Set(),
       }
     }
-    groups[key].leads.add(lead.customer_id)
+    groups[key].leads.add(lead.contact_id)
   }
 
   // 각 단계 고객을 그룹에 배분
-  for (const customerId of bookedCustomers) {
-    const key = getGroupKey(customerId)
-    if (groups[key]) groups[key].booked.add(customerId)
+  for (const contactId of bookedContacts) {
+    const key = getGroupKey(contactId)
+    if (groups[key]) groups[key].booked.add(contactId)
   }
-  for (const customerId of visitedCustomers) {
-    const key = getGroupKey(customerId)
-    if (groups[key]) groups[key].visited.add(customerId)
+  for (const contactId of visitedContacts) {
+    const key = getGroupKey(contactId)
+    if (groups[key]) groups[key].visited.add(contactId)
   }
-  for (const customerId of consultedCustomers) {
-    const key = getGroupKey(customerId)
-    if (groups[key]) groups[key].consulted.add(customerId)
+  for (const contactId of consultedContacts) {
+    const key = getGroupKey(contactId)
+    if (groups[key]) groups[key].consulted.add(contactId)
   }
-  for (const customerId of paidCustomers) {
-    const key = getGroupKey(customerId)
-    if (groups[key]) groups[key].paid.add(customerId)
+  for (const contactId of paidContacts) {
+    const key = getGroupKey(contactId)
+    if (groups[key]) groups[key].paid.add(contactId)
   }
 
   // 결과 생성

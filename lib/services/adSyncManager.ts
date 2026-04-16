@@ -1,6 +1,6 @@
 /**
- * 병원별 광고 동기화 오케스트레이터
- * - clinic_api_configs에서 활성 설정을 조회하여 병원별로 동기화
+ * 클라이언트별 광고 동기화 오케스트레이터
+ * - client_api_configs에서 활성 설정을 조회하여 클라이언트별로 동기화
  * - 설정이 없는 경우 환경변수 폴백 (기존 방식)
  */
 
@@ -15,28 +15,28 @@ import { type ApiPlatform, SYNC_ENABLED_PLATFORMS, API_PLATFORM_LABELS } from '@
 const logger = createLogger('AdSyncManager')
 
 export interface SyncResult {
-  clinicId: number | null  // null = 환경변수 폴백
-  clinicName: string
+  clientId: number | null  // null = 환경변수 폴백
+  clientName: string
   platform: string
   count: number
   error?: string
 }
 
-interface ClinicApiConfig {
+interface ClientApiConfig {
   id: number
-  clinic_id: number
+  client_id: number
   platform: string
   config: string
   is_active: boolean
-  clinics?: { name: string } | null
+  clients?: { name: string } | null
 }
 
 /**
- * 단일 병원의 단일 매체 동기화
+ * 단일 클라이언트의 단일 매체 동기화
  */
 async function syncPlatform(
-  clinicId: number,
-  clinicName: string,
+  clientId: number,
+  clientName: string,
   platform: ApiPlatform,
   configData: string | Record<string, unknown>,
   date: Date,
@@ -47,12 +47,12 @@ async function syncPlatform(
     : decryptApiConfig(configData)
   if (!decrypted) {
     logger.error('설정 복호화 실패', new Error('decryptApiConfig returned null'), {
-      clinicId,
+      clientId,
       platform,
     })
     return {
-      clinicId,
-      clinicName,
+      clientId,
+      clientName,
       platform: API_PLATFORM_LABELS[platform],
       count: 0,
       error: 'Config decryption failed',
@@ -63,7 +63,7 @@ async function syncPlatform(
     switch (platform) {
       case 'meta_ads': {
         const metaOpts = {
-          clinicId,
+          clientId,
           accountId: decrypted.account_id as string,
           accessToken: decrypted.access_token as string,
         }
@@ -72,8 +72,8 @@ async function syncPlatform(
           fetchMetaAdStats(date, metaOpts),
         ])
         return {
-          clinicId,
-          clinicName,
+          clientId,
+          clientName,
           platform: campaignResult.platform,
           count: campaignResult.count + adResult.count,
           error: campaignResult.error || adResult.error || undefined,
@@ -81,16 +81,16 @@ async function syncPlatform(
       }
       case 'google_ads': {
         const result = await fetchGoogleAds(date, {
-          clinicId,
-          clientId: decrypted.client_id as string,
-          clientSecret: decrypted.client_secret as string,
+          clientId,
+          oauthClientId: decrypted.client_id as string,
+          oauthClientSecret: decrypted.client_secret as string,
           developerToken: decrypted.developer_token as string,
           customerId: decrypted.customer_id as string,
           refreshToken: decrypted.refresh_token as string,
         })
         return {
-          clinicId,
-          clinicName,
+          clientId,
+          clientName,
           platform: result.platform,
           count: result.count,
           error: result.error,
@@ -98,7 +98,7 @@ async function syncPlatform(
       }
       case 'tiktok_ads': {
         const tiktokOpts = {
-          clinicId,
+          clientId,
           advertiserId: decrypted.advertiser_id as string,
           accessToken: decrypted.access_token as string,
         }
@@ -107,8 +107,8 @@ async function syncPlatform(
           fetchTikTokAdStats(date, tiktokOpts),
         ])
         return {
-          clinicId,
-          clinicName,
+          clientId,
+          clientName,
           platform: campaignResult.platform,
           count: campaignResult.count + adResult.count,
           error: campaignResult.error || adResult.error || undefined,
@@ -116,8 +116,8 @@ async function syncPlatform(
       }
       default:
         return {
-          clinicId,
-          clinicName,
+          clientId,
+          clientName,
           platform: platform as string,
           count: 0,
           error: `Unknown platform: ${platform}`,
@@ -125,10 +125,10 @@ async function syncPlatform(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    logger.error('동기화 실행 오류', error, { clinicId, platform })
+    logger.error('동기화 실행 오류', error, { clientId, platform })
     return {
-      clinicId,
-      clinicName,
+      clientId,
+      clientName,
       platform: API_PLATFORM_LABELS[platform],
       count: 0,
       error: message,
@@ -137,48 +137,48 @@ async function syncPlatform(
 }
 
 /**
- * 전체 활성 병원 동기화 (Cron용)
- * 1. clinic_api_configs에서 활성 설정 전체 조회
- * 2. clinic_id별 그룹핑 후 병원별 순차, 매체별 병렬 실행
+ * 전체 활성 클라이언트 동기화 (Cron용)
+ * 1. client_api_configs에서 활성 설정 전체 조회
+ * 2. client_id별 그룹핑 후 클라이언트별 순차, 매체별 병렬 실행
  * 3. 설정 없는 경우 환경변수 폴백
  */
-export async function syncAllClinics(date: Date = new Date()): Promise<SyncResult[]> {
+export async function syncAllClients(date: Date = new Date()): Promise<SyncResult[]> {
   const supabase = serverSupabase()
   const allResults: SyncResult[] = []
 
   // 1. 활성 설정 전체 조회
   const { data: configs, error } = await supabase
-    .from('clinic_api_configs')
-    .select('id, clinic_id, platform, config, is_active, clinics(name)')
+    .from('client_api_configs')
+    .select('id, client_id, platform, config, is_active, clients(name)')
     .in('platform', SYNC_ENABLED_PLATFORMS as unknown as string[])
     .eq('is_active', true)
 
   if (error) {
-    logger.error('clinic_api_configs 조회 실패', error)
+    logger.error('client_api_configs 조회 실패', error)
   }
 
-  const validConfigs = (configs || []) as unknown as ClinicApiConfig[]
+  const validConfigs = (configs || []) as unknown as ClientApiConfig[]
 
-  // 2. clinic_id별 그룹핑
-  const clinicMap = new Map<number, { clinicName: string; platforms: Map<ApiPlatform, string | Record<string, unknown>> }>()
+  // 2. client_id별 그룹핑
+  const clientMap = new Map<number, { clientName: string; platforms: Map<ApiPlatform, string | Record<string, unknown>> }>()
 
   for (const cfg of validConfigs) {
-    if (!clinicMap.has(cfg.clinic_id)) {
-      const clinicName = (cfg.clinics as { name: string } | null)?.name || `병원 ${cfg.clinic_id}`
-      clinicMap.set(cfg.clinic_id, {
-        clinicName,
+    if (!clientMap.has(cfg.client_id)) {
+      const clientName = (cfg.clients as { name: string } | null)?.name || `클라이언트 ${cfg.client_id}`
+      clientMap.set(cfg.client_id, {
+        clientName,
         platforms: new Map(),
       })
     }
-    clinicMap.get(cfg.clinic_id)!.platforms.set(cfg.platform as ApiPlatform, cfg.config)
+    clientMap.get(cfg.client_id)!.platforms.set(cfg.platform as ApiPlatform, cfg.config)
   }
 
-  // 3. 병원별 순차 실행, 매체별 병렬 실행
-  for (const [clinicId, { clinicName, platforms }] of clinicMap) {
-    logger.info('병원 동기화 시작', { clinicId, clinicName, platforms: Array.from(platforms.keys()) })
+  // 3. 클라이언트별 순차 실행, 매체별 병렬 실행
+  for (const [clientId, { clientName, platforms }] of clientMap) {
+    logger.info('클라이언트 동기화 시작', { clientId, clientName, platforms: Array.from(platforms.keys()) })
 
     const promises = Array.from(platforms.entries()).map(([platform, configStr]) =>
-      syncPlatform(clinicId, clinicName, platform, configStr, date)
+      syncPlatform(clientId, clientName, platform, configStr, date)
     )
 
     const settled = await Promise.allSettled(promises)
@@ -188,8 +188,8 @@ export async function syncAllClinics(date: Date = new Date()): Promise<SyncResul
         allResults.push(result.value)
       } else {
         allResults.push({
-          clinicId,
-          clinicName,
+          clientId,
+          clientName,
           platform: 'Unknown',
           count: 0,
           error: result.reason?.message || String(result.reason),
@@ -199,8 +199,8 @@ export async function syncAllClinics(date: Date = new Date()): Promise<SyncResul
   }
 
   // 4. 설정 없는 경우: 환경변수 폴백 (기존 방식)
-  if (clinicMap.size === 0) {
-    logger.info('clinic_api_configs 설정 없음, 환경변수 폴백으로 동기화')
+  if (clientMap.size === 0) {
+    logger.info('client_api_configs 설정 없음, 환경변수 폴백으로 동기화')
 
     const fallbackResults = await Promise.allSettled([
       Promise.all([fetchMetaAds(date), fetchMetaAdStats(date)]).then(([c, a]) => ({
@@ -221,16 +221,16 @@ export async function syncAllClinics(date: Date = new Date()): Promise<SyncResul
       const r = fallbackResults[i]
       if (r.status === 'fulfilled') {
         allResults.push({
-          clinicId: null,
-          clinicName: '환경변수 폴백',
+          clientId: null,
+          clientName: '환경변수 폴백',
           platform: r.value.platform,
           count: r.value.count,
           error: r.value.error,
         })
       } else {
         allResults.push({
-          clinicId: null,
-          clinicName: '환경변수 폴백',
+          clientId: null,
+          clientName: '환경변수 폴백',
           platform: platformNames[i],
           count: 0,
           error: r.reason?.message || String(r.reason),
@@ -249,42 +249,42 @@ export async function syncAllClinics(date: Date = new Date()): Promise<SyncResul
 }
 
 /**
- * 특정 병원 동기화 (수동 트리거용)
- * 1. 해당 clinicId의 clinic_api_configs 조회
+ * 특정 클라이언트 동기화 (수동 트리거용)
+ * 1. 해당 clientId의 client_api_configs 조회
  * 2. 설정된 매체만 동기화
  * 3. 없으면 환경변수 폴백
  */
-export async function syncClinic(clinicId: number, date: Date = new Date()): Promise<SyncResult[]> {
+export async function syncClient(clientId: number, date: Date = new Date()): Promise<SyncResult[]> {
   const supabase = serverSupabase()
   const results: SyncResult[] = []
 
-  // 병원명 조회
-  const { data: clinic } = await supabase
-    .from('clinics')
+  // 클라이언트명 조회
+  const { data: client } = await supabase
+    .from('clients')
     .select('name')
-    .eq('id', clinicId)
+    .eq('id', clientId)
     .single()
 
-  const clinicName = clinic?.name || `병원 ${clinicId}`
+  const clientName = client?.name || `클라이언트 ${clientId}`
 
-  // 해당 병원의 활성 설정 조회
+  // 해당 클라이언트의 활성 설정 조회
   const { data: configs, error } = await supabase
-    .from('clinic_api_configs')
-    .select('id, clinic_id, platform, config, is_active')
-    .eq('clinic_id', clinicId)
+    .from('client_api_configs')
+    .select('id, client_id, platform, config, is_active')
+    .eq('client_id', clientId)
     .in('platform', SYNC_ENABLED_PLATFORMS as unknown as string[])
     .eq('is_active', true)
 
   if (error) {
-    logger.error('clinic_api_configs 조회 실패', error, { clinicId })
+    logger.error('client_api_configs 조회 실패', error, { clientId })
   }
 
-  const validConfigs = (configs || []) as unknown as ClinicApiConfig[]
+  const validConfigs = (configs || []) as unknown as ClientApiConfig[]
 
   if (validConfigs.length > 0) {
     // 설정된 매체 병렬 동기화
     const promises = validConfigs.map(cfg =>
-      syncPlatform(clinicId, clinicName, cfg.platform as ApiPlatform, cfg.config, date)
+      syncPlatform(clientId, clientName, cfg.platform as ApiPlatform, cfg.config, date)
     )
 
     const settled = await Promise.allSettled(promises)
@@ -294,8 +294,8 @@ export async function syncClinic(clinicId: number, date: Date = new Date()): Pro
         results.push(result.value)
       } else {
         results.push({
-          clinicId,
-          clinicName,
+          clientId,
+          clientName,
           platform: 'Unknown',
           count: 0,
           error: result.reason?.message || String(result.reason),
@@ -304,7 +304,7 @@ export async function syncClinic(clinicId: number, date: Date = new Date()): Pro
     }
   } else {
     // 환경변수 폴백
-    logger.info('병원별 설정 없음, 환경변수 폴백', { clinicId })
+    logger.info('클라이언트별 설정 없음, 환경변수 폴백', { clientId })
 
     const fallbackResults = await Promise.allSettled([
       Promise.all([fetchMetaAds(date), fetchMetaAdStats(date)]).then(([c, a]) => ({
@@ -325,16 +325,16 @@ export async function syncClinic(clinicId: number, date: Date = new Date()): Pro
       const r = fallbackResults[i]
       if (r.status === 'fulfilled') {
         results.push({
-          clinicId: null,
-          clinicName: '환경변수 폴백',
+          clientId: null,
+          clientName: '환경변수 폴백',
           platform: r.value.platform,
           count: r.value.count,
           error: r.value.error,
         })
       } else {
         results.push({
-          clinicId: null,
-          clinicName: '환경변수 폴백',
+          clientId: null,
+          clientName: '환경변수 폴백',
           platform: platformNames[i],
           count: 0,
           error: r.reason?.message || String(r.reason),

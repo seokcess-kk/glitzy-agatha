@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { StatsCard } from '@/components/common'
 
 interface KpiComparison {
@@ -24,7 +24,7 @@ interface KpiData {
   totalImpressions: number
   cpc: number
   ctr: number
-  payingCustomerCount: number
+  payingContactCount: number
   comparison?: KpiComparison
 }
 
@@ -34,7 +34,7 @@ interface Props {
 }
 
 export default function AdsKpiCards({ startDate, endDate }: Props) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [data, setData] = useState<KpiData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -42,7 +42,7 @@ export default function AdsKpiCards({ startDate, endDate }: Props) {
     setLoading(true)
     try {
       const qs = new URLSearchParams({ compare: 'true', startDate, endDate })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
 
       const res = await fetch(`/api/dashboard/kpi?${qs}`)
       if (!res.ok) {
@@ -56,7 +56,7 @@ export default function AdsKpiCards({ startDate, endDate }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, selectedClinicId])
+  }, [startDate, endDate, selectedClientId])
 
   useEffect(() => {
     fetchData()

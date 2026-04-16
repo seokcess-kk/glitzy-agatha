@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Megaphone, ArrowLeft, Phone, Clock, ChevronRight, RefreshCw, FileText, User, ShieldCheck, StickyNote, Search, X } from 'lucide-react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -50,7 +50,7 @@ interface CampaignSummary {
 
 interface CampaignLead {
   id: number
-  customer_id: number
+  contact_id: number
   utm_source: string
   utm_medium: string
   utm_campaign: string
@@ -62,7 +62,7 @@ interface CampaignLead {
   lead_status: string
   notes: string | null
   custom_data: { survey?: Record<string, string>; marketing_consent?: boolean; name?: string } | null
-  customer: { id: number; name: string; phone_number: string; first_source: string } | null
+  contact: { id: number; name: string; phone_number: string; first_source: string } | null
   landing_page: { id: number; name: string } | null
 }
 
@@ -287,7 +287,7 @@ function LeadCard({ lead, onStatusChange, onNotesChange }: {
   const survey = lead.custom_data?.survey
   const surveyEntries = survey ? Object.values(survey) : []
   const marketingConsent = lead.custom_data?.marketing_consent
-  const leadName = lead.custom_data?.name || lead.customer?.name || '이름 없음'
+  const leadName = lead.custom_data?.name || lead.contact?.name || '이름 없음'
   const status = lead.lead_status || 'new'
   const statusConfig = LEAD_STATUS_CONFIG[status] || LEGACY_STATUS[status] || LEAD_STATUS_CONFIG.new
 
@@ -308,7 +308,7 @@ function LeadCard({ lead, onStatusChange, onNotesChange }: {
         <p className="text-sm font-semibold text-foreground shrink-0">{leadName}</p>
         <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
           <Phone size={10} />
-          {lead.customer?.phone_number || '-'}
+          {lead.contact?.phone_number || '-'}
         </span>
         <ChannelBadge channel={lead.utm_source || '-'} />
         {marketingConsent !== undefined && (
@@ -393,7 +393,7 @@ const DETAIL_SORT_OPTIONS = [
 ]
 
 function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => void }) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [leads, setLeads] = useState<CampaignLead[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -406,7 +406,7 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
   const fetchLeads = () => {
     setLoading(true)
     const params = new URLSearchParams({ campaign })
-    if (selectedClinicId) params.set('clinic_id', String(selectedClinicId))
+    if (selectedClientId) params.set('client_id', String(selectedClientId))
     fetch(`/api/campaigns?${params}`)
       .then(r => r.json())
       .then(d => setLeads(d.leads || []))
@@ -414,7 +414,7 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchLeads() }, [campaign, selectedClinicId])
+  useEffect(() => { fetchLeads() }, [campaign, selectedClientId])
 
   // 필터링 + 정렬
   const filtered = useMemo(() => {
@@ -435,8 +435,8 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       result = result.filter(l => {
-        const name = (l.custom_data?.name || l.customer?.name || '').toLowerCase()
-        const phone = l.customer?.phone_number || ''
+        const name = (l.custom_data?.name || l.contact?.name || '').toLowerCase()
+        const phone = l.contact?.phone_number || ''
         return name.includes(q) || phone.includes(q)
       })
     }
@@ -456,8 +456,8 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
       switch (sortBy) {
         case 'oldest': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         case 'name': {
-          const nameA = a.custom_data?.name || a.customer?.name || ''
-          const nameB = b.custom_data?.name || b.customer?.name || ''
+          const nameA = a.custom_data?.name || a.contact?.name || ''
+          const nameB = b.custom_data?.name || b.contact?.name || ''
           return nameA.localeCompare(nameB, 'ko')
         }
         default: return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -490,8 +490,8 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       result = result.filter(l => {
-        const name = (l.custom_data?.name || l.customer?.name || '').toLowerCase()
-        const phone = l.customer?.phone_number || ''
+        const name = (l.custom_data?.name || l.contact?.name || '').toLowerCase()
+        const phone = l.contact?.phone_number || ''
         return name.includes(q) || phone.includes(q)
       })
     }
@@ -503,7 +503,7 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
 
   const handleStatusChange = async (leadId: number, newStatus: string) => {
     const params = new URLSearchParams()
-    if (selectedClinicId) params.set('clinic_id', String(selectedClinicId))
+    if (selectedClientId) params.set('client_id', String(selectedClientId))
     const res = await fetch(`/api/leads/${leadId}?${params}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -524,7 +524,7 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
 
   const handleNotesChange = async (leadId: number, notes: string) => {
     const params = new URLSearchParams()
-    if (selectedClinicId) params.set('clinic_id', String(selectedClinicId))
+    if (selectedClientId) params.set('client_id', String(selectedClientId))
     const res = await fetch(`/api/leads/${leadId}?${params}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -733,7 +733,7 @@ export default function CampaignsPage() {
 }
 
 function CampaignsContent() {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const searchParams = useSearchParams()
   const router = useRouter()
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
@@ -744,7 +744,7 @@ function CampaignsContent() {
 
   const fetchCampaigns = () => {
     setLoading(true)
-    const qs = selectedClinicId ? `?clinic_id=${selectedClinicId}` : ''
+    const qs = selectedClientId ? `?client_id=${selectedClientId}` : ''
     fetch(`/api/campaigns${qs}`)
       .then(r => r.json())
       .then(d => setCampaigns(Array.isArray(d) ? d : []))
@@ -752,7 +752,7 @@ function CampaignsContent() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchCampaigns() }, [selectedClinicId])
+  useEffect(() => { fetchCampaigns() }, [selectedClientId])
 
   const handleSelect = (campaign: string) => {
     setSelectedCampaign(campaign)

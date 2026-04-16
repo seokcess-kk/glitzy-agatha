@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Send, CheckCircle, AlertCircle, Loader2, Link2, Tag } from 'lucide-react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { getUtmSourceLabel, getUtmMediumLabel } from '@/lib/utm'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
@@ -17,7 +17,7 @@ import { PageHeader } from '@/components/common'
 
 function LeadFormContent() {
   const searchParams = useSearchParams()
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
 
   // 폼 입력
   const [name, setName] = useState('')
@@ -73,7 +73,7 @@ function LeadFormContent() {
           utm_content: utmContent || undefined,
           utm_term: utmTerm || undefined,
           inflowUrl: window.location.href,
-          clinic_id: selectedClinicId || undefined,
+          client_id: selectedClientId || undefined,
         }),
       })
 
@@ -147,12 +147,12 @@ function LeadFormContent() {
         </Card>
       )}
 
-      {/* 병원 미선택 경고 */}
-      {!selectedClinicId && (
+      {/* 클라이언트 미선택 경고 */}
+      {!selectedClientId && (
         <Card variant="glass" className="p-4 mb-6 border-amber-500/30 bg-amber-500/10">
           <div className="flex items-center gap-2">
             <AlertCircle size={16} className="text-amber-400" />
-            <span className="text-sm text-amber-300">병원을 먼저 선택해주세요</span>
+            <span className="text-sm text-amber-300">클라이언트을 먼저 선택해주세요</span>
           </div>
         </Card>
       )}
@@ -249,7 +249,7 @@ function LeadFormContent() {
 
           <Button
             type="submit"
-            disabled={loading || !phoneNumber || !selectedClinicId}
+            disabled={loading || !phoneNumber || !selectedClientId}
             className="w-full bg-brand-600 hover:bg-brand-700"
           >
             {loading ? (
@@ -289,8 +289,8 @@ function LeadFormContent() {
             {result.data && (
               <div className="mt-2 text-xs text-muted-foreground space-y-1">
                 <p>Lead ID: {result.data.leadId}</p>
-                <p>Customer ID: {result.data.customerId}</p>
-                <p>신규 고객: {result.data.isNewCustomer ? '예' : '아니오 (재방문)'}</p>
+                <p>Contact ID: {result.data.contactId}</p>
+                <p>신규 고객: {result.data.isNewContact ? '예' : '아니오 (재방문)'}</p>
                 {result.data.utm && (
                   <p className="text-brand-400">
                     UTM: {result.data.utm.utm_source || '-'} / {result.data.utm.utm_campaign || '-'}

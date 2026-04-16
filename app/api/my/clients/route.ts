@@ -6,7 +6,7 @@ export const GET = withAuth(async (req, { user }) => {
 
   if (user.role === 'superadmin') {
     const { data, error } = await supabase
-      .from('clinics')
+      .from('clients')
       .select('id, name, slug')
       .eq('is_active', true)
       .order('name')
@@ -16,20 +16,20 @@ export const GET = withAuth(async (req, { user }) => {
 
   if (user.role === 'agency_staff') {
     const { data, error } = await supabase
-      .from('user_clinic_assignments')
-      .select('clinic:clinics(id, name, slug)')
+      .from('user_client_assignments')
+      .select('client:clients(id, name, slug)')
       .eq('user_id', parseInt(user.id, 10))
     if (error) return apiError(error.message, 500)
-    const clinics = (data || []).map((d: any) => d.clinic).filter(Boolean)
-    return apiSuccess(clinics)
+    const clients = (data || []).map((d: any) => d.client).filter(Boolean)
+    return apiSuccess(clients)
   }
 
-  // clinic_admin / clinic_staff: 자기 병원만
-  if (user.clinic_id) {
+  // client_admin / client_staff: 자기 클라이언트만
+  if (user.client_id) {
     const { data, error } = await supabase
-      .from('clinics')
+      .from('clients')
       .select('id, name, slug')
-      .eq('id', user.clinic_id)
+      .eq('id', user.client_id)
       .single()
     if (error) return apiError(error.message, 500)
     return apiSuccess(data ? [data] : [])

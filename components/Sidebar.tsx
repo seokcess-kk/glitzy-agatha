@@ -5,7 +5,7 @@ import { signOut } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import { LayoutDashboard, Users, BarChart2, LogOut, Activity, Calendar, Film, Link2, Scan, Newspaper, ChevronUp, User, ClipboardList, LucideIcon, Building2, UserCog, FileText, Image as ImageIcon, Megaphone, TrendingUp, Shield, KeyRound, ShieldCheck, Receipt, Settings2 } from 'lucide-react'
-import { useClinic } from './ClinicContext'
+import { useClient } from './ClientContext'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 // 메뉴 타입 정의
-// minRole: 1=clinic_staff, 2=clinic_admin/agency_staff, 3=superadmin
+// minRole: 1=client_staff, 2=client_admin/agency_staff, 3=superadmin
 interface MenuItem {
   href: string
   label: string
@@ -41,9 +41,9 @@ interface MenuGroup {
 }
 
 const ROLE_LEVEL: Record<string, number> = {
-  clinic_staff: 1,
+  client_staff: 1,
   agency_staff: 2,
-  clinic_admin: 2,
+  client_admin: 2,
   superadmin: 3,
   demo_viewer: 3,
 }
@@ -115,16 +115,16 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const user = session?.user
-  const userRole = user?.role || 'clinic_staff'
+  const userRole = user?.role || 'client_staff'
   const userLevel = ROLE_LEVEL[userRole] || 1
   const isSuperAdmin = userRole === 'superadmin'
-  const isClinicAdmin = userRole === 'clinic_admin'
+  const isClientAdmin = userRole === 'client_admin'
   const isAgencyStaff = userRole === 'agency_staff'
   const isDemoViewer = userRole === 'demo_viewer'
 
   const [pwDialogOpen, setPwDialogOpen] = useState(false)
-  const { selectedClinicId, setSelectedClinicId, clinics } = useClinic()
-  const selectedClinic = clinics.find(c => c.id === selectedClinicId)
+  const { selectedClientId, setSelectedClientId, clients } = useClient()
+  const selectedClient = clients.find(c => c.id === selectedClientId)
 
   // agency_staff 메뉴 권한
   const [menuPermissions, setMenuPermissions] = useState<string[]>([])
@@ -171,8 +171,8 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
           <Activity size={16} className="text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-foreground">Samantha</p>
-          <p className="text-xs text-muted-foreground">마케팅 인텔리전스</p>
+          <p className="text-sm font-bold text-foreground">Agatha</p>
+          <p className="text-xs text-muted-foreground">Marketing Intelligence</p>
         </div>
         <ThemeToggle />
       </div>
@@ -180,23 +180,23 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       {/* 슈퍼어드민 / agency_staff / demo_viewer: 클리닉 스위처 */}
       {(isSuperAdmin || isAgencyStaff || isDemoViewer) && (
         <div className="px-3 py-3 border-b border-border">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2 px-1">병원 선택</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2 px-1">클라이언트 선택</p>
           <Select
-            value={selectedClinicId?.toString() ?? 'all'}
-            onValueChange={v => setSelectedClinicId(v === 'all' ? null : Number(v))}
+            value={selectedClientId?.toString() ?? 'all'}
+            onValueChange={v => setSelectedClientId(v === 'all' ? null : Number(v))}
           >
             <SelectTrigger className="w-full text-sm">
-              <SelectValue placeholder="전체 병원" />
+              <SelectValue placeholder="전체 클라이언트" />
             </SelectTrigger>
             <SelectContent>
-              {(isSuperAdmin || isDemoViewer) && <SelectItem value="all">전체 병원</SelectItem>}
-              {clinics.map(c => (
+              {(isSuperAdmin || isDemoViewer) && <SelectItem value="all">전체 클라이언트</SelectItem>}
+              {clients.map(c => (
                 <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {selectedClinic && (
-            <p className="text-[10px] text-brand-400 mt-1.5 px-1">{selectedClinic.name} 데이터 조회 중</p>
+          {selectedClient && (
+            <p className="text-[10px] text-brand-400 mt-1.5 px-1">{selectedClient.name} 데이터 조회 중</p>
           )}
         </div>
       )}
@@ -244,8 +244,8 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
           )
         })}
 
-        {/* clinic_admin 전용: 담당자 관리 */}
-        {isClinicAdmin && (
+        {/* client_admin 전용: 담당자 관리 */}
+        {isClientAdmin && (
           <div className="space-y-1 mt-2">
             <div className="pt-4 pb-1">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest px-3">관리</p>
@@ -283,11 +283,11 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                 랜딩 페이지
               </Link>
               <Link
-                href="/admin/clinics" onClick={onClose}
-                className={navLinkClass(pathname === '/admin/clinics')}
+                href="/admin/clients" onClick={onClose}
+                className={navLinkClass(pathname === '/admin/clients')}
               >
                 <Building2 size={17} />
-                병원 관리
+                클라이언트 관리
               </Link>
               <Link
                 href="/admin/users" onClick={onClose}
@@ -340,7 +340,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-foreground font-medium truncate">{user?.name || user?.username}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {isSuperAdmin ? '슈퍼어드민' : isAgencyStaff ? '실행사 담당자' : isClinicAdmin ? '병원 관리자' : '병원 담당자'}
+                  {isSuperAdmin ? '슈퍼어드민' : isAgencyStaff ? '에이전시 담당자' : isClientAdmin ? '클라이언트 관리자' : '클라이언트 담당자'}
                 </p>
               </div>
               <ChevronUp size={14} className="text-muted-foreground shrink-0" />

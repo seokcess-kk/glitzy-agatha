@@ -4,13 +4,13 @@
  * DELETE: 템플릿 삭제
  */
 
-import { withClinicFilter, apiError, apiSuccess, ClinicContext } from '@/lib/api-middleware'
+import { withClientFilter, apiError, apiSuccess, ClientContext } from '@/lib/api-middleware'
 import { serverSupabase } from '@/lib/supabase'
 import { sanitizeUtmParam } from '@/lib/utm'
 import { parseId, sanitizeString, sanitizeUrl } from '@/lib/security'
 import { archiveBeforeDelete } from '@/lib/archive'
 
-export const PUT = withClinicFilter(async (req: Request, { user, clinicId }: ClinicContext) => {
+export const PUT = withClientFilter(async (req: Request, { user, clientId }: ClientContext) => {
   const url = new URL(req.url)
   const pathParts = url.pathname.split('/')
   const idStr = pathParts[pathParts.length - 1]
@@ -32,7 +32,7 @@ export const PUT = withClinicFilter(async (req: Request, { user, clinicId }: Cli
   // 템플릿 존재 및 권한 확인
   const { data: template, error: fetchError } = await supabase
     .from('utm_templates')
-    .select('id, clinic_id')
+    .select('id, client_id')
     .eq('id', templateId)
     .single()
 
@@ -40,8 +40,8 @@ export const PUT = withClinicFilter(async (req: Request, { user, clinicId }: Cli
     return apiError('템플릿을 찾을 수 없습니다.', 404)
   }
 
-  // 권한 검증 (superadmin이 아니면 자신의 clinic만 수정 가능)
-  if (user.role !== 'superadmin' && template.clinic_id !== clinicId) {
+  // 권한 검증 (superadmin이 아니면 자신의 client만 수정 가능)
+  if (user.role !== 'superadmin' && template.client_id !== clientId) {
     return apiError('이 템플릿을 수정할 권한이 없습니다.', 403)
   }
 
@@ -57,7 +57,7 @@ export const PUT = withClinicFilter(async (req: Request, { user, clinicId }: Cli
     const { data: existing } = await supabase
       .from('utm_templates')
       .select('id')
-      .eq('clinic_id', template.clinic_id)
+      .eq('client_id', template.client_id)
       .eq('name', name)
       .neq('id', templateId)
       .single()
@@ -82,7 +82,7 @@ export const PUT = withClinicFilter(async (req: Request, { user, clinicId }: Cli
       await supabase
         .from('utm_templates')
         .update({ is_default: false })
-        .eq('clinic_id', template.clinic_id)
+        .eq('client_id', template.client_id)
         .eq('is_default', true)
         .neq('id', templateId)
     }
@@ -106,7 +106,7 @@ export const PUT = withClinicFilter(async (req: Request, { user, clinicId }: Cli
   return apiSuccess({ template: data })
 })
 
-export const DELETE = withClinicFilter(async (req: Request, { user, clinicId }: ClinicContext) => {
+export const DELETE = withClientFilter(async (req: Request, { user, clientId }: ClientContext) => {
   const url = new URL(req.url)
   const pathParts = url.pathname.split('/')
   const idStr = pathParts[pathParts.length - 1]
@@ -121,7 +121,7 @@ export const DELETE = withClinicFilter(async (req: Request, { user, clinicId }: 
   // 템플릿 존재 및 권한 확인
   const { data: template, error: fetchError } = await supabase
     .from('utm_templates')
-    .select('id, clinic_id')
+    .select('id, client_id')
     .eq('id', templateId)
     .single()
 
@@ -130,11 +130,11 @@ export const DELETE = withClinicFilter(async (req: Request, { user, clinicId }: 
   }
 
   // 권한 검증
-  if (user.role !== 'superadmin' && template.clinic_id !== clinicId) {
+  if (user.role !== 'superadmin' && template.client_id !== clientId) {
     return apiError('이 템플릿을 삭제할 권한이 없습니다.', 403)
   }
 
-  await archiveBeforeDelete(supabase, 'utm_templates', templateId, user.id, template.clinic_id)
+  await archiveBeforeDelete(supabase, 'utm_templates', templateId, user.id, template.client_id)
   const { error } = await supabase
     .from('utm_templates')
     .delete()

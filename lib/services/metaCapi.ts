@@ -1,7 +1,7 @@
 /**
  * Meta Conversions API (CAPI) 서비스
  * - 서버사이드 전환 이벤트 전송
- * - 병원별 Pixel ID/토큰 지원 (clinic_api_configs 또는 환경변수 폴백)
+ * - 클라이언트별 Pixel ID/토큰 지원 (client_api_configs 또는 환경변수 폴백)
  * - SHA256 해싱으로 PII 보호
  * - capi_events 테이블에 전송 결과 로깅
  */
@@ -26,7 +26,7 @@ interface CapiUserData {
 }
 
 interface CapiEventParams {
-  clinicId: number
+  clientId: number
   leadId?: number
   eventName?: string     // 기본값: 'Lead'
   eventId: string        // UUID (브라우저 Pixel과 중복 제거용)
@@ -70,20 +70,20 @@ function hashPhone(phone: string): string {
 }
 
 /**
- * 병원별 Meta CAPI 설정 조회
- * 1. clinic_api_configs 테이블에서 병원별 설정
+ * 클라이언트별 Meta CAPI 설정 조회
+ * 1. client_api_configs 테이블에서 클라이언트별 설정
  * 2. 환경변수 폴백 (META_PIXEL_ID, META_ACCESS_TOKEN)
  */
 async function getCapiConfig(
   supabase: SupabaseClient,
-  clinicId: number
+  clientId: number
 ): Promise<CapiConfig | null> {
-  // 1. 병원별 설정 조회
+  // 1. 클라이언트별 설정 조회
   try {
     const { data } = await supabase
-      .from('clinic_api_configs')
+      .from('client_api_configs')
       .select('config')
-      .eq('clinic_id', clinicId)
+      .eq('client_id', clientId)
       .eq('platform', 'meta_capi')
       .maybeSingle()
 
@@ -94,12 +94,12 @@ async function getCapiConfig(
       }
       // enabled: false면 CAPI 비활성화
       if (config.enabled === false) {
-        logger.debug('CAPI disabled for clinic', { clinicId })
+        logger.debug('CAPI disabled for client', { clientId })
         return null
       }
     }
   } catch (e) {
-    logger.warn('clinic_api_configs 조회 실패, 환경변수 폴백', { clinicId, error: e })
+    logger.warn('client_api_configs 조회 실패, 환경변수 폴백', { clientId, error: e })
   }
 
   // 2. 환경변수 폴백
@@ -109,7 +109,7 @@ async function getCapiConfig(
     return { pixelId, accessToken }
   }
 
-  logger.warn('Meta CAPI 설정 없음', { clinicId })
+  logger.warn('Meta CAPI 설정 없음', { clientId })
   return null
 }
 
@@ -123,7 +123,7 @@ export async function sendCapiEvent(
   params: CapiEventParams
 ): Promise<{ success: boolean; eventLogId?: number; error?: string }> {
   const {
-    clinicId,
+    clientId,
     leadId,
     eventName = 'Lead',
     eventId,
@@ -133,7 +133,7 @@ export async function sendCapiEvent(
   } = params
 
   // 설정 조회
-  const config = await getCapiConfig(supabase, clinicId)
+  const config = await getCapiConfig(supabase, clientId)
   if (!config) {
     return { success: false, error: 'CAPI config not found' }
   }
@@ -187,7 +187,7 @@ export async function sendCapiEvent(
     const { data: logRow } = await supabase
       .from('capi_events')
       .insert({
-        clinic_id: clinicId,
+        client_id: clientId,
         lead_id: leadId || null,
         event_id: eventId,
         event_name: eventName,
@@ -208,7 +208,7 @@ export async function sendCapiEvent(
   // pixelId 검증 (숫자로만 구성되어야 함 — SSRF 방지)
   if (!/^\d{5,30}$/.test(config.pixelId)) {
     logger.error('Invalid pixel ID format', new Error('pixelId must be numeric'), {
-      clinicId,
+      clientId,
       pixelId: config.pixelId.slice(0, 10),
     })
     return { success: false, error: 'Invalid pixel ID format' }
@@ -236,7 +236,7 @@ export async function sendCapiEvent(
   const now = new Date().toISOString()
   if (result.success) {
     logger.info('CAPI event sent', {
-      clinicId,
+      clientId,
       leadId,
       eventName,
       eventId,
@@ -259,7 +259,7 @@ export async function sendCapiEvent(
     return { success: true, eventLogId }
   } else {
     logger.error('CAPI event failed', new Error(result.error || 'Unknown'), {
-      clinicId,
+      clientId,
       leadId,
       eventName,
       statusCode: result.statusCode,
@@ -282,8 +282,8 @@ export async function sendCapiEvent(
     // 에러 알림 (non-blocking)
     sendErrorAlert(
       'meta_capi_fail',
-      `CAPI 전송 실패 (clinic: ${clinicId}): ${result.error}`,
-      { clinicId, leadId, eventId }
+      `CAPI 전송 실패 (client: ${clientId}): ${result.error}`,
+      { clientId, leadId, eventId }
     ).catch(() => {})
 
     return { success: false, eventLogId, error: result.error }

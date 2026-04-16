@@ -22,7 +22,7 @@ import {
 
 export interface UtmTemplate {
   id: number
-  clinic_id: number
+  client_id: number
   name: string
   base_url: string | null
   utm_source: string | null

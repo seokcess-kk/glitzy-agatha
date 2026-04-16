@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClinicFilter, withSuperAdmin, ClinicContext, applyClinicFilter, apiError, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, withSuperAdmin, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { parseId, sanitizeString } from '@/lib/security'
 import { logActivity } from '@/lib/activity-log'
 import { archiveBeforeDelete } from '@/lib/archive'
@@ -11,7 +11,7 @@ const VALID_LEAD_STATUSES = ['new', 'no_answer', 'consulted', 'booked', 'hold', 
  * - lead_status, notes 변경
  * - "booked" 상태로 변경 시 bookings 테이블에 자동 생성 (메모 포함)
  */
-export const PATCH = withClinicFilter(async (req: Request, { user, clinicId, assignedClinicIds }: ClinicContext) => {
+export const PATCH = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const id = url.pathname.split('/').pop()
@@ -30,9 +30,9 @@ export const PATCH = withClinicFilter(async (req: Request, { user, clinicId, ass
     return apiError(`유효하지 않은 상태입니다. (${VALID_LEAD_STATUSES.join(', ')})`, 400)
   }
 
-  // 리드 조회 (clinic_id 권한 확인 포함)
-  let query = supabase.from('leads').select('id, customer_id, clinic_id, lead_status, notes').eq('id', leadId)
-  const filtered = applyClinicFilter(query, { clinicId, assignedClinicIds })
+  // 리드 조회 (client_id 권한 확인 포함)
+  let query = supabase.from('leads').select('id, contact_id, client_id, lead_status, notes').eq('id', leadId)
+  const filtered = applyClientFilter(query, { clientId, assignedClientIds })
   if (filtered === null) return apiError('접근 권한이 없습니다.', 403)
   query = filtered
 
@@ -55,8 +55,8 @@ export const PATCH = withClinicFilter(async (req: Request, { user, clinicId, ass
     const { data: existingBooking } = await supabase
       .from('bookings')
       .select('id')
-      .eq('customer_id', lead.customer_id)
-      .eq('clinic_id', lead.clinic_id)
+      .eq('contact_id', lead.contact_id)
+      .eq('client_id', lead.client_id)
       .in('status', ['confirmed', 'visited', 'treatment_confirmed'])
       .limit(1)
       .maybeSingle()
@@ -65,8 +65,8 @@ export const PATCH = withClinicFilter(async (req: Request, { user, clinicId, ass
       // 리드 메모를 예약 메모로 전달
       const bookingNotes = (notes !== undefined ? sanitizeString(notes, 1000) : lead.notes) || ''
       const { data: newBooking } = await supabase.from('bookings').insert({
-        customer_id: lead.customer_id,
-        clinic_id: lead.clinic_id,
+        contact_id: lead.contact_id,
+        client_id: lead.client_id,
         status: 'confirmed',
         booking_datetime: new Date().toISOString(),
         notes: bookingNotes,
@@ -75,16 +75,16 @@ export const PATCH = withClinicFilter(async (req: Request, { user, clinicId, ass
 
       if (newBooking) {
         await logActivity(supabase, {
-          userId: user.id, clinicId: lead.clinic_id,
+          userId: user.id, clientId: lead.client_id,
           action: 'booking_create', targetTable: 'bookings', targetId: newBooking.id,
-          detail: { customer_id: lead.customer_id, source: 'lead_status_booked', lead_id: leadId },
+          detail: { contact_id: lead.contact_id, source: 'lead_status_booked', lead_id: leadId },
         })
       }
     }
   }
 
   await logActivity(supabase, {
-    userId: user.id, clinicId: lead.clinic_id,
+    userId: user.id, clientId: lead.client_id,
     action: lead_status ? 'lead_status_change' : 'lead_note_update',
     targetTable: 'leads', targetId: leadId,
     detail: { before: lead.lead_status, after: lead_status, notes_changed: notes !== undefined },
@@ -106,19 +106,19 @@ export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
 
   const { data: lead } = await supabase
     .from('leads')
-    .select('id, clinic_id, customer_id')
+    .select('id, client_id, contact_id')
     .eq('id', leadId)
     .single()
   if (!lead) return apiError('리드를 찾을 수 없습니다.', 404)
 
-  await archiveBeforeDelete(supabase, 'leads', leadId, user.id, lead.clinic_id)
+  await archiveBeforeDelete(supabase, 'leads', leadId, user.id, lead.client_id)
   const { error } = await supabase.from('leads').delete().eq('id', leadId)
   if (error) return apiError(error.message, 500)
 
   await logActivity(supabase, {
-    userId: user.id, clinicId: lead.clinic_id,
+    userId: user.id, clientId: lead.client_id,
     action: 'lead_delete', targetTable: 'leads', targetId: leadId,
-    detail: { customer_id: lead.customer_id },
+    detail: { contact_id: lead.contact_id },
   })
 
   return apiSuccess({ deleted: true })

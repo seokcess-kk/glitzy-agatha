@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Search, User, Phone, Calendar, TrendingUp, Users, Filter, FileText, Info, X, Trash2, ArrowUpDown, Clock, Download } from 'lucide-react'
 import { useSession } from 'next-auth/react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { PageHeader, ChannelBadge, CustomerJourney } from '@/components/common'
+import { PageHeader, ChannelBadge, ContactJourney } from '@/components/common'
 import { formatDate, toUtcDate } from '@/lib/date'
 
 // 퍼널 단계 정의
@@ -36,17 +36,17 @@ const FUNNEL_STAGES: Record<FunnelStage, { label: string; color: string; barColo
   paid: { label: '결제', color: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400', barColor: 'bg-emerald-500' },
 }
 
-function getFunnelStage(customer: any): FunnelStage {
-  if (customer?.payments?.length > 0) return 'paid'
-  const hasConsultDone = customer?.consultations?.some((c: any) =>
+function getFunnelStage(contact: any): FunnelStage {
+  if (contact?.payments?.length > 0) return 'paid'
+  const hasConsultDone = contact?.consultations?.some((c: any) =>
     ['방문완료', '상담중', '시술확정'].includes(c.status)
   )
   if (hasConsultDone) return 'consulted'
-  const hasVisited = customer?.bookings?.some((b: any) =>
+  const hasVisited = contact?.bookings?.some((b: any) =>
     ['visited', 'treatment_confirmed'].includes(b.status)
   )
   if (hasVisited) return 'visited'
-  const hasBooked = customer?.bookings?.some((b: any) =>
+  const hasBooked = contact?.bookings?.some((b: any) =>
     b.status !== 'cancelled'
   )
   if (hasBooked) return 'booked'
@@ -67,11 +67,11 @@ function getGrade(totalPayment: number, treatmentCount: number): keyof typeof GR
   return '일반'
 }
 
-function getCustomerType(customer: any): 'new' | 'revisit' {
+function getContactType(contact: any): 'new' | 'revisit' {
   const total =
-    (customer?.consultations?.length || 0) +
-    (customer?.bookings?.length || 0) +
-    (customer?.payments?.length || 0)
+    (contact?.consultations?.length || 0) +
+    (contact?.bookings?.length || 0) +
+    (contact?.payments?.length || 0)
   return total >= 2 ? 'revisit' : 'new'
 }
 
@@ -98,8 +98,8 @@ function isInDateRange(dateStr: string | undefined, range: DateRange): boolean {
   return true
 }
 
-function CustomerDetail({ lead, onDelete, onClose, hideHeader }: { lead: any; onDelete?: (leadId: number) => void; onClose: () => void; hideHeader?: boolean }) {
-  const c = lead.customer
+function ContactDetail({ lead, onDelete, onClose, hideHeader }: { lead: any; onDelete?: (leadId: number) => void; onClose: () => void; hideHeader?: boolean }) {
+  const c = lead.contact
   const payments: any[] = c?.payments || []
   const consultations: any[] = c?.consultations || []
   const bookings: any[] = c?.bookings || []
@@ -107,7 +107,7 @@ function CustomerDetail({ lead, onDelete, onClose, hideHeader }: { lead: any; on
   const totalPayment = payments.reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
   const grade = getGrade(totalPayment, payments.length)
   const gradeStyle = GRADE_CONFIG[grade]
-  const customerType = getCustomerType(c)
+  const contactType = getContactType(c)
   const funnelStage = getFunnelStage(c)
   const stageConfig = FUNNEL_STAGES[funnelStage]
   const leadCount = allLeads.length
@@ -150,8 +150,8 @@ function CustomerDetail({ lead, onDelete, onClose, hideHeader }: { lead: any; on
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Badge variant={customerType === 'revisit' ? 'default' : 'secondary'} className={`text-[10px] ${customerType === 'revisit' ? 'bg-brand-500/20 text-brand-400 border-0' : ''}`}>
-              {customerType === 'revisit' ? '재방문' : '신규'}
+            <Badge variant={contactType === 'revisit' ? 'default' : 'secondary'} className={`text-[10px] ${contactType === 'revisit' ? 'bg-brand-500/20 text-brand-400 border-0' : ''}`}>
+              {contactType === 'revisit' ? '재방문' : '신규'}
             </Badge>
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${stageConfig.color}`}>
               {stageConfig.label}
@@ -232,7 +232,7 @@ function CustomerDetail({ lead, onDelete, onClose, hideHeader }: { lead: any; on
       )}
 
       {/* 여정 타임라인 */}
-      <CustomerJourney
+      <ContactJourney
         leads={allLeads}
         bookings={bookings}
         consultations={consultations}
@@ -265,7 +265,7 @@ export default function LeadsPage() {
 }
 
 function LeadsContent() {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const { data: session } = useSession()
   const isSuperAdmin = session?.user?.role === 'superadmin'
   const searchParams = useSearchParams()
@@ -284,17 +284,17 @@ function LeadsContent() {
 
   // 랜딩 페이지 목록 로드
   useEffect(() => {
-    const qs = selectedClinicId ? `?clinic_id=${selectedClinicId}` : ''
+    const qs = selectedClientId ? `?client_id=${selectedClientId}` : ''
     fetch(`/api/landing-pages${qs}`)
       .then(r => r.json())
       .then(d => setLandingPages(Array.isArray(d) ? d : []))
       .catch(() => { })
-  }, [selectedClinicId])
+  }, [selectedClientId])
 
   const fetchLeads = () => {
     setLoading(true)
     const params = new URLSearchParams()
-    if (selectedClinicId) params.set('clinic_id', String(selectedClinicId))
+    if (selectedClientId) params.set('client_id', String(selectedClientId))
     if (landingPageFilter !== 'all') params.set('landing_page_id', landingPageFilter)
     if (campaignFilter !== 'all') params.set('utm_campaign', campaignFilter)
     const qs = params.toString() ? `?${params.toString()}` : ''
@@ -305,15 +305,15 @@ function LeadsContent() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchLeads() }, [selectedClinicId, landingPageFilter, campaignFilter])
+  useEffect(() => { fetchLeads() }, [selectedClientId, landingPageFilter, campaignFilter])
 
   const [exporting, setExporting] = useState(false)
-  const canExport = session?.user?.role === 'superadmin' || session?.user?.role === 'clinic_admin'
+  const canExport = session?.user?.role === 'superadmin' || session?.user?.role === 'client_admin'
   const handleExportCsv = async () => {
     setExporting(true)
     try {
       const params = new URLSearchParams()
-      if (selectedClinicId) params.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) params.set('client_id', String(selectedClientId))
       if (channelFilter !== 'all') params.set('channel', channelFilter)
       if (stageFilter !== 'all') {
         const label = FUNNEL_STAGES[stageFilter as FunnelStage]?.label
@@ -357,7 +357,7 @@ function LeadsContent() {
   const channels = useMemo(() => {
     const set = new Set<string>()
     leads.forEach(l => {
-      const ch = l.utm_source || l.customer?.first_source
+      const ch = l.utm_source || l.contact?.first_source
       if (ch) set.add(ch)
     })
     return Array.from(set).sort()
@@ -379,7 +379,7 @@ function LeadsContent() {
   const allStageCounts = useMemo(() => {
     const counts: Record<FunnelStage, number> = { lead: 0, booked: 0, visited: 0, consulted: 0, paid: 0 }
     leads.forEach(l => {
-      counts[getFunnelStage(l.customer)]++
+      counts[getFunnelStage(l.contact)]++
     })
     return counts
   }, [leads])
@@ -389,17 +389,17 @@ function LeadsContent() {
   const filtered = useMemo(() => {
     return leads.filter(l => {
       const matchSearch = !search ||
-        l.customer?.name?.includes(search) ||
-        l.customer?.phone_number?.includes(search)
+        l.contact?.name?.includes(search) ||
+        l.contact?.phone_number?.includes(search)
       if (!matchSearch) return false
 
       if (channelFilter !== 'all') {
-        const ch = l.utm_source || l.customer?.first_source
+        const ch = l.utm_source || l.contact?.first_source
         if (ch?.toLowerCase() !== channelFilter.toLowerCase()) return false
       }
 
       if (stageFilter !== 'all') {
-        const stage = getFunnelStage(l.customer)
+        const stage = getFunnelStage(l.contact)
         if (stage !== stageFilter) return false
       }
 
@@ -409,19 +409,19 @@ function LeadsContent() {
     })
   }, [leads, search, channelFilter, stageFilter, dateRange])
 
-  const newLeads = useMemo(() => filtered.filter(l => getCustomerType(l.customer) === 'new'), [filtered])
-  const revisitLeads = useMemo(() => filtered.filter(l => getCustomerType(l.customer) === 'revisit'), [filtered])
+  const newLeads = useMemo(() => filtered.filter(l => getContactType(l.contact) === 'new'), [filtered])
+  const revisitLeads = useMemo(() => filtered.filter(l => getContactType(l.contact) === 'revisit'), [filtered])
   const displayed = useMemo(() => {
     const base = tab === 'all' ? filtered : tab === 'new' ? newLeads : revisitLeads
     // H: 정렬
     return [...base].sort((a, b) => {
       if (sortBy === 'payment') {
-        const pa = (a.customer?.payments || []).reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
-        const pb = (b.customer?.payments || []).reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
+        const pa = (a.contact?.payments || []).reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
+        const pb = (b.contact?.payments || []).reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
         return pb - pa
       }
       if (sortBy === 'name') {
-        return (a.customer?.name || '').localeCompare(b.customer?.name || '', 'ko')
+        return (a.contact?.name || '').localeCompare(b.contact?.name || '', 'ko')
       }
       // newest (default)
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
@@ -613,7 +613,7 @@ function LeadsContent() {
             <SheetHeader className="sr-only">
               <SheetTitle>고객 상세</SheetTitle>
             </SheetHeader>
-            {selected && <CustomerDetail lead={selected} onDelete={isSuperAdmin ? handleDeleteLead : undefined} onClose={() => setSelected(null)} hideHeader />}
+            {selected && <ContactDetail lead={selected} onDelete={isSuperAdmin ? handleDeleteLead : undefined} onClose={() => setSelected(null)} hideHeader />}
           </SheetContent>
         </Sheet>
       </div>
@@ -625,7 +625,7 @@ function LeadsContent() {
           {loading
             ? Array(8).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)
             : displayed.map(lead => {
-              const c = lead.customer
+              const c = lead.contact
               const payments: any[] = c?.payments || []
               const totalPayment = payments.reduce((s: number, p: any) => s + Number(p.payment_amount), 0)
               const grade = getGrade(totalPayment, payments.length)
@@ -699,7 +699,7 @@ function LeadsContent() {
         {/* B: 우측 사이드 패널 */}
         {selected && (
           <Card variant="glass" className="w-[400px] shrink-0 p-5 self-start sticky top-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
-            <CustomerDetail lead={selected} onDelete={isSuperAdmin ? handleDeleteLead : undefined} onClose={() => setSelected(null)} />
+            <ContactDetail lead={selected} onDelete={isSuperAdmin ? handleDeleteLead : undefined} onClose={() => setSelected(null)} />
           </Card>
         )}
       </div>
@@ -709,7 +709,7 @@ function LeadsContent() {
         {loading
           ? Array(8).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)
           : displayed.map(lead => {
-            const c = lead.customer
+            const c = lead.contact
             const funnelStage = getFunnelStage(c)
             const stageConfig = FUNNEL_STAGES[funnelStage]
             const channelSource = lead.utm_source || c?.first_source

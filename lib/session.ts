@@ -6,24 +6,24 @@ import { createLogger } from './logger'
 const logger = createLogger('Session')
 
 /**
- * 현재 세션의 clinic_id 반환
- * - superadmin: URL 쿼리 ?clinic_id=X 가 있으면 그 값 (검증 후), 없으면 null (전체 보기)
- * - clinic_admin: 세션의 clinic_id 고정
+ * 현재 세션의 client_id 반환
+ * - superadmin: URL 쿼리 ?client_id=X 가 있으면 그 값 (검증 후), 없으면 null (전체 보기)
+ * - client_admin: 세션의 client_id 고정
  */
-export async function getClinicId(url?: string): Promise<number | null> {
+export async function getClientId(url?: string): Promise<number | null> {
   const session = await getServerSession(authOptions)
   if (!session?.user) return null
 
-  const user = session.user as { role: string; clinic_id: number | null }
+  const user = session.user as { role: string; client_id: number | null }
 
-  // demo_viewer: 쿼리 파라미터만 파싱하고 DB 검증 스킵 (fixture ID는 실 clinics 테이블에 없음)
+  // demo_viewer: 쿼리 파라미터만 파싱하고 DB 검증 스킵 (fixture ID는 실 clients 테이블에 없음)
   if (user.role === 'demo_viewer') {
     if (url) {
       try {
-        const clinicIdParam = new URL(url).searchParams.get('clinic_id')
-        if (clinicIdParam) {
-          const clinicId = parseInt(clinicIdParam, 10)
-          if (!isNaN(clinicId) && clinicId >= 1) return clinicId
+        const clientIdParam = new URL(url).searchParams.get('client_id')
+        if (clientIdParam) {
+          const clientId = parseInt(clientIdParam, 10)
+          if (!isNaN(clientId) && clientId >= 1) return clientId
         }
       } catch {
         return null
@@ -35,81 +35,81 @@ export async function getClinicId(url?: string): Promise<number | null> {
   if (user.role === 'superadmin') {
     if (url) {
       try {
-        const clinicIdParam = new URL(url).searchParams.get('clinic_id')
-        if (clinicIdParam) {
-          const clinicId = parseInt(clinicIdParam, 10)
+        const clientIdParam = new URL(url).searchParams.get('client_id')
+        if (clientIdParam) {
+          const clientId = parseInt(clientIdParam, 10)
 
           // 숫자 검증
-          if (isNaN(clinicId) || clinicId < 1) {
-            logger.warn('Invalid clinic_id parameter', { clinicIdParam })
+          if (isNaN(clientId) || clientId < 1) {
+            logger.warn('Invalid client_id parameter', { clientIdParam })
             return null
           }
 
-          // 실제 존재하는 clinic인지 확인
+          // 실제 존재하는 client인지 확인
           const supabase = serverSupabase()
-          const { data: clinic } = await supabase
-            .from('clinics')
+          const { data: client } = await supabase
+            .from('clients')
             .select('id')
-            .eq('id', clinicId)
+            .eq('id', clientId)
             .eq('is_active', true)
             .single()
 
-          if (!clinic) {
-            logger.warn('Clinic not found or inactive', { clinicId })
+          if (!client) {
+            logger.warn('Client not found or inactive', { clientId })
             return null
           }
 
-          return clinicId
+          return clientId
         }
       } catch (e) {
-        logger.warn('Failed to parse clinic_id from URL', { error: String(e) })
+        logger.warn('Failed to parse client_id from URL', { error: String(e) })
         return null
       }
     }
     return null // null = 전체 조회
   }
 
-  // agency_staff: ?clinic_id=X 파라미터 사용, 배정된 병원만 허용
+  // agency_staff: ?client_id=X 파라미터 사용, 배정된 클라이언트만 허용
   if (user.role === 'agency_staff') {
     if (url) {
       const supabase = serverSupabase()
       const userId = parseInt(session.user.id, 10)
       try {
-        const clinicIdParam = new URL(url).searchParams.get('clinic_id')
-        if (clinicIdParam) {
-          const clinicId = parseInt(clinicIdParam, 10)
-          if (isNaN(clinicId) || clinicId < 1) {
-            logger.warn('Invalid clinic_id parameter for agency_staff', { clinicIdParam })
+        const clientIdParam = new URL(url).searchParams.get('client_id')
+        if (clientIdParam) {
+          const clientId = parseInt(clientIdParam, 10)
+          if (isNaN(clientId) || clientId < 1) {
+            logger.warn('Invalid client_id parameter for agency_staff', { clientIdParam })
             return null
           }
 
-          // 배정된 병원인지 확인
+          // 배정된 클라이언트인지 확인
           const { data: assignment } = await supabase
-            .from('user_clinic_assignments')
+            .from('user_client_assignments')
             .select('id')
             .eq('user_id', userId)
-            .eq('clinic_id', clinicId)
+            .eq('client_id', clientId)
             .single()
 
           if (!assignment) {
-            logger.warn('Agency staff not assigned to clinic', { userId: session.user.id, clinicId })
+            logger.warn('Agency staff not assigned to client', { userId: session.user.id, clientId })
             return null
           }
 
-          return clinicId
+          return clientId
         }
       } catch (e) {
-        logger.warn('Failed to parse clinic_id from URL for agency_staff', { error: String(e) })
+        logger.warn('Failed to parse client_id from URL for agency_staff', { error: String(e) })
         return null
       }
     }
 
-    // clinic_id 미지정 → null 반환
-    // withClinicFilter가 getAssignedClinicIds()로 배정 병원 목록을 조회하여 필터링함
+    // client_id 미지정 → null 반환
+    // withClientFilter가 getAssignedClientIds()로 배정 클라이언트 목록을 조회하여 필터링함
     return null
   }
 
-  return user.clinic_id ?? null
+  return user.client_id ?? null
 }
 
 export async function getSession() {

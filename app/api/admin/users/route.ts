@@ -11,7 +11,7 @@ export const GET = withSuperAdmin(async () => {
     const supabase = serverSupabase()
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, role, clinic_id, is_active, created_at, clinic:clinics(name)')
+      .select('id, username, role, client_id, is_active, created_at, client:clients(name)')
       .order('created_at', { ascending: false })
 
     if (error) return apiError(error.message, 500)
@@ -24,7 +24,7 @@ export const GET = withSuperAdmin(async () => {
 
 export const POST = withSuperAdmin(async (req: Request, { user }) => {
   try {
-    const { username, password, role, clinic_id, assigned_clinic_ids, menu_permissions } = await req.json()
+    const { username, password, role, client_id, assigned_client_ids, menu_permissions } = await req.json()
 
     // 필수값 검증
     if (!username || !password) {
@@ -43,24 +43,24 @@ export const POST = withSuperAdmin(async (req: Request, { user }) => {
     }
 
     // 역할 검증
-    const validRoles = ['superadmin', 'clinic_admin', 'clinic_staff', 'agency_staff']
+    const validRoles = ['superadmin', 'client_admin', 'client_staff', 'agency_staff']
     if (!validRoles.includes(role)) {
       return apiError('유효하지 않은 역할입니다.', 400)
     }
 
-    if ((role === 'clinic_admin' || role === 'clinic_staff') && !clinic_id) {
-      return apiError('병원을 선택해주세요.', 400)
+    if ((role === 'client_admin' || role === 'client_staff') && !client_id) {
+      return apiError('클라이언트을 선택해주세요.', 400)
     }
 
-    if (role === 'agency_staff' && (!Array.isArray(assigned_clinic_ids) || assigned_clinic_ids.length === 0)) {
-      return apiError('실행사 담당자는 최소 1개 병원을 배정해야 합니다.', 400)
+    if (role === 'agency_staff' && (!Array.isArray(assigned_client_ids) || assigned_client_ids.length === 0)) {
+      return apiError('에이전시 담당자는 최소 1개 클라이언트을 배정해야 합니다.', 400)
     }
 
     const password_hash = await bcrypt.hash(password, 12)
     const supabase = serverSupabase()
 
-    // agency_staff, superadmin은 clinic_id NULL
-    const userClinicId = (role === 'superadmin' || role === 'agency_staff') ? null : (clinic_id || null)
+    // agency_staff, superadmin은 client_id NULL
+    const userClientId = (role === 'superadmin' || role === 'agency_staff') ? null : (client_id || null)
 
     const { data, error } = await supabase
       .from('users')
@@ -68,9 +68,9 @@ export const POST = withSuperAdmin(async (req: Request, { user }) => {
         username: sanitizeString(username, 30),
         password_hash,
         role,
-        clinic_id: userClinicId,
+        client_id: userClientId,
       })
-      .select('id, username, role, clinic_id, is_active, created_at')
+      .select('id, username, role, client_id, is_active, created_at')
       .single()
 
     if (error) {
@@ -80,17 +80,17 @@ export const POST = withSuperAdmin(async (req: Request, { user }) => {
       return apiError(error.message, 500)
     }
 
-    // agency_staff: 병원 배정 + 메뉴 권한 저장
+    // agency_staff: 클라이언트 배정 + 메뉴 권한 저장
     if (role === 'agency_staff' && data) {
       const userId = data.id
 
-      if (assigned_clinic_ids?.length > 0) {
-        const clinicRows = assigned_clinic_ids.map((cid: number) => ({ user_id: userId, clinic_id: cid }))
-        const { error: assignError } = await supabase.from('user_clinic_assignments').insert(clinicRows)
+      if (assigned_client_ids?.length > 0) {
+        const clientRows = assigned_client_ids.map((cid: number) => ({ user_id: userId, client_id: cid }))
+        const { error: assignError } = await supabase.from('user_client_assignments').insert(clientRows)
         if (assignError) {
           // 유저는 생성되었으므로 롤백 대신 경고 로그 + 에러 반환
           await supabase.from('users').delete().eq('id', userId)
-          return apiError('병원 배정 실패: ' + assignError.message, 500)
+          return apiError('클라이언트 배정 실패: ' + assignError.message, 500)
         }
       }
 
@@ -98,7 +98,7 @@ export const POST = withSuperAdmin(async (req: Request, { user }) => {
         const menuRows = menu_permissions.map((key: string) => ({ user_id: userId, menu_key: key }))
         const { error: menuError } = await supabase.from('user_menu_permissions').insert(menuRows)
         if (menuError) {
-          // 유저+병원배정은 유지, 메뉴 권한만 실패 → 유저 삭제 롤백 (CASCADE로 배정도 삭제됨)
+          // 유저+클라이언트배정은 유지, 메뉴 권한만 실패 → 유저 삭제 롤백 (CASCADE로 배정도 삭제됨)
           await supabase.from('users').delete().eq('id', userId)
           return apiError('메뉴 권한 저장 실패: ' + menuError.message, 500)
         }

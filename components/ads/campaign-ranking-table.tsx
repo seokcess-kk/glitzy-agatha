@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
@@ -70,7 +70,7 @@ function StatusDot({ cpc, avgCpc }: { cpc: number; avgCpc: number }) {
 }
 
 export default function CampaignRankingTable({ startDate, endDate, platformFilter, selectedCampaignId, onCampaignSelect }: Props) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [rawData, setRawData] = useState<AdStatRecord[]>([])
   const [campaignLeadCounts, setCampaignLeadCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
@@ -84,7 +84,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
     try {
       const days = String(Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1))
       const qs = new URLSearchParams({ days })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
       if (platformFilter) qs.set('platform', platformFilter)
 
       const res = await fetch(`/api/ads/stats?${qs}`)
@@ -108,7 +108,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, selectedClinicId, platformFilter])
+  }, [startDate, endDate, selectedClientId, platformFilter])
 
   useEffect(() => { fetchData() }, [fetchData])
 

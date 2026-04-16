@@ -3,7 +3,7 @@ import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import { isValidPhoneNumber } from '@/lib/security'
 
 /**
- * 병원 개별 수정 API (알림 설정 등)
+ * 클라이언트 개별 수정 API (알림 설정 등)
  */
 export const PATCH = withSuperAdmin(async (req: Request) => {
   const supabase = serverSupabase()
@@ -46,7 +46,7 @@ export const PATCH = withSuperAdmin(async (req: Request) => {
   if (Object.keys(updateData).length === 0) return apiError('수정할 항목이 없습니다.', 400)
 
   const { error } = await supabase
-    .from('clinics')
+    .from('clients')
     .update(updateData)
     .eq('id', Number(id))
 

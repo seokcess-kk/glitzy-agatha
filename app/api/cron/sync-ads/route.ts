@@ -1,7 +1,7 @@
-import { syncAllClinics } from '@/lib/services/adSyncManager'
+import { syncAllClients } from '@/lib/services/adSyncManager'
 import { apiError, apiSuccess } from '@/lib/api-middleware'
 import { sendErrorAlert } from '@/lib/error-alert'
-import { detectAllClinicAnomalies } from '@/lib/ads-anomaly'
+import { detectAllClientAnomalies } from '@/lib/ads-anomaly'
 import { serverSupabase } from '@/lib/supabase'
 import { createLogger } from '@/lib/logger'
 
@@ -21,9 +21,9 @@ export async function GET(req: Request) {
 
   let results
   try {
-    results = await syncAllClinics(yesterday)
+    results = await syncAllClients(yesterday)
   } catch (err) {
-    logger.error('syncAllClinics 치명적 오류', err)
+    logger.error('syncAllClients 치명적 오류', err)
     sendErrorAlert('ad_sync_fail', `광고 동기화 치명적 오류: ${err instanceof Error ? err.message : String(err)}`).catch(() => {})
     return apiError('동기화 실패', 500)
   }
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   const failures = results.filter(r => r.error)
   if (failures.length > 0) {
     const failSummary = failures
-      .map(f => `${f.clinicName}/${f.platform}: ${f.error}`)
+      .map(f => `${f.clientName}/${f.platform}: ${f.error}`)
       .join(', ')
     sendErrorAlert('ad_sync_fail', `광고 동기화 실패 ${failures.length}건: ${failSummary}`).catch(() => {})
   }
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
   if (hasAnySuccess) {
     try {
       const supabase = serverSupabase()
-      const { totalAnomalies, summaryMessage } = await detectAllClinicAnomalies(supabase)
+      const { totalAnomalies, summaryMessage } = await detectAllClientAnomalies(supabase)
       anomalyCount = totalAnomalies
       if (totalAnomalies > 0) {
         sendErrorAlert('ads_anomaly', summaryMessage).catch(() => {})
@@ -63,8 +63,8 @@ export async function GET(req: Request) {
   return apiSuccess({
     success: true,
     results: results.map(r => ({
-      clinicId: r.clinicId,
-      clinicName: r.clinicName,
+      clientId: r.clientId,
+      clientName: r.clientName,
       platform: r.platform,
       count: r.count,
       error: r.error || null,

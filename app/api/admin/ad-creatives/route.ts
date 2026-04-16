@@ -10,7 +10,7 @@ const logger = createLogger('AdCreatives')
 export const GET = withSuperAdmin(async (req: Request) => {
   try {
     const url = new URL(req.url)
-    const clinicId = url.searchParams.get('clinic_id')
+    const clientId = url.searchParams.get('client_id')
     const landingPageId = url.searchParams.get('landing_page_id')
     const activeOnly = url.searchParams.get('active') === 'true'
 
@@ -19,14 +19,14 @@ export const GET = withSuperAdmin(async (req: Request) => {
       .from('ad_creatives')
       .select(`
         *,
-        clinic:clinics(id, name),
+        client:clients(id, name),
         landing_page:landing_pages(id, name, file_name)
       `)
       .order('created_at', { ascending: false })
 
-    if (clinicId) {
-      const parsedClinicId = parseId(clinicId)
-      if (parsedClinicId) query = query.eq('clinic_id', parsedClinicId)
+    if (clientId) {
+      const parsedClientId = parseId(clientId)
+      if (parsedClientId) query = query.eq('client_id', parsedClientId)
     }
 
     if (landingPageId) {
@@ -53,33 +53,33 @@ export const POST = withSuperAdmin(async (req: Request) => {
   const body = await req.json()
   const {
     name, description, utm_content, utm_source, utm_medium, utm_campaign, utm_term,
-    platform, clinic_id, landing_page_id, is_active, file_name, file_type
+    platform, client_id, landing_page_id, is_active, file_name, file_type
   } = body
 
   if (!name || !utm_content) {
     return apiError('소재명과 UTM Content 값은 필수입니다.', 400)
   }
 
-  if (!clinic_id) {
-    return apiError('병원을 선택해주세요.', 400)
+  if (!client_id) {
+    return apiError('클라이언트을 선택해주세요.', 400)
   }
 
   const supabase = serverSupabase()
 
-  // clinic_id 유효성 검증
-  const validClinicId = parseId(clinic_id)
-  if (validClinicId === null) {
-    return apiError('유효하지 않은 병원 ID입니다.', 400)
+  // client_id 유효성 검증
+  const validClientId = parseId(client_id)
+  if (validClientId === null) {
+    return apiError('유효하지 않은 클라이언트 ID입니다.', 400)
   }
 
-  const { data: clinic } = await supabase
-    .from('clinics')
+  const { data: client } = await supabase
+    .from('clients')
     .select('id')
-    .eq('id', validClinicId)
+    .eq('id', validClientId)
     .single()
 
-  if (!clinic) {
-    return apiError('존재하지 않는 병원입니다.', 400)
+  if (!client) {
+    return apiError('존재하지 않는 클라이언트입니다.', 400)
   }
 
   // landing_page_id 유효성 검증 (선택적)
@@ -99,11 +99,11 @@ export const POST = withSuperAdmin(async (req: Request) => {
     }
   }
 
-  // utm_content 중복 검사 (같은 병원 내)
+  // utm_content 중복 검사 (같은 클라이언트 내)
   const { data: existing } = await supabase
     .from('ad_creatives')
     .select('id')
-    .eq('clinic_id', validClinicId)
+    .eq('client_id', validClientId)
     .eq('utm_content', utm_content)
     .maybeSingle()
 
@@ -122,7 +122,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
       utm_campaign: utm_campaign ? sanitizeString(utm_campaign, 100) : null,
       utm_term: utm_term ? sanitizeString(utm_term, 100) : null,
       platform: platform ? (creativeToApiPlatform(platform) || sanitizeString(platform, 50)) : null,
-      clinic_id: validClinicId,
+      client_id: validClientId,
       landing_page_id: validLandingPageId,
       is_active: is_active !== false,
       file_name: file_name ? sanitizeString(String(file_name).replace(/[/\\:*?"<>|]/g, ''), 200) : null,
@@ -130,7 +130,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
     })
     .select(`
       *,
-      clinic:clinics(id, name),
+      client:clients(id, name),
       landing_page:landing_pages(id, name, file_name)
     `)
     .single()
@@ -154,7 +154,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
         const { data: existingLink } = await supabase
           .from('utm_links')
           .select('id')
-          .eq('clinic_id', validClinicId)
+          .eq('client_id', validClientId)
           .eq('utm_content', data.utm_content)
           .maybeSingle()
 
@@ -174,7 +174,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
           await supabase
             .from('utm_links')
             .insert({
-              clinic_id: validClinicId,
+              client_id: validClientId,
               original_url: generatedUrl,
               utm_source: data.utm_source,
               utm_medium: data.utm_medium,

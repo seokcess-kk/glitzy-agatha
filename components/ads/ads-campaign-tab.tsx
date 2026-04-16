@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Button } from '@/components/ui/button'
 import { API_PLATFORM_LABELS } from '@/lib/platform'
 import CampaignRankingTable from '@/components/ads/campaign-ranking-table'
@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [platformFilter, setPlatformFilter] = useState('all')
   const [platforms, setPlatforms] = useState<string[]>(['all'])
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
@@ -23,7 +23,7 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
   const fetchPlatforms = useCallback(async () => {
     try {
       const qs = new URLSearchParams({ days })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
       const res = await fetch(`/api/ads/stats?${qs}`)
       if (!res.ok) return
       const json = await res.json()
@@ -33,7 +33,7 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
     } catch {
       // silently fail — keep default ['all']
     }
-  }, [days, selectedClinicId])
+  }, [days, selectedClientId])
 
   useEffect(() => {
     fetchPlatforms()

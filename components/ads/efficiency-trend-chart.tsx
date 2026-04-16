@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useClinic } from '@/components/ClinicContext'
+import { useClient } from '@/components/ClientContext'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common'
@@ -174,7 +174,7 @@ function EfficiencyChart({
 }
 
 export default function EfficiencyTrendChart({ startDate, endDate }: Props) {
-  const { selectedClinicId } = useClinic()
+  const { selectedClientId } = useClient()
   const [data, setData] = useState<EfficiencyDataItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -182,7 +182,7 @@ export default function EfficiencyTrendChart({ startDate, endDate }: Props) {
     setLoading(true)
     try {
       const qs = new URLSearchParams({ startDate, endDate })
-      if (selectedClinicId) qs.set('clinic_id', String(selectedClinicId))
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
 
       const res = await fetch(`/api/ads/efficiency-trend?${qs}`)
       if (!res.ok) {
@@ -196,7 +196,7 @@ export default function EfficiencyTrendChart({ startDate, endDate }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [startDate, endDate, selectedClinicId])
+  }, [startDate, endDate, selectedClientId])
 
   useEffect(() => {
     fetchData()

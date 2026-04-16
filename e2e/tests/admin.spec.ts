@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/auth.fixture'
 import {
   AdminUsersPage,
-  AdminClinicsPage,
+  AdminClientsPage,
   AdminAdCreativesPage,
   AdminLandingPagesPage,
 } from '../pages/admin.page'
@@ -77,47 +77,47 @@ test.describe('계정 관리 (Admin Users)', () => {
   })
 })
 
-// ─── 병원 관리 ───
+// ─── 클라이언트 관리 ───
 
-test.describe('병원 관리 (Admin Clinics)', () => {
+test.describe('클라이언트 관리 (Admin Clients)', () => {
   test.use({ userRole: 'superadmin' })
 
-  test('병원 관리 페이지 로드', async ({ authenticatedPage }) => {
-    const clinicsPage = new AdminClinicsPage(authenticatedPage)
-    await clinicsPage.goto()
-    await clinicsPage.expectPageLoaded()
+  test('클라이언트 관리 페이지 로드', async ({ authenticatedPage }) => {
+    const clientsPage = new AdminClientsPage(authenticatedPage)
+    await clientsPage.goto()
+    await clientsPage.expectPageLoaded()
   })
 
-  test('병원 테이블 또는 빈 상태 표시', async ({ authenticatedPage }) => {
-    const clinicsPage = new AdminClinicsPage(authenticatedPage)
-    await clinicsPage.goto()
-    await clinicsPage.waitForLoad()
+  test('클라이언트 테이블 또는 빈 상태 표시', async ({ authenticatedPage }) => {
+    const clientsPage = new AdminClientsPage(authenticatedPage)
+    await clientsPage.goto()
+    await clientsPage.waitForLoad()
 
-    const hasTable = await clinicsPage.clinicsTable.isVisible().catch(() => false)
-    const hasEmpty = await clinicsPage.emptyState.isVisible().catch(() => false)
+    const hasTable = await clientsPage.clientsTable.isVisible().catch(() => false)
+    const hasEmpty = await clientsPage.emptyState.isVisible().catch(() => false)
 
     expect(hasTable || hasEmpty).toBeTruthy()
   })
 
-  test('병원 등록 다이얼로그 열기', async ({ authenticatedPage }) => {
-    const clinicsPage = new AdminClinicsPage(authenticatedPage)
-    await clinicsPage.goto()
-    await clinicsPage.waitForLoad()
+  test('클라이언트 등록 다이얼로그 열기', async ({ authenticatedPage }) => {
+    const clientsPage = new AdminClientsPage(authenticatedPage)
+    await clientsPage.goto()
+    await clientsPage.waitForLoad()
 
-    const hasCreateBtn = await clinicsPage.createClinicButton.isVisible().catch(() => false)
+    const hasCreateBtn = await clientsPage.createClientButton.isVisible().catch(() => false)
 
     if (hasCreateBtn) {
-      await clinicsPage.openCreateDialog()
-      await expect(clinicsPage.dialog).toBeVisible()
+      await clientsPage.openCreateDialog()
+      await expect(clientsPage.dialog).toBeVisible()
 
       // 필드 확인
-      const hasName = await clinicsPage.nameInput.isVisible().catch(() => false)
-      const hasSlug = await clinicsPage.slugInput.isVisible().catch(() => false)
+      const hasName = await clientsPage.nameInput.isVisible().catch(() => false)
+      const hasSlug = await clientsPage.slugInput.isVisible().catch(() => false)
 
       expect(hasName && hasSlug).toBeTruthy()
 
       // 닫기
-      await clinicsPage.dialogCancelButton.click()
+      await clientsPage.dialogCancelButton.click()
     }
   })
 })
@@ -265,9 +265,9 @@ test.describe('랜딩 페이지 관리 (Admin Landing Pages)', () => {
 // ─── Admin 접근 제어 ───
 
 test.describe('Admin 접근 제어', () => {
-  test.use({ userRole: 'clinic_admin' })
+  test.use({ userRole: 'client_admin' })
 
-  test('clinic_admin이 admin 페이지 접근 시 제한', async ({ authenticatedPage }) => {
+  test('client_admin이 admin 페이지 접근 시 제한', async ({ authenticatedPage }) => {
     await authenticatedPage.goto('/admin/users')
     await authenticatedPage.waitForLoadState('networkidle')
 

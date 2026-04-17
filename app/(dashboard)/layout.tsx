@@ -12,8 +12,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [pinned, setPinned] = useState(false)
   const [hovered, setHovered] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  const expanded = pinned || hovered
+  const expanded = pinned || hovered || dropdownOpen
 
   useEffect(() => {
     try {
@@ -54,13 +55,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
           `}
           onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
+          onMouseLeave={() => { if (!dropdownOpen) setHovered(false) }}
         >
           <Sidebar
             onClose={() => setSidebarOpen(false)}
             collapsed={!expanded}
             pinned={pinned}
             onTogglePin={togglePin}
+            onDropdownOpenChange={(open) => {
+              setDropdownOpen(open)
+              if (!open) setHovered(false)
+            }}
           />
         </div>
 

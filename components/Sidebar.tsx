@@ -109,11 +109,12 @@ const adminMenuItems: MenuItem[] = [
 import PasswordChangeDialog from '@/components/PasswordChangeDialog'
 import ThemeToggle from '@/components/ThemeToggle'
 
-export default function Sidebar({ onClose, collapsed: controlledCollapsed, pinned: controlledPinned, onTogglePin }: {
+export default function Sidebar({ onClose, collapsed: controlledCollapsed, pinned: controlledPinned, onTogglePin, onDropdownOpenChange }: {
   onClose?: () => void
   collapsed?: boolean
   pinned?: boolean
   onTogglePin?: () => void
+  onDropdownOpenChange?: (open: boolean) => void
 }) {
   const pathname = usePathname()
   const { data: session } = useSession()
@@ -315,6 +316,7 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, pinne
                 <Select
                   value={selectedClientId?.toString() ?? 'all'}
                   onValueChange={v => setSelectedClientId(v === 'all' ? null : Number(v))}
+                  onOpenChange={onDropdownOpenChange}
                 >
                   <SelectTrigger className="w-full text-sm">
                     <SelectValue placeholder="전체 클라이언트" />

@@ -46,11 +46,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* 사이드바 — 모바일: 슬라이드인, 데스크탑: hover 확대 + 핀 고정 */}
         {/* 플레이스홀더: 핀 고정 시 w-60, 아닐 때 w-16 — 본문 영역이 함께 조정됨 */}
-        <div className={`hidden md:block ${pinned ? 'w-60' : 'w-16'} shrink-0 transition-all duration-200`} />
+        <div className={`hidden md:block ${pinned ? 'w-60' : 'w-16'} shrink-0 transition-[width] duration-200`} />
         <div
           className={`
             ${expanded ? 'w-60' : 'w-16'} shrink-0 fixed inset-y-0 left-0 z-50 md:z-30
-            transition-all duration-200 ease-in-out
+            transition-[width,transform] duration-200 ease-in-out
             md:translate-x-0
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
           `}

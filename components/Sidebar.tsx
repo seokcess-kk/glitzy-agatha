@@ -69,12 +69,12 @@ const PINNED_KEY = 'agatha_sidebar_pinned'
 const generalMenuGroups: MenuGroup[] = [
   {
     items: [
-      { href: '/', label: '대시보드', icon: LayoutDashboard, minRole: 2, menuKey: 'dashboard' },
+      { href: '/', label: '대시보드', icon: LayoutDashboard, menuKey: 'dashboard' },
     ]
   },
   {
     items: [
-      { href: '/ads', label: '광고 성과', icon: BarChart3, minRole: 2, menuKey: 'ads' },
+      { href: '/ads', label: '광고 성과', icon: BarChart3, menuKey: 'ads' },
     ]
   },
   {
@@ -396,7 +396,7 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, pinne
               <ThemeToggle />
             </div>
           )}
-          <DropdownMenu>
+          <DropdownMenu onOpenChange={onDropdownOpenChange}>
             <DropdownMenuTrigger asChild>
               {collapsed ? (
                 <button className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-muted transition-colors duration-200 cursor-pointer" aria-label="사용자 메뉴">

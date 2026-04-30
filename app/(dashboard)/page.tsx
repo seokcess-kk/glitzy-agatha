@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { RefreshCw } from 'lucide-react'
-import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { startOfMonth, startOfDay } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
@@ -21,14 +20,8 @@ import { ChannelTable } from '@/components/dashboard/channel-table'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 
 export default function DashboardPage() {
-  const { data: session } = useSession()
   const router = useRouter()
-  const sessionUser = session?.user
   const { selectedClientId } = useClient()
-
-  useEffect(() => {
-    if (sessionUser?.role === 'client_staff') router.replace('/customers')
-  }, [sessionUser, router])
 
   // 기본값: 이번 달
   const [dateRange, setDateRange] = useState<DateRange>(() => {

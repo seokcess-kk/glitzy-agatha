@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import { startOfDay, startOfMonth } from 'date-fns'
 import { DateRange } from 'react-day-picker'
 import { RefreshCw, Play } from 'lucide-react'
@@ -22,13 +21,8 @@ const TABS = [
 
 export default function AdsPage() {
   const { data: session } = useSession()
-  const router = useRouter()
   const user = session?.user
-
-  // Role guard — client_staff cannot access ads
-  useEffect(() => {
-    if (user?.role === 'client_staff') router.replace('/customers')
-  }, [user, router])
+  const canSync = user?.role !== 'client_staff'
 
   const { selectedClientId } = useClient()
   const [activeTab, setActiveTab] = useState('overview')
@@ -100,13 +94,15 @@ export default function AdsPage() {
               <Button variant="ghost" size="icon" onClick={handleRefresh}>
                 <RefreshCw size={16} />
               </Button>
-              <Button
-                onClick={handleSync}
-                disabled={syncing}
-                className="bg-brand-600 hover:bg-brand-700"
-              >
-                <Play size={14} /> {syncing ? '수집 중...' : '지금 데이터 수집'}
-              </Button>
+              {canSync && (
+                <Button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="bg-brand-600 hover:bg-brand-700"
+                >
+                  <Play size={14} /> {syncing ? '수집 중...' : '지금 데이터 수집'}
+                </Button>
+              )}
             </>
           ) : undefined
         }

@@ -6,6 +6,7 @@ import { serverSupabase } from './supabase'
 import { checkRateLimit, recordFailedAttempt, resetRateLimit } from './rate-limit'
 import { createLogger } from './logger'
 import { DEMO_PHONE, DEMO_PASSWORD, DEMO_USER } from './demo-data'
+import { normalizePhoneNumber } from './security'
 
 const logger = createLogger('Auth')
 
@@ -68,7 +69,8 @@ export const authOptions: NextAuthOptions = {
 
         const ip = _requestIp
         const ua = _requestUa
-        const phoneNumber = credentials.phone_number
+        // 입력값을 DB 저장 형식(숫자만)으로 정규화 — 하이픈 유무에 관계없이 로그인 가능
+        const phoneNumber = normalizePhoneNumber(credentials.phone_number)
 
         // 데모 계정: DB 조회 없이 하드코딩 유저 반환
         if (phoneNumber === DEMO_PHONE && credentials.password === DEMO_PASSWORD) {

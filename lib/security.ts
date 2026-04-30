@@ -46,14 +46,12 @@ export function isValidPhoneNumber(phone: string): boolean {
   return pattern.test(phone)
 }
 
-// 전화번호 정규화 (하이픈 추가)
+// 전화번호 정규화 (하이픈 제거, 숫자만 반환)
+// DB 저장/조회 시 일관된 키로 사용. 하이픈 유무에 관계없이 동일한 결과를 보장한다.
 export function normalizePhoneNumber(phone: string): string {
   const digits = phone.replace(/[^0-9]/g, '')
-  if (digits.length === 11) {
-    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
-  }
-  if (digits.length === 10) {
-    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+  if (digits.length === 10 || digits.length === 11) {
+    return digits
   }
   return phone
 }

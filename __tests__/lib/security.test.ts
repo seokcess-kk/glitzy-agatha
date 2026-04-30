@@ -67,16 +67,16 @@ describe('isValidPhoneNumber', () => {
 })
 
 describe('normalizePhoneNumber', () => {
-  it('11자리를 하이픈 형식으로 변환', () => {
-    expect(normalizePhoneNumber('01012345678')).toBe('010-1234-5678')
+  it('11자리는 숫자만 유지', () => {
+    expect(normalizePhoneNumber('01012345678')).toBe('01012345678')
   })
 
-  it('10자리를 하이픈 형식으로 변환', () => {
-    expect(normalizePhoneNumber('0111234567')).toBe('011-123-4567')
+  it('10자리는 숫자만 유지', () => {
+    expect(normalizePhoneNumber('0111234567')).toBe('0111234567')
   })
 
-  it('이미 포맷된 번호도 처리', () => {
-    expect(normalizePhoneNumber('010-1234-5678')).toBe('010-1234-5678')
+  it('하이픈 포함 입력에서 하이픈 제거', () => {
+    expect(normalizePhoneNumber('010-1234-5678')).toBe('01012345678')
   })
 })
 

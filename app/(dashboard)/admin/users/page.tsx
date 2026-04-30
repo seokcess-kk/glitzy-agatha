@@ -220,6 +220,8 @@ export default function UsersPage() {
                   value={form.phone_number}
                   onChange={e => setForm(f => ({ ...f, phone_number: e.target.value }))}
                   placeholder="010-0000-0000"
+                  autoComplete="off"
+                  data-form-type="other"
                 />
               </div>
               <div className="space-y-2">
@@ -229,6 +231,8 @@ export default function UsersPage() {
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="사용자 이름"
+                  autoComplete="off"
+                  data-form-type="other"
                 />
               </div>
             </div>
@@ -239,6 +243,8 @@ export default function UsersPage() {
                 value={form.password}
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 placeholder="초기 비밀번호"
+                autoComplete="new-password"
+                data-form-type="other"
               />
             </div>
             <div className="space-y-2">

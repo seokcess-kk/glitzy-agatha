@@ -8,11 +8,13 @@ import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 import { getKstDateString } from '@/lib/date'
 
@@ -46,6 +48,8 @@ export default function BackfillDialog({ open, onOpenChange, clientId, clientNam
   })
   const [running, setRunning] = useState(false)
   const [response, setResponse] = useState<BackfillResponse | null>(null)
+  // 기본 true (캠페인 레벨만 — 빠른 처리). 광고 소재 분석이 필요하면 OFF
+  const [skipAdLevel, setSkipAdLevel] = useState(true)
 
   const startDateStr = dateRange.from ? getKstDateString(dateRange.from) : ''
   const endDateStr = dateRange.to ? getKstDateString(dateRange.to) : ''
@@ -75,24 +79,44 @@ export default function BackfillDialog({ open, onOpenChange, clientId, clientNam
           clientId,
           startDate: startDateStr,
           endDate: endDateStr,
+          skipAdLevel,
         }),
       })
-      const data = (await res.json()) as BackfillResponse
+
+      // 응답이 JSON 이 아닐 수 있음 (Vercel timeout HTML 등)
+      const text = await res.text()
+      let data: BackfillResponse | null = null
+      try {
+        data = JSON.parse(text) as BackfillResponse
+      } catch {
+        // Vercel 504 / function timeout 등 HTML 응답 케이스
+        if (res.status === 504 || res.status === 408 || /timeout|gateway/i.test(text)) {
+          toast.error(
+            '백필 시간 초과 — 더 짧은 기간(예: 7~10일)으로 나눠서 진행해주세요. 광고 수가 많을수록 한 번에 처리 가능한 일수가 줄어듭니다.',
+            { duration: 10000 },
+          )
+        } else {
+          toast.error(`백필 실패 — HTTP ${res.status} (응답 형식 비정상)`, { duration: 8000 })
+        }
+        // 일부 일자는 이미 DB 에 들어갔을 수 있음 → 차트 갱신은 시도
+        onComplete?.()
+        return
+      }
 
       if (!res.ok) {
-        toast.error(`백필 실패 — ${data.error || `HTTP ${res.status}`}`)
+        toast.error(`백필 실패 — ${data?.error || `HTTP ${res.status}`}`)
         return
       }
 
       setResponse(data)
-      const errs = data.errorCount ?? 0
+      const errs = data?.errorCount ?? 0
       if (errs === 0) {
         toast.success(
-          `백필 완료 (${data.syncedDays}일, 총 ${data.totalCount ?? 0}건)`,
+          `백필 완료 (${data?.syncedDays}일, 총 ${data?.totalCount ?? 0}건)`,
         )
       } else {
         toast.error(
-          `백필 부분 성공 — 성공 ${(data.totalCount ?? 0)}건 / 실패 ${errs}건`,
+          `백필 부분 성공 — 성공 ${(data?.totalCount ?? 0)}건 / 실패 ${errs}건`,
           { duration: 8000 },
         )
       }
@@ -125,6 +149,9 @@ export default function BackfillDialog({ open, onOpenChange, clientId, clientNam
           <DialogTitle>
             과거 광고 데이터 백필{clientName ? ` — ${clientName}` : ''}
           </DialogTitle>
+          <DialogDescription className="text-xs">
+            기간을 선택하면 해당 일자의 광고 통계를 일별로 다시 수집합니다. Vercel function timeout(5분) 때문에 광고 수가 많은 클라이언트는 7~10일씩 나눠서 진행하는 것을 권장합니다.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 p-1">
@@ -138,6 +165,21 @@ export default function BackfillDialog({ open, onOpenChange, clientId, clientNam
             <p className="text-xs text-muted-foreground">
               {startDateStr} ~ {endDateStr} ({dayCount}일)
             </p>
+            {dayCount > 14 && (
+              <p className="text-xs text-amber-600 dark:text-amber-500">
+                ⚠ 14일 이상은 timeout 가능성이 있습니다. 7~10일 단위로 나눠서 진행을 권장합니다.
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between rounded-md border border-border p-3">
+            <div className="space-y-0.5">
+              <Label className="text-sm">캠페인 레벨만 수집 (빠름)</Label>
+              <p className="text-xs text-muted-foreground">
+                광고 소재(ad) 레벨 통계는 건너뛰어 처리 시간을 대폭 단축합니다. 광고 소재별 분석이 필요하면 OFF.
+              </p>
+            </div>
+            <Switch checked={skipAdLevel} onCheckedChange={setSkipAdLevel} disabled={running} />
           </div>
 
           {response && (

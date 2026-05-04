@@ -49,6 +49,7 @@ export async function POST(req: Request) {
   const clientId = typeof body.clientId === 'number' ? body.clientId : Number(body.clientId)
   const startDate = typeof body.startDate === 'string' ? body.startDate : ''
   const endDate = typeof body.endDate === 'string' ? body.endDate : ''
+  const skipAdLevel = body.skipAdLevel === true
 
   if (!clientId || isNaN(clientId) || !startDate || !endDate) {
     return apiError('clientId(숫자), startDate, endDate 필수', 400)
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
   if (diffDays < 0) return apiError('시작일이 종료일보다 늦습니다.', 400)
   if (diffDays > 90) return apiError('최대 90일까지 가능합니다.', 400)
 
-  logger.info('Backfill 시작', { clientId, startDate, endDate, days: diffDays + 1 })
+  logger.info('Backfill 시작', { clientId, startDate, endDate, days: diffDays + 1, skipAdLevel })
 
   try {
     const allResults: { date: string; platform: string; count: number; error: string | null }[] = []
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
       const currentDate = new Date(d)
       const dateStr = getKstDateString(currentDate)
 
-      const results = await syncClient(clientId, currentDate)
+      const results = await syncClient(clientId, currentDate, { skipAdLevel })
 
       for (const r of results) {
         allResults.push({

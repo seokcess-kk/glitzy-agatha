@@ -35,12 +35,18 @@ interface ClientApiConfig {
 /**
  * 단일 클라이언트의 단일 매체 동기화
  */
+export interface SyncOptions {
+  /** true 면 광고 소재(ad) 레벨 통계 호출을 건너뛴다 — 백필 timeout 회피용 */
+  skipAdLevel?: boolean
+}
+
 async function syncPlatform(
   clientId: number,
   clientName: string,
   platform: ApiPlatform,
   configData: string | Record<string, unknown>,
   date: Date,
+  options?: SyncOptions,
 ): Promise<SyncResult> {
   // JSONB에서 꺼낸 값이 객체(평문)이면 직접 사용, 문자열(암호화)이면 복호화
   const decrypted = typeof configData === 'object' && configData !== null
@@ -68,10 +74,10 @@ async function syncPlatform(
           accountId: decrypted.account_id as string,
           accessToken: decrypted.access_token as string,
         }
-        const [campaignResult, adResult] = await Promise.all([
-          fetchMetaAds(date, metaOpts),
-          fetchMetaAdStats(date, metaOpts),
-        ])
+        const campaignResult = await fetchMetaAds(date, metaOpts)
+        const adResult = options?.skipAdLevel
+          ? { platform: campaignResult.platform, count: 0, error: undefined as string | undefined }
+          : await fetchMetaAdStats(date, metaOpts)
         return {
           clientId,
           clientName,
@@ -103,10 +109,10 @@ async function syncPlatform(
           advertiserId: decrypted.advertiser_id as string,
           accessToken: decrypted.access_token as string,
         }
-        const [campaignResult, adResult] = await Promise.all([
-          fetchTikTokAds(date, tiktokOpts),
-          fetchTikTokAdStats(date, tiktokOpts),
-        ])
+        const campaignResult = await fetchTikTokAds(date, tiktokOpts)
+        const adResult = options?.skipAdLevel
+          ? { platform: campaignResult.platform, count: 0, error: undefined as string | undefined }
+          : await fetchTikTokAdStats(date, tiktokOpts)
         return {
           clientId,
           clientName,
@@ -122,10 +128,10 @@ async function syncPlatform(
           accessLicense: decrypted.access_license as string,
           secretKey: decrypted.secret_key as string,
         }
-        const [campaignResult, adResult] = await Promise.all([
-          fetchNaverAds(date, naverOpts),
-          fetchNaverAdStats(date, naverOpts),
-        ])
+        const campaignResult = await fetchNaverAds(date, naverOpts)
+        const adResult = options?.skipAdLevel
+          ? { platform: campaignResult.platform, count: 0, error: undefined as string | undefined }
+          : await fetchNaverAdStats(date, naverOpts)
         return {
           clientId,
           clientName,
@@ -279,7 +285,11 @@ export async function syncAllClients(date: Date = new Date()): Promise<SyncResul
  * 2. 설정된 매체만 동기화
  * 3. 없으면 환경변수 폴백
  */
-export async function syncClient(clientId: number, date: Date = new Date()): Promise<SyncResult[]> {
+export async function syncClient(
+  clientId: number,
+  date: Date = new Date(),
+  options?: SyncOptions,
+): Promise<SyncResult[]> {
   const supabase = serverSupabase()
   const results: SyncResult[] = []
 
@@ -309,7 +319,7 @@ export async function syncClient(clientId: number, date: Date = new Date()): Pro
   if (validConfigs.length > 0) {
     // 설정된 매체 병렬 동기화
     const promises = validConfigs.map(cfg =>
-      syncPlatform(clientId, clientName, cfg.platform as ApiPlatform, cfg.config, date)
+      syncPlatform(clientId, clientName, cfg.platform as ApiPlatform, cfg.config, date, options)
     )
 
     const settled = await Promise.allSettled(promises)

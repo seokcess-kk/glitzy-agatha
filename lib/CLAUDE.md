@@ -82,6 +82,7 @@
 | `date.ts` | `formatDate`, `toUtcDate`, `getKstDateString`, `getKstDayStartISO`, `getKstDayEndISO` | KST 기준 날짜 포맷/생성 |
 | `services/metaAds.ts` | `fetchMetaAds`, `fetchMetaAdStats` | Meta 캠페인 + ad 레벨 수집 |
 | `services/tiktokAds.ts` | `fetchTikTokAds`, `fetchTikTokAdStats` | TikTok 캠페인 + ad 레벨 수집 |
+| `services/naverAds.ts` | `fetchNaverAds`, `fetchNaverAdStats` | Naver Search Ads 캠페인 + ad 레벨 수집 (HMAC-SHA256 시그니처 인증) |
 | `services/metaCapi.ts` | Meta CAPI 전송 | 리드 유입 시 서버사이드 전환 이벤트 전송 |
 | `services/erpClient.ts` | `fetchErpClients`, `createErpClient`, `fetchQuotes`, `fetchQuoteDetail`, `fetchInvoices`, `fetchInvoiceDetail`, `respondToQuote` | glitzy-web ERP API 프록시 (거래처/견적서/계산서) |
 

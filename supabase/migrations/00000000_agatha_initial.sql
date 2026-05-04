@@ -159,9 +159,12 @@ CREATE TABLE client_api_configs (
   id SERIAL PRIMARY KEY,
   client_id INTEGER REFERENCES clients(id) NOT NULL,
   platform VARCHAR(20) NOT NULL,
-  config_data JSONB NOT NULL DEFAULT '{}',
+  config JSONB NOT NULL DEFAULT '{}',
   is_active BOOLEAN DEFAULT TRUE,
+  last_tested_at TIMESTAMPTZ,
+  last_test_result VARCHAR(20),
   created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(client_id, platform)
 );
 

@@ -3,6 +3,7 @@
  * - POST: 저장된 API 키로 각 매체 연결 테스트 수행
  */
 
+import { createHmac } from 'crypto'
 import { GoogleAdsApi } from 'google-ads-api'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import { serverSupabase } from '@/lib/supabase'
@@ -132,6 +133,63 @@ async function testTikTokAds(config: Record<string, unknown>): Promise<TestResul
 }
 
 /**
+ * Naver Search Ads 연결 테스트
+ * GET https://api.searchad.naver.com/ncc/campaigns
+ * (HMAC-SHA256 시그니처 헤더 인증)
+ */
+async function testNaverAds(config: Record<string, unknown>): Promise<TestResult> {
+  const customerId = config.customer_id as string | undefined
+  const accessLicense = config.access_license as string | undefined
+  const secretKey = config.secret_key as string | undefined
+
+  if (!customerId || !accessLicense || !secretKey) {
+    return {
+      success: false,
+      error: 'customer_id, access_license, secret_key가 모두 필요합니다.',
+      platform: 'naver_ads',
+    }
+  }
+
+  const uri = '/ncc/campaigns'
+  const timestamp = String(Date.now())
+  const signature = createHmac('sha256', secretKey)
+    .update(`${timestamp}.GET.${uri}`)
+    .digest('base64')
+
+  const url = `https://api.searchad.naver.com${uri}`
+
+  const { response } = await fetchWithRetry(url, {
+    timeout: TEST_TIMEOUT,
+    retries: 0,
+    service: 'NaverAdsTest',
+    headers: {
+      'Content-Type': 'application/json; charset=UTF-8',
+      'X-Timestamp': timestamp,
+      'X-API-KEY': accessLicense,
+      'X-Customer': customerId,
+      'X-Signature': signature,
+    },
+  })
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => 'Unknown error')
+    return {
+      success: false,
+      error: `Naver API 오류 (${response.status}): ${body}`,
+      platform: 'naver_ads',
+    }
+  }
+
+  const data = (await response.json()) as Array<{ name?: string; nccCampaignId?: string }>
+  // 첫 캠페인명을 accountName으로, 캠페인 없으면 customerId 표기
+  const accountName = Array.isArray(data) && data.length > 0 && data[0].name
+    ? data[0].name
+    : `Customer ${customerId}`
+
+  return { success: true, accountName, platform: 'naver_ads' }
+}
+
+/**
  * POST: 매체 연결 테스트 실행
  */
 export const POST = withSuperAdmin(async (req: Request) => {
@@ -199,6 +257,8 @@ export const POST = withSuperAdmin(async (req: Request) => {
         result = await testTikTokAds(config)
         break
       case 'naver_ads':
+        result = await testNaverAds(config)
+        break
       case 'kakao_ads':
       case 'dable_ads':
         result = { success: false, error: '연결 테스트가 아직 지원되지 않습니다. API 키만 저장됩니다.', platform }

@@ -10,6 +10,7 @@ import { createLogger } from '@/lib/logger'
 import { fetchMetaAds, fetchMetaAdStats } from '@/lib/services/metaAds'
 import { fetchGoogleAds } from '@/lib/services/googleAds'
 import { fetchTikTokAds, fetchTikTokAdStats } from '@/lib/services/tiktokAds'
+import { fetchNaverAds, fetchNaverAdStats } from '@/lib/services/naverAds'
 import { type ApiPlatform, SYNC_ENABLED_PLATFORMS, API_PLATFORM_LABELS } from '@/lib/platform'
 
 const logger = createLogger('AdSyncManager')
@@ -105,6 +106,25 @@ async function syncPlatform(
         const [campaignResult, adResult] = await Promise.all([
           fetchTikTokAds(date, tiktokOpts),
           fetchTikTokAdStats(date, tiktokOpts),
+        ])
+        return {
+          clientId,
+          clientName,
+          platform: campaignResult.platform,
+          count: campaignResult.count + adResult.count,
+          error: campaignResult.error || adResult.error || undefined,
+        }
+      }
+      case 'naver_ads': {
+        const naverOpts = {
+          clientId,
+          customerId: decrypted.customer_id as string,
+          accessLicense: decrypted.access_license as string,
+          secretKey: decrypted.secret_key as string,
+        }
+        const [campaignResult, adResult] = await Promise.all([
+          fetchNaverAds(date, naverOpts),
+          fetchNaverAdStats(date, naverOpts),
         ])
         return {
           clientId,
@@ -214,9 +234,14 @@ export async function syncAllClients(date: Date = new Date()): Promise<SyncResul
         count: c.count + a.count,
         error: c.error || a.error || undefined,
       })),
+      Promise.all([fetchNaverAds(date), fetchNaverAdStats(date)]).then(([c, a]) => ({
+        platform: c.platform,
+        count: c.count + a.count,
+        error: c.error || a.error || undefined,
+      })),
     ])
 
-    const platformNames = ['meta_ads', 'google_ads', 'tiktok_ads']
+    const platformNames = ['meta_ads', 'google_ads', 'tiktok_ads', 'naver_ads']
     for (let i = 0; i < fallbackResults.length; i++) {
       const r = fallbackResults[i]
       if (r.status === 'fulfilled') {
@@ -318,9 +343,14 @@ export async function syncClient(clientId: number, date: Date = new Date()): Pro
         count: c.count + a.count,
         error: c.error || a.error || undefined,
       })),
+      Promise.all([fetchNaverAds(date), fetchNaverAdStats(date)]).then(([c, a]) => ({
+        platform: c.platform,
+        count: c.count + a.count,
+        error: c.error || a.error || undefined,
+      })),
     ])
 
-    const platformNames = ['meta_ads', 'google_ads', 'tiktok_ads']
+    const platformNames = ['meta_ads', 'google_ads', 'tiktok_ads', 'naver_ads']
     for (let i = 0; i < fallbackResults.length; i++) {
       const r = fallbackResults[i]
       if (r.status === 'fulfilled') {

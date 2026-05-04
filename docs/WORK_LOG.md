@@ -7,6 +7,14 @@
 
 ---
 
+## Naver Search Ads 동기화 (2026-05-04)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| N-1 | Naver Search Ads 동기화 구현 | naverAds.ts(HMAC-SHA256), adSyncManager 분기, 연결테스트, SYNC_ENABLED_PLATFORMS 등록 (완료) | 05-04 |
+
+---
+
 ## Demo Viewer (2026-04-16)
 
 | # | 작업 | 핵심 내용 | 날짜 |

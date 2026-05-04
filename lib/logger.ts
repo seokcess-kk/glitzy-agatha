@@ -110,7 +110,15 @@ function logWarn(message: string, context?: LogContext): void {
  * 에러 로그
  */
 function logError(message: string, error?: Error | unknown, context?: LogContext): void {
-  const err = error instanceof Error ? error : error ? new Error(String(error)) : undefined
+  let err: Error | undefined
+  if (error instanceof Error) {
+    err = error
+  } else if (error && typeof error === 'object') {
+    // PostgrestError 등 plain object — message/code/details 보존
+    err = new Error(JSON.stringify(error))
+  } else if (error !== undefined && error !== null) {
+    err = new Error(String(error))
+  }
   log('error', message, context, err)
 }
 

@@ -2,6 +2,16 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## Naver Search Ads 풀 동기화 구현 (2026-05-04)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-04 | feat: Naver Search Ads 동기화 구현 (`lib/services/naverAds.ts`) — HMAC-SHA256 시그니처 인증, `fetchNaverAds`(캠페인 레벨 → ad_campaign_stats) + `fetchNaverAdStats`(ad 레벨 → ad_stats). 광고그룹·광고 순회 후 stats 청크 분할 호출 |
+| 2026-05-04 | feat: `adSyncManager.ts`에 `naver_ads` case 추가 — 클라이언트별 설정/환경변수 폴백 양쪽 분기에 모두 반영 |
+| 2026-05-04 | feat: `SYNC_ENABLED_PLATFORMS`에 `naver_ads` 추가 — Cron 자동 동기화 대상 포함 |
+| 2026-05-04 | feat: `/api/admin/clients/[id]/api-configs/test` 라우트에 `testNaverAds` 구현 — `GET /ncc/campaigns` 호출로 인증 검증, 첫 캠페인명 또는 customer_id를 accountName으로 반환 |
+| 2026-05-04 | feat: 환경변수 폴백 추가 — `NAVER_ADS_CUSTOMER_ID`, `NAVER_ADS_ACCESS_LICENSE`, `NAVER_ADS_SECRET_KEY` |
+
 ## 운영 배포 완료 — 견적/계산서 복원 및 거래처 동기화 (2026-04-16)
 
 | 날짜 | 내용 |

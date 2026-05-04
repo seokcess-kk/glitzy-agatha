@@ -15,7 +15,7 @@ export const API_PLATFORMS = [
 export type ApiPlatform = (typeof API_PLATFORMS)[number]
 
 /** 동기화 활성 플랫폼 — adSyncManager에서 실제 API 호출 대상 */
-export const SYNC_ENABLED_PLATFORMS: ApiPlatform[] = ['meta_ads', 'google_ads', 'tiktok_ads']
+export const SYNC_ENABLED_PLATFORMS: ApiPlatform[] = ['meta_ads', 'google_ads', 'tiktok_ads', 'naver_ads']
 
 /** API 설정 UI에 표시할 플랫폼 (6개 전부) */
 export const API_CONFIG_PLATFORMS: readonly ApiPlatform[] = API_PLATFORMS

@@ -67,11 +67,34 @@ export default function AdsPage() {
   const handleSync = async () => {
     setSyncing(true)
     try {
-      const res = await fetch('/api/ads/sync', { method: 'POST' })
+      // 선택된 클라이언트가 있으면 명시적으로 client_id 를 전달 (전체 동기화 방지)
+      const url = selectedClientId
+        ? `/api/ads/sync?client_id=${selectedClientId}`
+        : '/api/ads/sync'
+      const res = await fetch(url, { method: 'POST' })
       const data = await res.json()
-      toast.success(
-        `데이터 수집 완료 (Meta: ${data.results?.meta ?? 0}, Google: ${data.results?.google ?? 0}, TikTok: ${data.results?.tiktok ?? 0})`
-      )
+
+      // 서버 응답: { success, results: [{ platform, count, error }, ...] }
+      type SyncRow = { platform?: string; count?: number; error?: string | null }
+      const results: SyncRow[] = Array.isArray(data?.results) ? data.results : []
+      const successRows = results.filter(r => !r.error)
+      const failedRows = results.filter(r => r.error)
+
+      const summary = successRows
+        .map(r => `${r.platform}: ${r.count ?? 0}`)
+        .join(', ')
+
+      if (failedRows.length === 0) {
+        toast.success(`데이터 수집 완료${summary ? ` (${summary})` : ''}`)
+      } else {
+        const failSummary = failedRows
+          .map(r => `${r.platform}: ${r.error}`)
+          .join(' / ')
+        toast.error(`일부 매체 수집 실패 — ${failSummary}`, { duration: 8000 })
+        if (successRows.length > 0) {
+          toast.success(`성공 매체 (${summary})`)
+        }
+      }
       handleRefresh()
     } catch {
       toast.error('동기화 실패')

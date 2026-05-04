@@ -143,7 +143,7 @@ async function fetchNaverStats(
   for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
     const chunk = ids.slice(i, i + CHUNK_SIZE)
 
-    const promises = chunk.map(async (id): Promise<NaverStatRow[]> => {
+    const promises = chunk.map(async (id, idx): Promise<NaverStatRow[]> => {
       const params = new URLSearchParams()
       params.set('id', id)
       params.set('fields', fieldsJson)
@@ -159,27 +159,38 @@ async function fetchNaverStats(
         headers,
       })
 
+      const text = await response.text().catch(() => '')
+
       if (!response.ok) {
-        const body = await response.text().catch(() => 'Unknown error')
-        throw new Error(`Naver API error (${response.status}) at ${uri}?id=${id}: ${body}`)
+        throw new Error(`Naver API error (${response.status}) at ${uri}?id=${id}: ${text}`)
+      }
+
+      // [DEBUG] 첫 번째 청크의 첫 번째 ID 응답 raw 를 production 로그에 노출
+      // (응답 형식 매핑 검증 완료 후 제거 예정)
+      if (i === 0 && idx === 0) {
+        logger.info('Naver /stats raw response (debug)', { id, body: text.slice(0, 800) })
+      }
+
+      let json: unknown
+      try {
+        json = JSON.parse(text)
+      } catch {
+        return []
       }
 
       // 응답 형식: { id, impCnt, ... } 단일 객체 / [{...}] 배열 / { data: [...] } 모두 대응
-      const json = (await response.json()) as
-        | NaverStatRow
-        | NaverStatRow[]
-        | NaverStatsResponse
       let rows: NaverStatRow[] = []
       if (Array.isArray(json)) {
-        rows = json
+        rows = json as NaverStatRow[]
       } else if (json && typeof json === 'object') {
-        if ('data' in json && Array.isArray(json.data)) {
-          rows = json.data
-        } else if ('id' in json) {
-          rows = [json as NaverStatRow]
+        const obj = json as Record<string, unknown>
+        if ('data' in obj && Array.isArray(obj.data)) {
+          rows = obj.data as NaverStatRow[]
+        } else if ('id' in obj) {
+          rows = [obj as unknown as NaverStatRow]
         } else {
           // id 가 없는 객체는 메트릭만 있는 형태 → 호출 시 사용한 id 로 보강
-          rows = [{ id, ...(json as Record<string, unknown>) } as NaverStatRow]
+          rows = [{ id, ...obj } as unknown as NaverStatRow]
         }
       }
       return rows

@@ -118,6 +118,10 @@ async function naverGet<T>(
 /**
  * stats 엔드포인트 호출 (캠페인/광고 공용)
  *
+ * Naver Search Ads `/stats` 의 `ids` 파라미터는 multi-value 쿼리 형식
+ * (ids=id1&ids=id2&ids=id3). JSON 배열이나 콤마 구분이 아니다.
+ * 응답은 단일 ID 호출 시 객체, 다중 ID 호출 시 배열로 형식이 바뀐다.
+ *
  * @param ids nccCampaignId 또는 nccAdId 배열
  * @param dateStr YYYY-MM-DD
  */
@@ -131,17 +135,45 @@ async function fetchNaverStats(
   // Naver stats 엔드포인트는 ids 배열이 큰 경우 청크 분할 권장 (안전하게 100개씩)
   const CHUNK_SIZE = 100
   const allRows: NaverStatRow[] = []
+  const uri = '/stats'
 
   for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
     const chunk = ids.slice(i, i + CHUNK_SIZE)
-    const query = {
-      ids: JSON.stringify(chunk),
-      fields: JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ctr', 'cpc', 'convCnt', 'ccnt']),
-      timeRange: JSON.stringify({ since: dateStr, until: dateStr }),
+
+    // ids 파라미터는 multi-value (ids=id1&ids=id2 ...)
+    const params = new URLSearchParams()
+    for (const id of chunk) params.append('ids', id)
+    params.set(
+      'fields',
+      JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ctr', 'cpc', 'convCnt', 'ccnt']),
+    )
+    params.set('timeRange', JSON.stringify({ since: dateStr, until: dateStr }))
+
+    const headers = buildNaverHeaders('GET', uri, auth)
+    const url = `${BASE_URL}${uri}?${params.toString()}`
+
+    const { response } = await fetchWithRetry(url, {
+      service: SERVICE_NAME,
+      timeout: 30000,
+      retries: 3,
+      headers,
+    })
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => 'Unknown error')
+      throw new Error(`Naver API error (${response.status}) at ${uri}: ${body}`)
     }
 
-    const json = await naverGet<NaverStatsResponse>('/stats', query, auth)
-    allRows.push(...(json.data || []))
+    // 응답: 단일 ID → 객체, 다중 → 배열, 또는 { data: [...] } 형태 모두 대응
+    const json = (await response.json()) as NaverStatsResponse | NaverStatRow[] | NaverStatRow
+    const rows: NaverStatRow[] = Array.isArray(json)
+      ? json
+      : 'data' in json && Array.isArray(json.data)
+        ? json.data
+        : 'id' in json
+          ? [json as NaverStatRow]
+          : []
+    allRows.push(...rows)
   }
 
   return allRows

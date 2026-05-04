@@ -118,66 +118,81 @@ async function naverGet<T>(
 /**
  * stats 엔드포인트 호출 (캠페인/광고 공용)
  *
- * Naver Search Ads `/stats` 의 `ids` 파라미터는 multi-value 쿼리 형식
- * (ids=id1&ids=id2&ids=id3). JSON 배열이나 콤마 구분이 아니다.
- * 응답은 단일 ID 호출 시 객체, 다중 ID 호출 시 배열로 형식이 바뀐다.
+ * Naver Search Ads `/stats` 는 공식 Python SDK 기준 `id` 단일 호출이 가장 안정적이다.
+ * (`ids` multi-value 또는 statType 명시 모두 환경에 따라 400 으로 거부됨).
  *
- * statType 은 ID 종류와 일치해야 한다 (CAMPAIGN / AD).
- * fields 는 statType 별로 지원되는 메트릭만 사용. 미지원 필드 포함 시 400 에러.
+ * 따라서 ID 마다 한 번씩 GET `/stats?id={id}&fields={fields}&timeRange={timeRange}` 호출.
+ * 동시에 너무 많이 보내지 않도록 10개씩 청크 병렬 처리하고, 일부 실패는 warn 로깅 후 진행.
  *
  * @param ids nccCampaignId 또는 nccAdId 배열
  * @param dateStr YYYY-MM-DD
- * @param statType 'CAMPAIGN' (기본) | 'AD'
  */
 async function fetchNaverStats(
   ids: string[],
   dateStr: string,
   auth: { customerId: string; accessLicense: string; secretKey: string },
-  statType: 'CAMPAIGN' | 'AD' = 'CAMPAIGN',
 ): Promise<NaverStatRow[]> {
   if (ids.length === 0) return []
 
-  // Naver stats 엔드포인트는 ids 배열이 큰 경우 청크 분할 권장 (안전하게 100개씩)
-  const CHUNK_SIZE = 100
   const allRows: NaverStatRow[] = []
   const uri = '/stats'
+  const fieldsJson = JSON.stringify(['impCnt', 'clkCnt', 'salesAmt'])
+  const timeRangeJson = JSON.stringify({ since: dateStr, until: dateStr })
 
+  const CHUNK_SIZE = 10
   for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
     const chunk = ids.slice(i, i + CHUNK_SIZE)
 
-    // ids 파라미터는 multi-value (ids=id1&ids=id2 ...)
-    const params = new URLSearchParams()
-    for (const id of chunk) params.append('ids', id)
-    // 보장된 공통 메트릭만 사용 (ccnt 는 미지원 필드라 제거, convCnt 도 statType 별 지원 차이가 있어 제외)
-    params.set('fields', JSON.stringify(['impCnt', 'clkCnt', 'salesAmt']))
-    params.set('timeRange', JSON.stringify({ since: dateStr, until: dateStr }))
-    params.set('statType', statType)
+    const promises = chunk.map(async (id): Promise<NaverStatRow[]> => {
+      const params = new URLSearchParams()
+      params.set('id', id)
+      params.set('fields', fieldsJson)
+      params.set('timeRange', timeRangeJson)
 
-    const headers = buildNaverHeaders('GET', uri, auth)
-    const url = `${BASE_URL}${uri}?${params.toString()}`
+      const headers = buildNaverHeaders('GET', uri, auth)
+      const url = `${BASE_URL}${uri}?${params.toString()}`
 
-    const { response } = await fetchWithRetry(url, {
-      service: SERVICE_NAME,
-      timeout: 30000,
-      retries: 3,
-      headers,
+      const { response } = await fetchWithRetry(url, {
+        service: SERVICE_NAME,
+        timeout: 15000,
+        retries: 1,
+        headers,
+      })
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => 'Unknown error')
+        throw new Error(`Naver API error (${response.status}) at ${uri}?id=${id}: ${body}`)
+      }
+
+      // 응답 형식: { id, impCnt, ... } 단일 객체 / [{...}] 배열 / { data: [...] } 모두 대응
+      const json = (await response.json()) as
+        | NaverStatRow
+        | NaverStatRow[]
+        | NaverStatsResponse
+      let rows: NaverStatRow[] = []
+      if (Array.isArray(json)) {
+        rows = json
+      } else if (json && typeof json === 'object') {
+        if ('data' in json && Array.isArray(json.data)) {
+          rows = json.data
+        } else if ('id' in json) {
+          rows = [json as NaverStatRow]
+        } else {
+          // id 가 없는 객체는 메트릭만 있는 형태 → 호출 시 사용한 id 로 보강
+          rows = [{ id, ...(json as Record<string, unknown>) } as NaverStatRow]
+        }
+      }
+      return rows
     })
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => 'Unknown error')
-      throw new Error(`Naver API error (${response.status}) at ${uri}: ${body}`)
+    const settled = await Promise.allSettled(promises)
+    for (const r of settled) {
+      if (r.status === 'fulfilled') {
+        allRows.push(...r.value)
+      } else {
+        logger.warn('Naver stats 단일 ID 호출 실패', { error: String(r.reason) })
+      }
     }
-
-    // 응답: 단일 ID → 객체, 다중 → 배열, 또는 { data: [...] } 형태 모두 대응
-    const json = (await response.json()) as NaverStatsResponse | NaverStatRow[] | NaverStatRow
-    const rows: NaverStatRow[] = Array.isArray(json)
-      ? json
-      : 'data' in json && Array.isArray(json.data)
-        ? json.data
-        : 'id' in json
-          ? [json as NaverStatRow]
-          : []
-    allRows.push(...rows)
   }
 
   return allRows
@@ -376,7 +391,7 @@ export async function fetchNaverAdStats(date = new Date(), options?: NaverAdsOpt
 
     // 3. 광고 통계 조회
     const adIds = allAds.map((a) => a.nccAdId)
-    const statRows = await fetchNaverStats(adIds, dateStr, auth, 'AD')
+    const statRows = await fetchNaverStats(adIds, dateStr, auth)
 
     const statMap = new Map<string, NaverStatRow>()
     for (const row of statRows) statMap.set(row.id, row)

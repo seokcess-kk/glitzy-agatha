@@ -14,6 +14,8 @@ interface DateRangePickerProps {
   onDateRangeChange: (range: DateRange) => void
   allowFuture?: boolean
   bookedDates?: Date[]
+  /** 캘린더에 동시에 표시할 월 수 (좁은 다이얼로그에서는 1 권장). 기본 2 */
+  numberOfMonths?: 1 | 2
 }
 
 const PRESETS = [
@@ -25,7 +27,7 @@ const PRESETS = [
   { label: '90일', days: 90 },
 ]
 
-export function DateRangePicker({ dateRange, onDateRangeChange, allowFuture = false, bookedDates }: DateRangePickerProps) {
+export function DateRangePicker({ dateRange, onDateRangeChange, allowFuture = false, bookedDates, numberOfMonths = 2 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false)
 
   const handlePreset = (days: number) => {
@@ -100,7 +102,7 @@ export function DateRangePicker({ dateRange, onDateRangeChange, allowFuture = fa
           mode="range"
           selected={dateRange}
           onSelect={handleCalendarSelect}
-          numberOfMonths={2}
+          numberOfMonths={numberOfMonths}
           disabled={allowFuture ? undefined : { after: new Date() }}
           {...(bookedDates?.length ? {
             modifiers: { booked: bookedDates },

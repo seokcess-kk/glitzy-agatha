@@ -120,7 +120,7 @@ export default function BackfillDialog({ open, onOpenChange, clientId, clientNam
 
   return (
     <Dialog open={open} onOpenChange={val => !running && onOpenChange(val)}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
             과거 광고 데이터 백필{clientName ? ` — ${clientName}` : ''}
@@ -130,7 +130,11 @@ export default function BackfillDialog({ open, onOpenChange, clientId, clientNam
         <div className="space-y-4 p-1">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">기간 (최대 90일)</Label>
-            <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              numberOfMonths={1}
+            />
             <p className="text-xs text-muted-foreground">
               {startDateStr} ~ {endDateStr} ({dayCount}일)
             </p>

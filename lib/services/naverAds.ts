@@ -122,13 +122,18 @@ async function naverGet<T>(
  * (ids=id1&ids=id2&ids=id3). JSON 배열이나 콤마 구분이 아니다.
  * 응답은 단일 ID 호출 시 객체, 다중 ID 호출 시 배열로 형식이 바뀐다.
  *
+ * statType 은 ID 종류와 일치해야 한다 (CAMPAIGN / AD).
+ * fields 는 statType 별로 지원되는 메트릭만 사용. 미지원 필드 포함 시 400 에러.
+ *
  * @param ids nccCampaignId 또는 nccAdId 배열
  * @param dateStr YYYY-MM-DD
+ * @param statType 'CAMPAIGN' (기본) | 'AD'
  */
 async function fetchNaverStats(
   ids: string[],
   dateStr: string,
   auth: { customerId: string; accessLicense: string; secretKey: string },
+  statType: 'CAMPAIGN' | 'AD' = 'CAMPAIGN',
 ): Promise<NaverStatRow[]> {
   if (ids.length === 0) return []
 
@@ -143,11 +148,10 @@ async function fetchNaverStats(
     // ids 파라미터는 multi-value (ids=id1&ids=id2 ...)
     const params = new URLSearchParams()
     for (const id of chunk) params.append('ids', id)
-    params.set(
-      'fields',
-      JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ctr', 'cpc', 'convCnt', 'ccnt']),
-    )
+    // 보장된 공통 메트릭만 사용 (ccnt 는 미지원 필드라 제거, convCnt 도 statType 별 지원 차이가 있어 제외)
+    params.set('fields', JSON.stringify(['impCnt', 'clkCnt', 'salesAmt']))
     params.set('timeRange', JSON.stringify({ since: dateStr, until: dateStr }))
+    params.set('statType', statType)
 
     const headers = buildNaverHeaders('GET', uri, auth)
     const url = `${BASE_URL}${uri}?${params.toString()}`
@@ -372,7 +376,7 @@ export async function fetchNaverAdStats(date = new Date(), options?: NaverAdsOpt
 
     // 3. 광고 통계 조회
     const adIds = allAds.map((a) => a.nccAdId)
-    const statRows = await fetchNaverStats(adIds, dateStr, auth)
+    const statRows = await fetchNaverStats(adIds, dateStr, auth, 'AD')
 
     const statMap = new Map<string, NaverStatRow>()
     for (const row of statRows) statMap.set(row.id, row)

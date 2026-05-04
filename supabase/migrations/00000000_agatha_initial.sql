@@ -115,13 +115,15 @@ CREATE TABLE ad_stats (
   ad_id VARCHAR(100),
   ad_name VARCHAR(200),
   campaign_id VARCHAR(100),
+  campaign_name VARCHAR(200),
   platform VARCHAR(20),
   stat_date DATE NOT NULL,
   impressions INTEGER DEFAULT 0,
   clicks INTEGER DEFAULT 0,
   spend_amount DECIMAL(12,2) DEFAULT 0,
   utm_content VARCHAR(200),
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(client_id, platform, ad_id, stat_date)
 );
 
 -- 9. ad_creatives (광고 소재 자산)

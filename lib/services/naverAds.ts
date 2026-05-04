@@ -139,11 +139,17 @@ async function fetchNaverStats(
   const fieldsJson = JSON.stringify(['impCnt', 'clkCnt', 'salesAmt'])
   const timeRangeJson = JSON.stringify({ since: dateStr, until: dateStr })
 
-  const CHUNK_SIZE = 10
+  // Naver Search Ads API rate limit 대응:
+  //  - 청크 내 동시 호출 5개 (10 → 5로 축소)
+  //  - 청크 사이 200ms sleep 으로 burst 완화
+  //  - 광고 레벨 호출 시 ID 가 수백~수천 개라 직렬에 가깝게 운영
+  const CHUNK_SIZE = 5
+  const CHUNK_GAP_MS = 200
+
   for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
     const chunk = ids.slice(i, i + CHUNK_SIZE)
 
-    const promises = chunk.map(async (id, idx): Promise<NaverStatRow[]> => {
+    const promises = chunk.map(async (id): Promise<NaverStatRow[]> => {
       const params = new URLSearchParams()
       params.set('id', id)
       params.set('fields', fieldsJson)
@@ -165,12 +171,6 @@ async function fetchNaverStats(
         throw new Error(`Naver API error (${response.status}) at ${uri}?id=${id}: ${text}`)
       }
 
-      // [DEBUG] 첫 번째 청크의 첫 번째 ID 응답 raw 를 production 로그에 노출
-      // (응답 형식 매핑 검증 완료 후 제거 예정)
-      if (i === 0 && idx === 0) {
-        logger.info('Naver /stats raw response (debug)', { id, body: text.slice(0, 800) })
-      }
-
       let json: unknown
       try {
         json = JSON.parse(text)
@@ -178,18 +178,23 @@ async function fetchNaverStats(
         return []
       }
 
-      // 응답 형식: { id, impCnt, ... } 단일 객체 / [{...}] 배열 / { data: [...] } 모두 대응
+      // Naver /stats 단일 ID 응답: { summary, data: [{ ...메트릭 }], compTm, cycleBaseTm }
+      // - data[] 의 row 에는 id 가 들어있지 않으므로 호출 시 사용한 id 로 항상 보강
+      // - 하위호환: 객체 직접/배열/{id,...} 형태도 대응
       let rows: NaverStatRow[] = []
       if (Array.isArray(json)) {
-        rows = json as NaverStatRow[]
+        rows = (json as Record<string, unknown>[]).map(row => (
+          ('id' in row ? row : { id, ...row }) as unknown as NaverStatRow
+        ))
       } else if (json && typeof json === 'object') {
         const obj = json as Record<string, unknown>
         if ('data' in obj && Array.isArray(obj.data)) {
-          rows = obj.data as NaverStatRow[]
+          rows = (obj.data as Record<string, unknown>[]).map(row => (
+            ('id' in row ? row : { id, ...row }) as unknown as NaverStatRow
+          ))
         } else if ('id' in obj) {
           rows = [obj as unknown as NaverStatRow]
         } else {
-          // id 가 없는 객체는 메트릭만 있는 형태 → 호출 시 사용한 id 로 보강
           rows = [{ id, ...obj } as unknown as NaverStatRow]
         }
       }
@@ -203,6 +208,11 @@ async function fetchNaverStats(
       } else {
         logger.warn('Naver stats 단일 ID 호출 실패', { error: String(r.reason) })
       }
+    }
+
+    // 다음 청크 전 짧은 대기 (마지막 청크는 생략)
+    if (i + CHUNK_SIZE < ids.length) {
+      await new Promise(resolve => setTimeout(resolve, CHUNK_GAP_MS))
     }
   }
 

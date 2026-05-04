@@ -14,14 +14,23 @@ interface DayChannelEntry {
 /**
  * 채널별 일별 ROAS 추이 API
  * GET /api/attribution/roas-trend?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+ *
+ * 매출 = leads where status='converted' + conversion_value (status_changed_at 기준)
+ * NULL 레거시 데이터는 누락될 수 있음 (TODO: 백필 마이그레이션 후 제거).
  */
-export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+export const GET = withClientFilter(async (req: Request, { clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
 
   const today = getKstDateString()
   const startDate = url.searchParams.get('startDate') || getKstDateString(new Date(Date.now() - 30 * 86400000))
   const endDate = url.searchParams.get('endDate') || today
+
+  // KST 기준 [start, end) 패턴 (status_changed_at은 timestamp)
+  const tsStart = `${startDate}T00:00:00+09:00`
+  const tsEndDate = new Date(endDate + 'T00:00:00+09:00')
+  tsEndDate.setDate(tsEndDate.getDate() + 1)
+  const tsEnd = tsEndDate.toISOString()
 
   // 빈 날짜 틀 생성
   const dayMap = new Map<string, Record<string, { spend: number; revenue: number }>>()
@@ -38,30 +47,32 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     .gte('stat_date', startDate)
     .lte('stat_date', endDate)
 
-  // 결제 쿼리 (일별 + 고객의 첫 유입 채널)
-  let paymentQuery = supabase
-    .from('payments')
-    .select('payment_amount, payment_date, contacts(first_source)')
-    .gte('payment_date', startDate)
-    .lte('payment_date', endDate)
+  // 전환 리드 쿼리 (일별 + 고객의 첫 유입 채널)
+  let convQuery = supabase
+    .from('leads')
+    .select('conversion_value, status_changed_at, contacts(first_source)')
+    .eq('status', 'converted')
+    .not('conversion_value', 'is', null)
+    .gte('status_changed_at', tsStart)
+    .lt('status_changed_at', tsEnd)
 
   const adFiltered = applyClientFilter(adQuery, { clientId, assignedClientIds })
-  const payFiltered = applyClientFilter(paymentQuery, { clientId, assignedClientIds })
+  const convFiltered = applyClientFilter(convQuery, { clientId, assignedClientIds })
 
-  if (adFiltered === null && payFiltered === null) {
+  if (adFiltered === null && convFiltered === null) {
     return apiSuccess([])
   }
   if (adFiltered) adQuery = adFiltered
-  if (payFiltered) paymentQuery = payFiltered
+  if (convFiltered) convQuery = convFiltered
 
   try {
-    const [adRes, payRes] = await Promise.all([
+    const [adRes, convRes] = await Promise.all([
       adFiltered ? adQuery : Promise.resolve({ data: [] as { stat_date: string; platform: string; spend_amount: number }[], error: null }),
-      payFiltered ? paymentQuery : Promise.resolve({ data: [] as { payment_amount: number; payment_date: string; contacts: { first_source: string | null } | null }[], error: null }),
+      convFiltered ? convQuery : Promise.resolve({ data: [] as { conversion_value: number; status_changed_at: string; contacts: { first_source: string | null } | null }[], error: null }),
     ])
 
     if (adRes.error) return apiError(adRes.error.message, 500)
-    if (payRes.error) return apiError(payRes.error.message, 500)
+    if (convRes.error) return apiError(convRes.error.message, 500)
 
     const toKstDate = (dateStr: string) =>
       new Date(dateStr).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
@@ -77,14 +88,15 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }
 
     // 매출 일별 채널 집계 (퍼스트터치 기준)
-    for (const row of payRes.data || []) {
+    for (const row of convRes.data || []) {
       const contact = row.contacts as unknown as { first_source: string | null } | null
       const ch = normalizeChannel(contact?.first_source ?? null)
-      const date = toKstDate(row.payment_date)
+      if (!row.status_changed_at) continue
+      const date = toKstDate(row.status_changed_at)
       const entry = dayMap.get(date)
       if (!entry) continue
       if (!entry[ch]) entry[ch] = { spend: 0, revenue: 0 }
-      entry[ch].revenue += Number(row.payment_amount) || 0
+      entry[ch].revenue += Number(row.conversion_value) || 0
     }
 
     // ROAS 계산 + 응답 조립

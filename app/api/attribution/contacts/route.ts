@@ -4,10 +4,17 @@ import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 
 /**
- * 매출 귀속 — 결제 고객 여정 목록
- * 결제한 고객의 전체 여정(리드→예약→상담→결제)을 반환
+ * 매출 귀속 — 전환 고객 여정 목록
+ * 전환된 고객(leads.status='converted')의 전체 리드 이력을 반환
+ *
+ * Agatha 도메인:
+ * - payment(결제) 개념 → leads.conversion_value (전환 금액)
+ * - booking/consultation 개념 → leads.status (in_progress = 상담중, converted = 전환)
+ *
+ * 전환 시점은 leads.status_changed_at 사용. NULL 레거시 데이터는 누락될 수 있음
+ * (TODO: 백필 마이그레이션 후 제거).
  */
-export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+export const GET = withClientFilter(async (req: Request, { clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')
@@ -15,9 +22,16 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   const channelFilter = url.searchParams.get('channel')
   const campaignFilter = url.searchParams.get('campaign')
 
-  // DATE columns: KST date string
+  // KST 기준 [start, end) 패턴
   const dateStart = startDate ? getKstDateString(new Date(startDate)) : null
   const dateEnd = endDate ? getKstDateString(new Date(endDate)) : null
+  const tsStart = dateStart ? `${dateStart}T00:00:00+09:00` : null
+  let tsEnd: string | null = null
+  if (dateEnd) {
+    const d = new Date(dateEnd + 'T00:00:00+09:00')
+    d.setDate(d.getDate() + 1)
+    tsEnd = d.toISOString()
+  }
 
   if (assignedClientIds !== null && assignedClientIds.length === 0) {
     return apiSuccess([])
@@ -25,27 +39,36 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
   const ctx = { clientId, assignedClientIds }
 
-  // 결제 + 고객 정보 조회 (기간 필터)
-  let paymentsQuery = supabase
-    .from('payments')
-    .select('id, payment_amount, payment_date, treatment_name, contact_id, contacts(id, name, phone_number, first_source, first_campaign_id, created_at)')
-    .order('payment_date', { ascending: false })
-  paymentsQuery = applyClientFilter(paymentsQuery, ctx)!
-  if (dateStart) paymentsQuery = paymentsQuery.gte('payment_date', dateStart)
-  if (dateEnd) paymentsQuery = paymentsQuery.lte('payment_date', dateEnd)
+  // 전환 리드 조회 (기간 필터 — status_changed_at 기준)
+  let convQuery = supabase
+    .from('leads')
+    .select('id, contact_id, conversion_value, status_changed_at, conversion_memo, contacts(id, name, phone_number, first_source, first_campaign_id, created_at)')
+    .eq('status', 'converted')
+    .not('conversion_value', 'is', null)
+    .order('status_changed_at', { ascending: false })
+  convQuery = applyClientFilter(convQuery, ctx)!
+  if (tsStart) convQuery = convQuery.gte('status_changed_at', tsStart)
+  if (tsEnd) convQuery = convQuery.lt('status_changed_at', tsEnd)
 
-  const { data: payments } = await paymentsQuery
+  const { data: conversions } = await convQuery
 
-  if (!payments || payments.length === 0) {
+  if (!conversions || conversions.length === 0) {
     return apiSuccess([])
   }
 
   // 고객 ID 수집 + 채널/캠페인 필터
   const contactIds = new Set<number>()
-  const contactPayments: Record<number, any[]> = {}
+  const contactConversions: Record<number, { id: number; amount: number; date: string | null; memo: string | null }[]> = {}
 
-  for (const p of payments) {
-    const contact = p.contacts as any
+  for (const conv of conversions) {
+    const contact = conv.contacts as unknown as {
+      id: number
+      name: string | null
+      phone_number: string | null
+      first_source: string | null
+      first_campaign_id: string | null
+      created_at: string
+    } | null
     if (!contact) continue
 
     // 채널 필터
@@ -57,12 +80,12 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (campaignFilter && contact.first_campaign_id !== campaignFilter) continue
 
     contactIds.add(contact.id)
-    if (!contactPayments[contact.id]) contactPayments[contact.id] = []
-    contactPayments[contact.id].push({
-      id: p.id,
-      amount: Number(p.payment_amount),
-      date: p.payment_date,
-      treatment: p.treatment_name,
+    if (!contactConversions[contact.id]) contactConversions[contact.id] = []
+    contactConversions[contact.id].push({
+      id: conv.id,
+      amount: Number(conv.conversion_value),
+      date: conv.status_changed_at,
+      memo: conv.conversion_memo,
     })
   }
 
@@ -72,37 +95,41 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
   const ids = Array.from(contactIds)
 
-  // 관련 리드 + 예약 + 상담 병렬 조회
-  const [leadsRes, bookingsRes, consultRes] = await Promise.all([
-    supabase.from('leads').select('id, contact_id, utm_source, utm_medium, utm_campaign, utm_content, chatbot_sent, chatbot_sent_at, created_at').in('contact_id', ids).order('created_at'),
-    supabase.from('bookings').select('id, contact_id, status, booking_datetime, notes, created_at').in('contact_id', ids).order('created_at'),
-    supabase.from('consultations').select('id, contact_id, status, consultation_date, notes, created_at').in('contact_id', ids).order('created_at'),
-  ])
+  // 관련 리드 전체 조회 (각 고객의 모든 리드 = 여정)
+  const { data: allLeads } = await supabase
+    .from('leads')
+    .select('id, contact_id, utm_source, utm_medium, utm_campaign, utm_content, status, status_changed_at, conversion_value, lost_reason, conversion_memo, chatbot_sent, chatbot_sent_at, created_at')
+    .in('contact_id', ids)
+    .order('created_at')
 
   // 고객 정보 맵
-  const contactMap: Record<number, any> = {}
-  for (const p of payments) {
-    const c = p.contacts as any
+  const contactMap: Record<number, {
+    id: number
+    name: string | null
+    phone_number: string | null
+    first_source: string | null
+    first_campaign_id: string | null
+    created_at: string
+  }> = {}
+  for (const conv of conversions) {
+    const c = conv.contacts as unknown as {
+      id: number
+      name: string | null
+      phone_number: string | null
+      first_source: string | null
+      first_campaign_id: string | null
+      created_at: string
+    } | null
     if (c && contactIds.has(c.id)) {
       contactMap[c.id] = c
     }
   }
 
-  // 관련 데이터를 contact_id 기준 Map으로 그룹핑 (O(N) vs O(N*M))
-  const leadsMap = new Map<number, any[]>()
-  for (const l of leadsRes.data || []) {
+  // 관련 데이터를 contact_id 기준 Map으로 그룹핑
+  const leadsMap = new Map<number, typeof allLeads>()
+  for (const l of allLeads || []) {
     if (!leadsMap.has(l.contact_id)) leadsMap.set(l.contact_id, [])
     leadsMap.get(l.contact_id)!.push(l)
-  }
-  const bookingsMap = new Map<number, any[]>()
-  for (const b of bookingsRes.data || []) {
-    if (!bookingsMap.has(b.contact_id)) bookingsMap.set(b.contact_id, [])
-    bookingsMap.get(b.contact_id)!.push(b)
-  }
-  const consultMap = new Map<number, any[]>()
-  for (const c of consultRes.data || []) {
-    if (!consultMap.has(c.contact_id)) consultMap.set(c.contact_id, [])
-    consultMap.get(c.contact_id)!.push(c)
   }
 
   // 고객별 여정 조립
@@ -111,11 +138,20 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (!contact) return null
 
     const leads = leadsMap.get(cid) || []
-    const bookings = bookingsMap.get(cid) || []
-    const consultations = consultMap.get(cid) || []
-    const pmnts = contactPayments[cid] || []
-    const totalRevenue = pmnts.reduce((s, p) => s + p.amount, 0)
-    const firstLead = leads[0]
+    const convs = contactConversions[cid] || []
+    // 응답 호환성: 기존 payments/bookings/consultations 키 유지 (값은 leads 기반)
+    const payments = convs.map(c => ({ id: c.id, amount: c.amount, date: c.date, memo: c.memo }))
+    // 예약 = 진행중/전환 리드, 상담 = 진행중 리드
+    const bookings = leads
+      ? leads.filter(l => l.status === 'in_progress' || l.status === 'converted')
+        .map(l => ({ id: l.id, contact_id: l.contact_id, status: l.status, created_at: l.created_at }))
+      : []
+    const consultations = leads
+      ? leads.filter(l => l.status === 'in_progress')
+        .map(l => ({ id: l.id, contact_id: l.contact_id, status: l.status, created_at: l.created_at }))
+      : []
+    const totalRevenue = convs.reduce((s, p) => s + p.amount, 0)
+    const firstLead = leads?.[0]
 
     return {
       contactId: cid,
@@ -125,16 +161,15 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       campaign: contact.first_campaign_id,
       firstLeadDate: firstLead?.created_at || contact.created_at,
       totalRevenue,
-      payments: pmnts,
+      payments,
       journey: {
-        leads,
+        leads: leads || [],
         bookings,
         consultations,
-        payments: pmnts,
+        payments,
       },
     }
   }).filter(Boolean)
 
   return apiSuccess(result)
 })
-

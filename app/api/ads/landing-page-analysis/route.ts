@@ -9,9 +9,16 @@ const logger = createLogger('AdsLandingPageAnalysis')
 
 /**
  * 랜딩페이지별 심화 분석 API
- * - pages: 테이블 데이터 (리드, 예약, 결제, 매출, 전환율)
+ * - pages: 테이블 데이터 (리드, 예약, 전환, 매출, 전환율)
  * - trend: 일별 리드 추이 (상위 5개 LP)
  * - channelBreakdown: LP별 UTM source 채널 분석
+ *
+ * Agatha 도메인 매핑:
+ * - 매출: leads where status='converted' + conversion_value (status_changed_at 기준)
+ * - 예약: leads where status IN ('in_progress','converted')
+ *
+ * 전환 시점은 leads.status_changed_at 사용. NULL 레거시 데이터는 누락될 수 있음
+ * (TODO: 백필 마이그레이션 후 제거).
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   if (isDemoViewer(user.role)) return apiSuccess(getDemoLandingPageAnalysis())
@@ -47,38 +54,31 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (filteredLp === null) return apiSuccess({ pages: [], trend: [], trendLabels: [], channelBreakdown: [] })
     lpQuery = filteredLp
 
-    // 2. 기간 내 리드 (landing_page_id, contact_id, utm_source, created_at)
+    // 2. 기간 내 리드 (landing_page_id, contact_id, utm_source, status, created_at)
+    // status는 예약 카운트(in_progress/converted)에 사용
     let leadsQuery = supabase
       .from('leads')
-      .select('contact_id, landing_page_id, utm_source, created_at')
+      .select('contact_id, landing_page_id, utm_source, status, created_at')
     const filteredLeads = applyClientFilter(leadsQuery, { clientId, assignedClientIds })
     if (filteredLeads === null) return apiSuccess({ pages: [], trend: [], trendLabels: [], channelBreakdown: [] })
     leadsQuery = filteredLeads
     if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
     if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
-    // 3. 기간 내 예약 (contact_id, status) — created_at 기준 (기존 API 패턴 동일)
-    let bookingsQuery = supabase
-      .from('bookings')
-      .select('contact_id, status, created_at')
-    const filteredBookings = applyClientFilter(bookingsQuery, { clientId, assignedClientIds })
-    if (filteredBookings === null) return apiSuccess({ pages: [], trend: [], trendLabels: [], channelBreakdown: [] })
-    bookingsQuery = filteredBookings
-    if (tsStart) bookingsQuery = bookingsQuery.gte('created_at', tsStart)
-    if (tsEnd) bookingsQuery = bookingsQuery.lt('created_at', tsEnd)
+    // 3. 기간 내 전환 리드 (contact_id, conversion_value) — status='converted', status_changed_at 기준
+    let conversionsQuery = supabase
+      .from('leads')
+      .select('contact_id, conversion_value, status_changed_at')
+      .eq('status', 'converted')
+      .not('conversion_value', 'is', null)
+    const filteredConversions = applyClientFilter(conversionsQuery, { clientId, assignedClientIds })
+    if (filteredConversions === null) return apiSuccess({ pages: [], trend: [], trendLabels: [], channelBreakdown: [] })
+    conversionsQuery = filteredConversions
+    if (tsStart) conversionsQuery = conversionsQuery.gte('status_changed_at', tsStart)
+    if (tsEnd) conversionsQuery = conversionsQuery.lt('status_changed_at', tsEnd)
 
-    // 4. 기간 내 결제 (contact_id, payment_amount)
-    let paymentsQuery = supabase
-      .from('payments')
-      .select('contact_id, payment_amount, payment_date')
-    const filteredPayments = applyClientFilter(paymentsQuery, { clientId, assignedClientIds })
-    if (filteredPayments === null) return apiSuccess({ pages: [], trend: [], trendLabels: [], channelBreakdown: [] })
-    paymentsQuery = filteredPayments
-    if (dateStart) paymentsQuery = paymentsQuery.gte('payment_date', dateStart)
-    if (dateEnd) paymentsQuery = paymentsQuery.lte('payment_date', dateEnd)
-
-    const [lpRes, leadsRes, bookingsRes, paymentsRes] = await Promise.all([
-      lpQuery, leadsQuery, bookingsQuery, paymentsQuery,
+    const [lpRes, leadsRes, conversionsRes] = await Promise.all([
+      lpQuery, leadsQuery, conversionsQuery,
     ])
 
     if (lpRes.error) {
@@ -89,19 +89,14 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       logger.error('리드 조회 실패', leadsRes.error, { clientId })
       return apiError('리드 조회 중 오류가 발생했습니다.', 500)
     }
-    if (bookingsRes.error) {
-      logger.error('예약 조회 실패', bookingsRes.error, { clientId })
-      return apiError('예약 조회 중 오류가 발생했습니다.', 500)
-    }
-    if (paymentsRes.error) {
-      logger.error('결제 조회 실패', paymentsRes.error, { clientId })
-      return apiError('결제 조회 중 오류가 발생했습니다.', 500)
+    if (conversionsRes.error) {
+      logger.error('전환 리드 조회 실패', conversionsRes.error, { clientId })
+      return apiError('전환 리드 조회 중 오류가 발생했습니다.', 500)
     }
 
     const landingPages = lpRes.data || []
     const leads = leadsRes.data || []
-    const bookings = bookingsRes.data || []
-    const payments = paymentsRes.data || []
+    const conversions = conversionsRes.data || []
 
     // LP 이름 맵
     const lpNameMap = new Map<number, string>()
@@ -109,11 +104,12 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       lpNameMap.set(lp.id, lp.name)
     }
 
-    // 리드별 집계: LP별 리드 수, contact→LP 매핑, 일별 추이, 채널 분석
+    // 리드별 집계: LP별 리드 수, contact→LP 매핑, 일별 추이, 채널 분석, 예약 contact (in_progress/converted)
     const leadsByPage: Record<number, number> = {}
     const contactToPage = new Map<number, number>()
     const trendMap: Record<string, Record<number, number>> = {} // date → { lpId → count }
     const channelMap: Record<number, Record<string, number>> = {} // lpId → { channel → count }
+    const bookingContacts = new Set<number>()
 
     for (const lead of leads) {
       const pageId = lead.landing_page_id
@@ -135,13 +131,11 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       const channel = normalizeChannel(lead.utm_source)
       if (!channelMap[pageId]) channelMap[pageId] = {}
       channelMap[pageId][channel] = (channelMap[pageId][channel] || 0) + 1
-    }
 
-    // 예약 집계: contact→booking count (cancelled 제외)
-    const bookingContacts = new Set<number>()
-    for (const booking of bookings) {
-      if (booking.status === 'cancelled') continue
-      if (booking.contact_id) bookingContacts.add(booking.contact_id)
+      // 예약 카운트: 진행중 + 전환 리드
+      if ((lead.status === 'in_progress' || lead.status === 'converted') && lead.contact_id) {
+        bookingContacts.add(lead.contact_id)
+      }
     }
 
     // LP별 예약 수 집계
@@ -153,15 +147,15 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       bookingsByPage[pageId].add(contactId)
     }
 
-    // 결제 집계
+    // 전환 매출 집계
     const revenueByPage: Record<number, number> = {}
     const payingContactsByPage: Record<number, Set<number>> = {}
-    for (const payment of payments) {
-      const pageId = contactToPage.get(payment.contact_id)
+    for (const conv of conversions) {
+      const pageId = contactToPage.get(conv.contact_id)
       if (pageId == null) continue
-      revenueByPage[pageId] = (revenueByPage[pageId] || 0) + (Number(payment.payment_amount) || 0)
+      revenueByPage[pageId] = (revenueByPage[pageId] || 0) + (Number(conv.conversion_value) || 0)
       if (!payingContactsByPage[pageId]) payingContactsByPage[pageId] = new Set()
-      payingContactsByPage[pageId].add(payment.contact_id)
+      payingContactsByPage[pageId].add(conv.contact_id)
     }
 
     // pages 결과

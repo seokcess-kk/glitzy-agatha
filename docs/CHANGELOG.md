@@ -2,6 +2,20 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 레거시 테이블 참조 일괄 제거 (2026-05-04)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-04 | fix: Agatha 도메인 리네이밍 후에도 존재하지 않는 레거시 테이블(`payments`/`bookings`/`consultations`/`content_posts`)을 참조해 500 에러를 발생시키던 11개 라우트를 SPEC.md 도메인 모델에 맞춰 leads 기반으로 정리 |
+| 2026-05-04 | refactor: `app/api/dashboard/kpi`, `app/api/dashboard/campaign` — 매출/예약/상담 카운트를 leads.status 기반으로 통일. 응답 호환 키 유지 |
+| 2026-05-04 | refactor: `app/api/ads/{platform-summary,landing-page-performance,landing-page-analysis,creatives-performance}` — payments/bookings 쿼리를 leads 단일 소스로 대체 |
+| 2026-05-04 | refactor: `app/api/attribution/{contacts,roas-trend,summary}` — 결제 매출을 `leads where status='converted'+conversion_value`(status_changed_at 기준)로 대체. first/linear/time-decay 모델 모두 동작 |
+| 2026-05-04 | refactor: `app/api/admin/landing-pages/stats` — payments+bookings → leads 단일 소스 |
+| 2026-05-04 | fix: `app/api/leads/[id]` — bookings 자동생성 로직 제거 (테이블 없음). 상태값을 SPEC 표준(new/in_progress/converted/hold/lost/invalid)으로 정리 |
+| 2026-05-04 | refactor: `app/api/leads/route.ts`, `app/api/leads/export/route.ts` — contacts select 외래키에서 payments/bookings/consultations 제거. 응답 호환 키는 leads.status 파생 값으로 채움. CSV 헤더 "시술" → "전환금액" |
+| 2026-05-04 | refactor: `lib/security.ts` — deprecated 함수(canModifyBooking/canAccessContentPost/VALID_BOOKING_STATUSES/VALID_CONSULTATION_STATUSES/isValidBookingStatus/isValidConsultationStatus) 제거. `isValidPaymentAmount` → `isValidConversionAmount` 리네이밍 |
+| 2026-05-04 | note: 전환 시점은 `leads.status_changed_at` 기준. 이 컬럼이 NULL인 레거시 데이터는 기간 필터에서 누락될 수 있음 (TODO: 백필 마이그레이션 후 제거) — 각 라우트 상단에 주석 명시 |
+
 ## Naver Search Ads 풀 동기화 구현 (2026-05-04)
 
 | 날짜 | 내용 |

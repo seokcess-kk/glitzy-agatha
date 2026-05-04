@@ -1,7 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { SupabaseClient } from '@supabase/supabase-js'
-import { getKstDateString, getKstDayStartISO, getKstDayEndISO } from '@/lib/date'
+import { getKstDateString, getKstDayStartISO } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { isDemoViewer, getDemoKpi } from '@/lib/demo-data'
 
@@ -9,6 +9,15 @@ const logger = createLogger('DashboardKpi')
 
 // 메트릭 계산 함수 추출
 // start: KST 시작일 00:00:00 (ISO 또는 +09:00), end: KST 종료일 다음날 00:00:00 (exclusive)
+//
+// Agatha 도메인 매핑 (docs/SPEC.md 기준):
+// - 매출: leads where status='converted' + conversion_value (status_changed_at 기준)
+// - 예약: leads where status IN ('in_progress','converted')  // 진행중 + 전환 = 예약된 리드
+// - 상담: leads where status='in_progress'                    // 진행중 = 상담 중
+// - 콘텐츠 예산: 0 (Agatha 도메인에 콘텐츠 예산 개념 없음)
+//
+// 전환 시점은 leads.status_changed_at 사용. 이 컬럼이 NULL인 레거시 데이터는
+// 집계에서 누락될 수 있음 (TODO: 백필 마이그레이션 후 제거).
 async function fetchMetrics(
   supabase: SupabaseClient,
   clientId: number | null,
@@ -24,42 +33,54 @@ async function fetchMetrics(
   const statEnd = getKstDateString(new Date(new Date(end).getTime() - 86400000))
 
   // 범위 패턴: [start, end) — fetchTodaySummary와 동일한 gte/lt 패턴
-  const [adStatsRes, leadsRes, paymentsRes, bookingsRes, consultRes, contentBudgetRes] = await Promise.all([
+  const [adStatsRes, leadsRes, conversionsRes, bookedRes, consultRes] = await Promise.all([
     applyClientFilter(supabase.from('ad_campaign_stats').select('spend_amount, clicks, impressions').gte('stat_date', statStart).lte('stat_date', statEnd), ctx)!,
     applyClientFilter(supabase.from('leads').select('contact_id').gte('created_at', start).lt('created_at', end).limit(5000), ctx)!,
-    applyClientFilter(supabase.from('payments').select('contact_id, payment_amount').gte('payment_date', statStart).lte('payment_date', statEnd), ctx)!,
-    applyClientFilter(supabase.from('bookings').select('*', { count: 'exact', head: true })
-      .neq('status', 'cancelled').gte('created_at', start).lt('created_at', end), ctx)!,
-    applyClientFilter(supabase.from('consultations').select('*', { count: 'exact', head: true })
-      .in('status', ['예약완료', '방문완료']).gte('created_at', start).lt('created_at', end), ctx)!,
-    applyClientFilter(supabase.from('content_posts').select('budget').gte('created_at', start).lt('created_at', end), ctx)!,
+    // 전환 매출: status='converted' + conversion_value 있는 리드, status_changed_at 기준
+    applyClientFilter(
+      supabase.from('leads')
+        .select('contact_id, conversion_value, status_changed_at')
+        .eq('status', 'converted')
+        .not('conversion_value', 'is', null)
+        .gte('status_changed_at', start)
+        .lt('status_changed_at', end)
+        .limit(5000),
+      ctx,
+    )!,
+    // 예약 카운트: 진행중 + 전환 (created_at 기준)
+    applyClientFilter(supabase.from('leads').select('*', { count: 'exact', head: true })
+      .in('status', ['in_progress', 'converted']).gte('created_at', start).lt('created_at', end), ctx)!,
+    // 상담 카운트: 진행중 (created_at 기준)
+    applyClientFilter(supabase.from('leads').select('*', { count: 'exact', head: true })
+      .eq('status', 'in_progress').gte('created_at', start).lt('created_at', end), ctx)!,
   ])
 
   const totalSpend = adStatsRes.data?.reduce((s, r) => s + Number(r.spend_amount), 0) || 0
   const totalClicks = adStatsRes.data?.reduce((s, r) => s + Number(r.clicks || 0), 0) || 0
   const totalImpressions = adStatsRes.data?.reduce((s, r) => s + Number(r.impressions || 0), 0) || 0
   const totalLeads = leadsRes.data?.length || 0
-  const totalRevenue = paymentsRes.data?.reduce((s, r) => s + Number(r.payment_amount), 0) || 0
-  const bookedCount = bookingsRes.count || 0
+  const totalRevenue = conversionsRes.data?.reduce((s, r) => s + Number(r.conversion_value), 0) || 0
+  const bookedCount = bookedRes.count || 0
   const consultCount = consultRes.count || 0
-  const contentBudget = contentBudgetRes.data?.reduce((s, p) => s + (p.budget || 0), 0) || 0
+  // contentBudget: Agatha 도메인에 콘텐츠 예산 개념 없음 (응답 호환성을 위해 0 처리)
+  const contentBudget = 0
 
   // 기간 내 리드 고객의 contact_id 집합
   const leadContactIds = new Set(leadsRes.data?.map(l => l.contact_id) || [])
 
   // 리드 고객의 매출 (ROAS 계산용) — 해당 기간에 인입된 리드에서 발생한 매출만
-  const leadRevenue = paymentsRes.data
+  const leadRevenue = conversionsRes.data
     ?.filter(p => leadContactIds.has(p.contact_id))
-    .reduce((s, r) => s + Number(r.payment_amount), 0) || 0
+    .reduce((s, r) => s + Number(r.conversion_value), 0) || 0
 
-  // 결제 완료 고객 수 (distinct contact_id)
-  const payingContactCount = new Set(paymentsRes.data?.map(p => p.contact_id) || []).size
+  // 전환 완료 고객 수 (distinct contact_id)
+  const payingContactCount = new Set(conversionsRes.data?.map(p => p.contact_id) || []).size
 
-  // CAC: (광고비 + 콘텐츠 예산) / 결제 완료 고객 수
+  // CAC: (광고비 + 콘텐츠 예산) / 전환 완료 고객 수
   const totalMarketingCost = totalSpend + contentBudget
   const cac = payingContactCount > 0 ? Math.round(totalMarketingCost / payingContactCount) : 0
 
-  // ARPC: 총 결제 금액 / 결제 완료 고객 수
+  // ARPC: 총 전환 금액 / 전환 완료 고객 수
   const arpc = payingContactCount > 0 ? Math.round(totalRevenue / payingContactCount) : 0
 
   return {
@@ -102,21 +123,23 @@ async function fetchTodaySummary(
   const yesterday = new Date(now.getTime() - 86400000)
   const yesterdayStart = getKstDayStartISO(yesterday)
 
-  const [todayLeads, todayBookings, todayPayments, yesterdayLeads, yesterdayBookings, yesterdayPayments] = await Promise.all([
+  const [todayLeads, todayBooked, todayConversions, yesterdayLeads, yesterdayBooked, yesterdayConversions] = await Promise.all([
     applyClientFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', todayStart).lt('created_at', todayEnd), ctx)!,
-    applyClientFilter(supabase.from('bookings').select('*', { count: 'exact', head: true }).neq('status', 'cancelled').gte('created_at', todayStart).lt('created_at', todayEnd), ctx)!,
-    applyClientFilter(supabase.from('payments').select('payment_amount').gte('payment_date', todayStart).lt('payment_date', todayEnd), ctx)!,
+    // 예약 = leads in (in_progress, converted)
+    applyClientFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).in('status', ['in_progress', 'converted']).gte('created_at', todayStart).lt('created_at', todayEnd), ctx)!,
+    // 전환 매출 = leads converted + conversion_value (status_changed_at 기준)
+    applyClientFilter(supabase.from('leads').select('conversion_value').eq('status', 'converted').not('conversion_value', 'is', null).gte('status_changed_at', todayStart).lt('status_changed_at', todayEnd), ctx)!,
     applyClientFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', yesterdayStart).lt('created_at', todayStart), ctx)!,
-    applyClientFilter(supabase.from('bookings').select('*', { count: 'exact', head: true }).neq('status', 'cancelled').gte('created_at', yesterdayStart).lt('created_at', todayStart), ctx)!,
-    applyClientFilter(supabase.from('payments').select('payment_amount').gte('payment_date', yesterdayStart).lt('payment_date', todayStart), ctx)!,
+    applyClientFilter(supabase.from('leads').select('*', { count: 'exact', head: true }).in('status', ['in_progress', 'converted']).gte('created_at', yesterdayStart).lt('created_at', todayStart), ctx)!,
+    applyClientFilter(supabase.from('leads').select('conversion_value').eq('status', 'converted').not('conversion_value', 'is', null).gte('status_changed_at', yesterdayStart).lt('status_changed_at', todayStart), ctx)!,
   ])
 
   const leads = todayLeads.count || 0
-  const bookings = todayBookings.count || 0
-  const revenue = todayPayments.data?.reduce((s, r) => s + Number(r.payment_amount), 0) || 0
+  const bookings = todayBooked.count || 0
+  const revenue = todayConversions.data?.reduce((s, r) => s + Number(r.conversion_value), 0) || 0
   const yLeads = yesterdayLeads.count || 0
-  const yBookings = yesterdayBookings.count || 0
-  const yRevenue = yesterdayPayments.data?.reduce((s, r) => s + Number(r.payment_amount), 0) || 0
+  const yBookings = yesterdayBooked.count || 0
+  const yRevenue = yesterdayConversions.data?.reduce((s, r) => s + Number(r.conversion_value), 0) || 0
 
   return {
     leads,

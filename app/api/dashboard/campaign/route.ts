@@ -1,5 +1,5 @@
 import { serverSupabase } from '@/lib/supabase'
-import { withClientFilter, ClientContext, applyClientFilter, applyDateRange, apiSuccess } from '@/lib/api-middleware'
+import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 import { isDemoViewer, getDemoCampaigns } from '@/lib/demo-data'
@@ -7,6 +7,13 @@ import { isDemoViewer, getDemoCampaigns } from '@/lib/demo-data'
 /**
  * 캠페인별 KPI 분석 API
  * Phase 2: leads.utm_campaign 기반 캠페인 성과 분석
+ *
+ * Agatha 도메인 매핑:
+ * - 매출: leads where status='converted' + conversion_value (status_changed_at 기준)
+ * - 예약 카운트: leads where status IN ('in_progress','converted')
+ *
+ * 전환 시점은 leads.status_changed_at 사용. NULL인 레거시 데이터는
+ * 집계에서 누락될 수 있음 (TODO: 백필 마이그레이션 후 제거).
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   if (isDemoViewer(user.role)) return apiSuccess(getDemoCampaigns())
@@ -38,7 +45,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   // 1. 리드 데이터 조회 (utm_source, utm_campaign 포함)
   let leadsQuery = supabase
     .from('leads')
-    .select('id, contact_id, utm_source, utm_campaign, utm_content, created_at')
+    .select('id, contact_id, utm_source, utm_campaign, utm_content, status, created_at')
     .not('utm_campaign', 'is', null) // 캠페인이 있는 리드만
     .limit(5000)
   leadsQuery = applyClientFilter(leadsQuery, ctx)!
@@ -56,29 +63,21 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   if (startKst) adStatsQuery = adStatsQuery.gte('stat_date', startKst)
   if (endKst) adStatsQuery = adStatsQuery.lte('stat_date', endKst)
 
-  // 3. 결제 데이터 — payment_date(DATE 컬럼)는 KST 날짜 문자열로 비교
-  let paymentsQuery = supabase
-    .from('payments')
-    .select('payment_amount, contact_id, payment_date')
+  // 3. 전환 매출: leads where status='converted' + conversion_value (status_changed_at 기준)
+  let conversionsQuery = supabase
+    .from('leads')
+    .select('contact_id, conversion_value, status_changed_at')
+    .eq('status', 'converted')
+    .not('conversion_value', 'is', null)
     .limit(5000)
-  paymentsQuery = applyClientFilter(paymentsQuery, ctx)!
-  if (startKst) paymentsQuery = paymentsQuery.gte('payment_date', startKst)
-  if (endKst) paymentsQuery = paymentsQuery.lte('payment_date', endKst)
+  conversionsQuery = applyClientFilter(conversionsQuery, ctx)!
+  if (tsStart) conversionsQuery = conversionsQuery.gte('status_changed_at', tsStart)
+  if (tsEnd) conversionsQuery = conversionsQuery.lt('status_changed_at', tsEnd)
 
-  // 4. 예약 데이터 (전환율 계산용)
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select('id, contact_id, status, created_at')
-    .limit(5000)
-  bookingsQuery = applyClientFilter(bookingsQuery, ctx)!
-  if (tsStart) bookingsQuery = bookingsQuery.gte('created_at', tsStart)
-  if (tsEnd) bookingsQuery = bookingsQuery.lt('created_at', tsEnd)
-
-  const [leadsRes, adStatsRes, paymentsRes, bookingsRes] = await Promise.all([
+  const [leadsRes, adStatsRes, conversionsRes] = await Promise.all([
     leadsQuery,
     adStatsQuery,
-    paymentsQuery,
-    bookingsQuery,
+    conversionsQuery,
   ])
 
   // 캠페인별 리드 집계
@@ -87,6 +86,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     channel: string
     leads: Set<number>
     contacts: Set<number>
+    bookedContacts: Set<number>
   }> = {}
 
   const contactToCampaign: Map<number, string> = new Map()
@@ -101,11 +101,17 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
         channel,
         leads: new Set(),
         contacts: new Set(),
+        bookedContacts: new Set(),
       }
     }
 
     campaignStats[campaign].leads.add(lead.id)
     campaignStats[campaign].contacts.add(lead.contact_id)
+
+    // 예약 = 진행중 + 전환 (캠페인별 booked 컨택트)
+    if (lead.status === 'in_progress' || lead.status === 'converted') {
+      campaignStats[campaign].bookedContacts.add(lead.contact_id)
+    }
 
     // 고객의 첫 번째 캠페인 기록
     if (!contactToCampaign.has(lead.contact_id)) {
@@ -125,28 +131,19 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     spendByCampaign[campaignKey].impressions += Number(row.impressions) || 0
   }
 
-  // 캠페인별 매출 집계
+  // 캠페인별 매출 집계 (전환된 리드 기준)
   const revenueByCampaign: Record<string, number> = {}
   const payingContactsByCampaign: Record<string, Set<number>> = {}
 
-  for (const payment of paymentsRes.data || []) {
-    const campaign = contactToCampaign.get(payment.contact_id)
+  for (const conv of conversionsRes.data || []) {
+    const campaign = contactToCampaign.get(conv.contact_id)
     if (campaign) {
-      revenueByCampaign[campaign] = (revenueByCampaign[campaign] || 0) + Number(payment.payment_amount)
+      revenueByCampaign[campaign] = (revenueByCampaign[campaign] || 0) + Number(conv.conversion_value)
 
       if (!payingContactsByCampaign[campaign]) {
         payingContactsByCampaign[campaign] = new Set()
       }
-      payingContactsByCampaign[campaign].add(payment.contact_id)
-    }
-  }
-
-  // 캠페인별 예약 집계
-  const bookingsByCampaign: Record<string, number> = {}
-  for (const booking of bookingsRes.data || []) {
-    const campaign = contactToCampaign.get(booking.contact_id)
-    if (campaign && booking.status !== 'cancelled') {
-      bookingsByCampaign[campaign] = (bookingsByCampaign[campaign] || 0) + 1
+      payingContactsByCampaign[campaign].add(conv.contact_id)
     }
   }
 
@@ -158,7 +155,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       const spend = adData.spend
       const revenue = revenueByCampaign[stat.campaign] || 0
       const payingContacts = payingContactsByCampaign[stat.campaign]?.size || 0
-      const bookings = bookingsByCampaign[stat.campaign] || 0
+      const bookings = stat.bookedContacts.size
 
       return {
         campaign: stat.campaign,
@@ -183,4 +180,3 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
   return apiSuccess(result)
 })
-

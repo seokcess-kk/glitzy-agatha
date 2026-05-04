@@ -79,13 +79,15 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     const filteredCreatives = applyClientFilter(creativesQuery, { clientId, assignedClientIds })
     if (filteredCreatives) creativesQuery = filteredCreatives
 
-    // 3) payments — 리드 기준 귀속 (기간 필터 없음)
-    let paymentsQuery = supabase
-      .from('payments')
-      .select('id, payment_amount, contact_id')
+    // 3) 전환 리드 — utm_content 매칭용 (기간 필터 없음 — 리드 시점에 귀속)
+    let conversionsQuery = supabase
+      .from('leads')
+      .select('id, conversion_value, contact_id')
+      .eq('status', 'converted')
+      .not('conversion_value', 'is', null)
 
-    const filteredPayments = applyClientFilter(paymentsQuery, { clientId, assignedClientIds })
-    if (filteredPayments) paymentsQuery = filteredPayments
+    const filteredConversions = applyClientFilter(conversionsQuery, { clientId, assignedClientIds })
+    if (filteredConversions) conversionsQuery = filteredConversions
 
     // 4) ad_stats — campaign_id별 광고 지표 + utm_content별 직접 매칭 + ad_id별 (TikTok/Google)
     let adStatsQuery = supabase
@@ -98,10 +100,10 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (dateEnd) adStatsQuery = adStatsQuery.lte('stat_date', dateEnd)
 
     // 병렬 쿼리 실행
-    const [leadsRes, creativesRes, paymentsRes, adStatsRes] = await Promise.all([
+    const [leadsRes, creativesRes, conversionsRes, adStatsRes] = await Promise.all([
       leadsQuery,
       creativesQuery,
-      paymentsQuery,
+      conversionsQuery,
       adStatsQuery,
     ])
 
@@ -112,8 +114,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (creativesRes.error) {
       logger.warn('소재 메타데이터 조회 실패', { clientId, error: creativesRes.error.message })
     }
-    if (paymentsRes.error) {
-      logger.warn('결제 데이터 조회 실패', { clientId, error: paymentsRes.error.message })
+    if (conversionsRes.error) {
+      logger.warn('전환 리드 조회 실패', { clientId, error: conversionsRes.error.message })
     }
     if (adStatsRes.error) {
       logger.warn('ad_stats 조회 실패', { clientId, error: adStatsRes.error.message })
@@ -121,7 +123,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
     const leads = leadsRes.data || []
     const creatives = creativesRes.data || []
-    const payments = paymentsRes.data || []
+    const conversions = conversionsRes.data || []
     const adStatsData: AdStatsRow[] = (adStatsRes.data || []) as AdStatsRow[]
 
     // utm_content → 소재 메타데이터 매핑
@@ -169,10 +171,10 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       }
     }
 
-    // utm_content별 결제 집계
+    // utm_content별 전환 매출 집계
     const contentPaymentMap = new Map<string, { payingContacts: Set<number>; revenue: number }>()
-    for (const payment of payments) {
-      const contactId = payment.contact_id
+    for (const conv of conversions) {
+      const contactId = conv.contact_id
       if (!contactId) continue
       const utmContent = contactUtmContentMap.get(contactId)
       if (!utmContent) continue
@@ -181,7 +183,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       }
       const entry = contentPaymentMap.get(utmContent)!
       entry.payingContacts.add(contactId)
-      entry.revenue += Number(payment.payment_amount) || 0
+      entry.revenue += Number(conv.conversion_value) || 0
     }
 
     // ad_stats: 1차 utm_content 직접 매칭, 2차 campaign_id별 집계

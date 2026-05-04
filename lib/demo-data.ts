@@ -315,22 +315,21 @@ export function getDemoLeads() {
       updated_at: createdAt,
     }
 
-    const payments = c.payAmount > 0 ? [{
+    // 응답 호환성: payments/bookings/consultations 키는 leads.status 기반으로 파생
+    const conversionList = c.payAmount > 0 ? [{
       id: 6001 + i,
       client_id: 901,
       contact_id: contactId,
       payment_amount: c.payAmount,
       payment_date: createdAt,
-      treatment_name: ['프리미엄 패키지', '정기 구독', '이벤트 상품', '체험 쿠폰', '기본 서비스'][i % 5],
       created_at: createdAt,
     }] : []
 
-    const bookings = c.status !== 'new' && c.status !== 'lost' ? [{
+    const bookingList = c.status !== 'new' && c.status !== 'lost' ? [{
       id: 5001 + i,
       client_id: 901,
       contact_id: contactId,
       status: c.status === 'converted' ? 'completed' : 'confirmed',
-      booking_date: new Date(created.getTime() + 3 * 86400000).toISOString(),
       created_at: createdAt,
     }] : []
 
@@ -363,9 +362,10 @@ export function getDemoLeads() {
         name: c.name,
         first_source: c.source,
         first_campaign_id: c.campaign || null,
+        // 응답 호환 키 (값은 leads.status에서 파생된 가짜 데이터)
         consultations: [],
-        payments,
-        bookings,
+        payments: conversionList,
+        bookings: bookingList,
       },
     }
   })

@@ -7,6 +7,14 @@
 
 ---
 
+## 레거시 테이블 참조 일괄 제거 (2026-05-04)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| L-1 | 레거시 테이블 → leads 기반 정리 | 11개 라우트(dashboard/ads/attribution/admin·landing-pages/leads)에서 payments/bookings/consultations/content_posts 참조 제거. leads.status + conversion_value + status_changed_at으로 통합. 응답 호환 키 유지. lib/security.ts deprecated 함수 정리 | 05-04 |
+
+---
+
 ## Naver Search Ads 동기화 (2026-05-04)
 
 | # | 작업 | 핵심 내용 | 날짜 |

@@ -12,7 +12,10 @@ const logger = createLogger('AdsPlatformSummary')
  * 채널별 광고 성과 요약 API
  * - ad_campaign_stats에서 플랫폼별 spend/clicks/impressions 집계
  * - leads의 utm_source로 채널별 리드 수 집계
- * - payments를 contact→channel 매핑을 통해 채널별 매출 집계
+ * - 전환 리드(status='converted', conversion_value)를 contact→channel 매핑으로 채널별 매출 집계
+ *
+ * 전환 시점은 leads.status_changed_at 사용. NULL인 레거시 데이터는 누락될 수 있음
+ * (TODO: 백필 마이그레이션 후 제거).
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   if (isDemoViewer(user.role)) return apiSuccess(getDemoChannel())
@@ -60,20 +63,22 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
     if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
-    // 3. 결제 조회 (contact_id, payment_amount)
-    let paymentsQuery = supabase
-      .from('payments')
-      .select('contact_id, payment_amount, payment_date')
-    const filteredPayments = applyClientFilter(paymentsQuery, { clientId, assignedClientIds })
-    if (filteredPayments === null) return apiSuccess([])
-    paymentsQuery = filteredPayments
-    if (dateStart) paymentsQuery = paymentsQuery.gte('payment_date', dateStart)
-    if (dateEnd) paymentsQuery = paymentsQuery.lte('payment_date', dateEnd)
+    // 3. 전환 리드 조회 (contact_id, conversion_value) — status='converted' + conversion_value, status_changed_at 기준
+    let conversionsQuery = supabase
+      .from('leads')
+      .select('contact_id, conversion_value, status_changed_at')
+      .eq('status', 'converted')
+      .not('conversion_value', 'is', null)
+    const filteredConversions = applyClientFilter(conversionsQuery, { clientId, assignedClientIds })
+    if (filteredConversions === null) return apiSuccess([])
+    conversionsQuery = filteredConversions
+    if (tsStart) conversionsQuery = conversionsQuery.gte('status_changed_at', tsStart)
+    if (tsEnd) conversionsQuery = conversionsQuery.lt('status_changed_at', tsEnd)
 
-    const [adStatsRes, leadsRes, paymentsRes] = await Promise.all([
+    const [adStatsRes, leadsRes, conversionsRes] = await Promise.all([
       adStatsQuery,
       leadsQuery,
-      paymentsQuery,
+      conversionsQuery,
     ])
 
     if (adStatsRes.error) {
@@ -84,9 +89,9 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       logger.error('리드 조회 실패', leadsRes.error, { clientId })
       return apiError('리드 조회 중 오류가 발생했습니다.', 500)
     }
-    if (paymentsRes.error) {
-      logger.error('결제 조회 실패', paymentsRes.error, { clientId })
-      return apiError('결제 조회 중 오류가 발생했습니다.', 500)
+    if (conversionsRes.error) {
+      logger.error('전환 리드 조회 실패', conversionsRes.error, { clientId })
+      return apiError('전환 리드 조회 중 오류가 발생했습니다.', 500)
     }
 
     // 채널별 광고 지출/클릭/노출 집계 (platform 기준) + 소스별 세분화
@@ -132,16 +137,16 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       }
     }
 
-    // 채널별 매출 + 결제 고객 수 집계
+    // 채널별 매출 + 전환 고객 수 집계
     const revenueByChannel: Record<string, number> = {}
     const payingContactsByChannel: Record<string, Set<number>> = {}
-    for (const payment of paymentsRes.data || []) {
-      const channel = contactToChannel.get(payment.contact_id) || 'Unknown'
-      revenueByChannel[channel] = (revenueByChannel[channel] || 0) + (Number(payment.payment_amount) || 0)
+    for (const conv of conversionsRes.data || []) {
+      const channel = contactToChannel.get(conv.contact_id) || 'Unknown'
+      revenueByChannel[channel] = (revenueByChannel[channel] || 0) + (Number(conv.conversion_value) || 0)
       if (!payingContactsByChannel[channel]) {
         payingContactsByChannel[channel] = new Set()
       }
-      payingContactsByChannel[channel].add(payment.contact_id)
+      payingContactsByChannel[channel].add(conv.contact_id)
     }
 
     // 모든 채널 목록 (광고 채널 + 리드 채널 합집합)

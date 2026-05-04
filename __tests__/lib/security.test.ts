@@ -5,9 +5,7 @@ import {
   normalizePhoneNumber,
   isValidUrl,
   isValidDate,
-  isValidBookingStatus,
-  isValidConsultationStatus,
-  isValidPaymentAmount,
+  isValidConversionAmount,
   checkClientAccess,
   type SessionUser,
 } from '@/lib/security'
@@ -103,43 +101,19 @@ describe('isValidDate', () => {
   })
 })
 
-describe('isValidBookingStatus', () => {
-  it('유효한 예약 상태 허용', () => {
-    expect(isValidBookingStatus('confirmed')).toBe(true)
-    expect(isValidBookingStatus('visited')).toBe(true)
-    expect(isValidBookingStatus('treatment_confirmed')).toBe(true)
-  })
-
-  it('잘못된 상태 거부', () => {
-    expect(isValidBookingStatus('invalid')).toBe(false)
-    expect(isValidBookingStatus('')).toBe(false)
-  })
-})
-
-describe('isValidConsultationStatus', () => {
-  it('유효한 상담 상태 허용', () => {
-    expect(isValidConsultationStatus('예약완료')).toBe(true)
-    expect(isValidConsultationStatus('시술확정')).toBe(true)
-  })
-
-  it('잘못된 상태 거부', () => {
-    expect(isValidConsultationStatus('invalid')).toBe(false)
-  })
-})
-
-describe('isValidPaymentAmount', () => {
+describe('isValidConversionAmount', () => {
   it('유효한 금액 허용', () => {
-    expect(isValidPaymentAmount(10000)).toBe(true)
-    expect(isValidPaymentAmount(1)).toBe(true)
-    expect(isValidPaymentAmount(100000000)).toBe(true)
+    expect(isValidConversionAmount(10000)).toBe(true)
+    expect(isValidConversionAmount(1)).toBe(true)
+    expect(isValidConversionAmount(100000000)).toBe(true)
   })
 
   it('잘못된 금액 거부', () => {
-    expect(isValidPaymentAmount(0)).toBe(false)
-    expect(isValidPaymentAmount(-1)).toBe(false)
-    expect(isValidPaymentAmount(100000001)).toBe(false)
-    expect(isValidPaymentAmount(NaN)).toBe(false)
-    expect(isValidPaymentAmount(Infinity)).toBe(false)
+    expect(isValidConversionAmount(0)).toBe(false)
+    expect(isValidConversionAmount(-1)).toBe(false)
+    expect(isValidConversionAmount(100000001)).toBe(false)
+    expect(isValidConversionAmount(NaN)).toBe(false)
+    expect(isValidConversionAmount(Infinity)).toBe(false)
   })
 })
 

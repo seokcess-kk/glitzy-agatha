@@ -8,8 +8,11 @@ const logger = createLogger('AdsLandingPagePerformance')
 
 /**
  * 랜딩페이지별 성과 분석 API
- * - landing_pages → leads(landing_page_id) → contact_id → payments
- * - 랜딩페이지별 리드 수, 결제 고객 수, 매출, 전환율 집계
+ * - landing_pages → leads(landing_page_id) → contact_id → 전환 리드(conversion_value)
+ * - 랜딩페이지별 리드 수, 전환 고객 수, 매출, 전환율 집계
+ *
+ * 전환 시점은 leads.status_changed_at 사용. NULL 레거시 데이터는 누락될 수 있음
+ * (TODO: 백필 마이그레이션 후 제거).
  */
 export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   if (isDemoViewer(user.role)) return apiSuccess(getDemoLandingPagePerformance())
@@ -58,17 +61,19 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
     if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
-    // 3. 기간 내 결제 조회 (contact_id, payment_amount)
-    let paymentsQuery = supabase
-      .from('payments')
-      .select('contact_id, payment_amount, payment_date')
-    const filteredPayments = applyClientFilter(paymentsQuery, { clientId, assignedClientIds })
-    if (filteredPayments === null) return apiSuccess({ pages: [] })
-    paymentsQuery = filteredPayments
-    if (dateStart) paymentsQuery = paymentsQuery.gte('payment_date', dateStart)
-    if (dateEnd) paymentsQuery = paymentsQuery.lte('payment_date', dateEnd)
+    // 3. 기간 내 전환 리드 조회 (contact_id, conversion_value) — status='converted', status_changed_at 기준
+    let conversionsQuery = supabase
+      .from('leads')
+      .select('contact_id, conversion_value, status_changed_at')
+      .eq('status', 'converted')
+      .not('conversion_value', 'is', null)
+    const filteredConversions = applyClientFilter(conversionsQuery, { clientId, assignedClientIds })
+    if (filteredConversions === null) return apiSuccess({ pages: [] })
+    conversionsQuery = filteredConversions
+    if (tsStart) conversionsQuery = conversionsQuery.gte('status_changed_at', tsStart)
+    if (tsEnd) conversionsQuery = conversionsQuery.lt('status_changed_at', tsEnd)
 
-    const [lpRes, leadsRes, paymentsRes] = await Promise.all([lpQuery, leadsQuery, paymentsQuery])
+    const [lpRes, leadsRes, conversionsRes] = await Promise.all([lpQuery, leadsQuery, conversionsQuery])
 
     if (lpRes.error) {
       logger.error('랜딩페이지 조회 실패', lpRes.error, { clientId })
@@ -78,9 +83,9 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       logger.error('리드 조회 실패', leadsRes.error, { clientId })
       return apiError('리드 조회 중 오류가 발생했습니다.', 500)
     }
-    if (paymentsRes.error) {
-      logger.error('결제 조회 실패', paymentsRes.error, { clientId })
-      return apiError('결제 조회 중 오류가 발생했습니다.', 500)
+    if (conversionsRes.error) {
+      logger.error('전환 리드 조회 실패', conversionsRes.error, { clientId })
+      return apiError('전환 리드 조회 중 오류가 발생했습니다.', 500)
     }
 
     // 랜딩페이지별 리드 수 + contact→landingPageId 첫 유입 매핑
@@ -96,17 +101,17 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       }
     }
 
-    // 랜딩페이지별 매출 + 결제 고객 수 집계
+    // 랜딩페이지별 매출 + 전환 고객 수 집계
     const revenueByPage: Record<number, number> = {}
     const payingContactsByPage: Record<number, Set<number>> = {}
-    for (const payment of paymentsRes.data || []) {
-      const pageId = contactToPage.get(payment.contact_id)
+    for (const conv of conversionsRes.data || []) {
+      const pageId = contactToPage.get(conv.contact_id)
       if (pageId == null) continue
-      revenueByPage[pageId] = (revenueByPage[pageId] || 0) + (Number(payment.payment_amount) || 0)
+      revenueByPage[pageId] = (revenueByPage[pageId] || 0) + (Number(conv.conversion_value) || 0)
       if (!payingContactsByPage[pageId]) {
         payingContactsByPage[pageId] = new Set()
       }
-      payingContactsByPage[pageId].add(payment.contact_id)
+      payingContactsByPage[pageId].add(conv.contact_id)
     }
 
     // 결과 조합

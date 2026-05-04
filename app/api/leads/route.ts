@@ -35,14 +35,12 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 100, 500) : (hasFilter ? 500 : 100)
 
   // 고객 기준으로 조회, leads를 포함 (landing_page 정보 포함)
+  // Agatha 도메인: payments/bookings/consultations 테이블 없음 — leads.status로 통합 관리
   let query = supabase
     .from('contacts')
     .select(`
       *,
-      leads(*, landing_page:landing_pages(id, name)),
-      consultations(*),
-      payments(*),
-      bookings(*)
+      leads(*, landing_page:landing_pages(id, name))
     `)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -76,6 +74,20 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       )
       const latestLead = sortedLeads[0]
 
+      // Agatha 도메인 호환: 기존 응답 구조 유지하기 위해 leads에서 파생
+      // - 전환 매출(payments) = leads where status='converted'+conversion_value
+      // - 예약(bookings) = leads where status IN ('in_progress','converted')
+      // - 상담(consultations) = leads where status='in_progress'
+      const derivedPayments = sortedLeads
+        .filter((l: any) => l.status === 'converted' && l.conversion_value != null)
+        .map((l: any) => ({ id: l.id, payment_amount: Number(l.conversion_value) || 0, status_changed_at: l.status_changed_at }))
+      const derivedBookings = sortedLeads
+        .filter((l: any) => l.status === 'in_progress' || l.status === 'converted')
+        .map((l: any) => ({ id: l.id, status: l.status, created_at: l.created_at }))
+      const derivedConsultations = sortedLeads
+        .filter((l: any) => l.status === 'in_progress')
+        .map((l: any) => ({ id: l.id, status: l.status, created_at: l.created_at }))
+
       return {
         // 고객 정보
         id: c.id,
@@ -102,16 +114,16 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
         leads: sortedLeads,
         lead_count: sortedLeads.length,
 
-        // 고객 정보 (기존 구조 호환)
+        // 고객 정보 (기존 구조 호환 — leads 기반 파생 값)
         contact: {
           id: c.id,
           phone_number: c.phone_number,
           name: c.name,
           first_source: c.first_source,
           first_campaign_id: c.first_campaign_id,
-          consultations: c.consultations || [],
-          payments: c.payments || [],
-          bookings: c.bookings || [],
+          consultations: derivedConsultations,
+          payments: derivedPayments,
+          bookings: derivedBookings,
         },
       }
     })

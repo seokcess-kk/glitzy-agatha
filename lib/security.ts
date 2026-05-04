@@ -6,29 +6,6 @@ import { createLogger } from './logger'
 const logger = createLogger('Security')
 
 // ============================================
-// 상수 정의
-// ============================================
-
-export const VALID_BOOKING_STATUSES = [
-  'confirmed',
-  'visited',
-  'noshow',
-  'cancelled',
-  'treatment_confirmed',
-] as const
-export type BookingStatus = (typeof VALID_BOOKING_STATUSES)[number]
-
-export const VALID_CONSULTATION_STATUSES = [
-  '예약완료',
-  '방문완료',
-  '노쇼',
-  '상담중',
-  '취소',
-  '시술확정',
-] as const
-export type ConsultationStatus = (typeof VALID_CONSULTATION_STATUSES)[number]
-
-// ============================================
 // 환경변수 검증 (lib/env.ts로 이동됨)
 // ============================================
 
@@ -72,18 +49,8 @@ export function isValidDate(dateString: string): boolean {
   return !isNaN(date.getTime())
 }
 
-// 예약 상태 유효값 검증
-export function isValidBookingStatus(status: string): status is BookingStatus {
-  return VALID_BOOKING_STATUSES.includes(status as BookingStatus)
-}
-
-// 상담 상태 유효값 검증
-export function isValidConsultationStatus(status: string): status is ConsultationStatus {
-  return VALID_CONSULTATION_STATUSES.includes(status as ConsultationStatus)
-}
-
-// 금액 검증
-export function isValidPaymentAmount(amount: number): boolean {
+// 금액 검증 (전환 금액 등에 사용)
+export function isValidConversionAmount(amount: number): boolean {
   return Number.isFinite(amount) && amount > 0 && amount <= 100000000
 }
 
@@ -155,41 +122,6 @@ export function checkClientAccess(
   return user.client_id === resourceClientId
 }
 
-// 예약(booking) 수정 권한 확인
-export async function canModifyBooking(
-  bookingId: number,
-  user: SessionUser
-): Promise<{ allowed: boolean; clientId: number | null; error?: string }> {
-  // superadmin은 모든 예약에 접근 가능 (DB 조회 생략)
-  if (user.role === 'superadmin') {
-    return { allowed: true, clientId: null }
-  }
-
-  const supabase = serverSupabase()
-
-  const { data: booking, error } = await supabase
-    .from('bookings')
-    .select('client_id')
-    .eq('id', bookingId)
-    .single()
-
-  if (error) {
-    logger.error('DB error in canModifyBooking', error, { action: 'canModifyBooking' })
-    return { allowed: false, clientId: null, error: '예약 조회 중 오류가 발생했습니다.' }
-  }
-
-  if (!booking) {
-    return { allowed: false, clientId: null, error: '예약을 찾을 수 없습니다.' }
-  }
-
-  // client_admin의 경우 자신의 클라이언트 예약만 접근 가능
-  if (booking.client_id !== user.client_id) {
-    return { allowed: false, clientId: booking.client_id, error: '해당 예약에 대한 권한이 없습니다.' }
-  }
-
-  return { allowed: true, clientId: booking.client_id }
-}
-
 // 고객(contact) 접근 권한 확인
 export async function canAccessContact(
   contactId: number,
@@ -227,39 +159,4 @@ export async function canAccessContact(
   }
 
   return { allowed: true, clientId: contact.client_id }
-}
-
-// 콘텐츠 포스트(content_posts) 접근 권한 확인
-export async function canAccessContentPost(
-  postId: number,
-  user: SessionUser
-): Promise<{ allowed: boolean; clientId: number | null; error?: string }> {
-  // superadmin은 모든 포스트에 접근 가능 (DB 조회 생략)
-  if (user.role === 'superadmin') {
-    return { allowed: true, clientId: null }
-  }
-
-  const supabase = serverSupabase()
-
-  const { data: post, error } = await supabase
-    .from('content_posts')
-    .select('client_id')
-    .eq('id', postId)
-    .single()
-
-  if (error) {
-    logger.error('DB error in canAccessContentPost', error, { action: 'canAccessContentPost' })
-    return { allowed: false, clientId: null, error: '포스트 조회 중 오류가 발생했습니다.' }
-  }
-
-  if (!post) {
-    return { allowed: false, clientId: null, error: '포스트를 찾을 수 없습니다.' }
-  }
-
-  // client_admin의 경우 자신의 클라이언트 포스트만 접근 가능
-  if (post.client_id !== user.client_id) {
-    return { allowed: false, clientId: post.client_id, error: '해당 포스트에 대한 권한이 없습니다.' }
-  }
-
-  return { allowed: true, clientId: post.client_id }
 }

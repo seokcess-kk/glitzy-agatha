@@ -11,8 +11,11 @@ const logger = createLogger('AttributionSummary')
  * model=first: 퍼스트터치 (contacts.first_source 기반, 기존 로직)
  * model=linear: 균등 배분 (모든 터치포인트에 동일 가중치)
  * model=time-decay: 시간 가중 (최근 터치에 높은 가중치)
+ *
+ * 매출 = leads where status='converted' + conversion_value (status_changed_at 기준)
+ * NULL 레거시 데이터는 누락될 수 있음 (TODO: 백필 마이그레이션 후 제거).
  */
-export const GET = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
+export const GET = withClientFilter(async (req: Request, { clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
   const url = new URL(req.url)
   const startDate = url.searchParams.get('startDate')
@@ -35,10 +38,24 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     return query
   }
 
-  // 병렬 쿼리: 결제(+고객), 리드, 광고비
-  let paymentsQ = supabase.from('payments').select('payment_amount, contact_id, payment_date, treatment_name, contacts(id, first_source, first_campaign_id, name, phone_number)')
-  paymentsQ = applyFilter(paymentsQ)
-  paymentsQ = applyDateFilter(paymentsQ, 'payment_date')
+  // status_changed_at은 timestamp이므로 KST 기준 [start, end) 패턴
+  const tsStart = startDate ? `${startDate}T00:00:00+09:00` : null
+  let tsEnd: string | null = null
+  if (endDate) {
+    const d = new Date(endDate + 'T00:00:00+09:00')
+    d.setDate(d.getDate() + 1)
+    tsEnd = d.toISOString()
+  }
+
+  // 병렬 쿼리: 전환 리드(+고객), 리드, 광고비
+  let conversionsQ = supabase
+    .from('leads')
+    .select('conversion_value, contact_id, status_changed_at, contacts(id, first_source, first_campaign_id, name, phone_number)')
+    .eq('status', 'converted')
+    .not('conversion_value', 'is', null)
+  conversionsQ = applyFilter(conversionsQ)
+  if (tsStart) conversionsQ = (conversionsQ as unknown as { gte: (col: string, val: string) => typeof conversionsQ }).gte('status_changed_at', tsStart)
+  if (tsEnd) conversionsQ = (conversionsQ as unknown as { lt: (col: string, val: string) => typeof conversionsQ }).lt('status_changed_at', tsEnd)
 
   let leadsQ = supabase.from('leads').select('id, contact_id, utm_source, utm_campaign, created_at')
   leadsQ = applyFilter(leadsQ)
@@ -48,7 +65,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   adStatsQ = applyFilter(adStatsQ)
   adStatsQ = applyDateFilter(adStatsQ, 'stat_date')
 
-  const [paymentsRes, leadsRes, adStatsRes] = await Promise.all([paymentsQ, leadsQ, adStatsQ])
+  const [conversionsRes, leadsRes, adStatsRes] = await Promise.all([conversionsQ, leadsQ, adStatsQ])
 
   // --- 채널별 귀속 ---
   const channelMap: Record<string, { leads: Set<number>; revenue: number; contacts: Set<number> }> = {}
@@ -72,13 +89,13 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
   if (model === 'first') {
     // --- 퍼스트터치 (기존 로직 유지) ---
-    for (const p of paymentsRes.data || []) {
-      const contact = p.contacts as unknown as Record<string, unknown> | null
+    for (const c of conversionsRes.data || []) {
+      const contact = c.contacts as unknown as Record<string, unknown> | null
       if (!contact) continue
 
       const ch = normalizeChannel(contact.first_source as string | null)
       const camp = (contact.first_campaign_id as string | null) || null
-      const amount = Number(p.payment_amount) || 0
+      const amount = Number(c.conversion_value) || 0
       totalRevenue += amount
       allPayingContacts.add(contact.id as number)
 
@@ -94,14 +111,14 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }
   } else {
     // --- 멀티터치 어트리뷰션 (linear / time-decay) ---
-    // 1. 결제 고객별 매출 합산
+    // 1. 전환 고객별 매출 합산
     const contactRevenue = new Map<number, number>()
     const contactIdSet = new Set<number>()
-    for (const p of paymentsRes.data || []) {
-      const contact = p.contacts as unknown as Record<string, unknown> | null
+    for (const c of conversionsRes.data || []) {
+      const contact = c.contacts as unknown as Record<string, unknown> | null
       if (!contact) continue
       const cid = contact.id as number
-      const amount = Number(p.payment_amount) || 0
+      const amount = Number(c.conversion_value) || 0
       totalRevenue += amount
       allPayingContacts.add(cid)
       contactRevenue.set(cid, (contactRevenue.get(cid) || 0) + amount)

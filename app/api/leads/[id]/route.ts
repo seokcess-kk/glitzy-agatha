@@ -4,12 +4,14 @@ import { parseId, sanitizeString } from '@/lib/security'
 import { logActivity } from '@/lib/activity-log'
 import { archiveBeforeDelete } from '@/lib/archive'
 
-const VALID_LEAD_STATUSES = ['new', 'no_answer', 'consulted', 'booked', 'hold', 'rejected'] as const
+const VALID_LEAD_STATUSES = ['new', 'in_progress', 'converted', 'hold', 'lost', 'invalid'] as const
 
 /**
- * 리드 상태/메모 변경 API
+ * 리드 상태/메모 변경 API (간소판 — 자세한 변환 로직은 /api/customers/leads/[id])
  * - lead_status, notes 변경
- * - "booked" 상태로 변경 시 bookings 테이블에 자동 생성 (메모 포함)
+ *
+ * Agatha 도메인 SPEC: leads.status — new/in_progress/converted/hold/lost/invalid
+ * (legacy bookings 자동생성 로직은 제거됨 — Agatha에는 bookings 테이블이 없음)
  */
 export const PATCH = withClientFilter(async (req: Request, { user, clientId, assignedClientIds }: ClientContext) => {
   const supabase = serverSupabase()
@@ -49,39 +51,6 @@ export const PATCH = withClientFilter(async (req: Request, { user, clientId, ass
     .update(updateData)
     .eq('id', leadId)
   if (updateError) return apiError(updateError.message, 500)
-
-  // "booked" 상태로 변경 시 bookings 자동 생성
-  if (lead_status === 'booked' && lead.lead_status !== 'booked') {
-    const { data: existingBooking } = await supabase
-      .from('bookings')
-      .select('id')
-      .eq('contact_id', lead.contact_id)
-      .eq('client_id', lead.client_id)
-      .in('status', ['confirmed', 'visited', 'treatment_confirmed'])
-      .limit(1)
-      .maybeSingle()
-
-    if (!existingBooking) {
-      // 리드 메모를 예약 메모로 전달
-      const bookingNotes = (notes !== undefined ? sanitizeString(notes, 1000) : lead.notes) || ''
-      const { data: newBooking } = await supabase.from('bookings').insert({
-        contact_id: lead.contact_id,
-        client_id: lead.client_id,
-        status: 'confirmed',
-        booking_datetime: new Date().toISOString(),
-        notes: bookingNotes,
-        created_by: Number(user.id),
-      }).select('id').single()
-
-      if (newBooking) {
-        await logActivity(supabase, {
-          userId: user.id, clientId: lead.client_id,
-          action: 'booking_create', targetTable: 'bookings', targetId: newBooking.id,
-          detail: { contact_id: lead.contact_id, source: 'lead_status_booked', lead_id: leadId },
-        })
-      }
-    }
-  }
 
   await logActivity(supabase, {
     userId: user.id, clientId: lead.client_id,

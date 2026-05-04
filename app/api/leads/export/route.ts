@@ -50,31 +50,29 @@ function escapeCsv(value: string | number | null | undefined): string {
   return str
 }
 
-/** 퍼널 단계 영문키 → 한글 라벨 매핑 */
+/** 퍼널 단계 영문키 → 한글 라벨 매핑 (Agatha leads.status 기반) */
 const STAGE_LABELS: Record<string, string> = {
   lead: '리드',
-  booked: '예약',
-  visited: '방문',
-  consulted: '상담',
-  paid: '결제',
+  in_progress: '진행중',
+  converted: '전환',
+  hold: '보류',
+  lost: '미전환',
+  invalid: '무효',
 }
 
+/**
+ * 고객의 퍼널 단계: 보유 리드 중 가장 진행된 상태 기준
+ * 우선순위: converted > in_progress > hold > lost > invalid > new(lead)
+ */
 function getFunnelStageKey(contact: {
-  bookings?: { status: string }[]
-  consultations?: { status: string }[]
-  payments?: { payment_amount?: number }[]
+  leads?: { status?: string | null }[]
 }): string {
-  if (contact.payments && contact.payments.length > 0) return 'paid'
-  const hasConsultDone = contact.consultations?.some(c =>
-    ['방문완료', '상담중', '시술확정'].includes(c.status)
-  )
-  if (hasConsultDone) return 'consulted'
-  const hasVisited = contact.bookings?.some(b =>
-    ['visited', 'treatment_confirmed'].includes(b.status)
-  )
-  if (hasVisited) return 'visited'
-  const hasBooked = contact.bookings?.some(b => b.status !== 'cancelled')
-  if (hasBooked) return 'booked'
+  const statuses = (contact.leads || []).map(l => l.status).filter(Boolean) as string[]
+  if (statuses.includes('converted')) return 'converted'
+  if (statuses.includes('in_progress')) return 'in_progress'
+  if (statuses.includes('hold')) return 'hold'
+  if (statuses.includes('lost')) return 'lost'
+  if (statuses.includes('invalid')) return 'invalid'
   return 'lead'
 }
 
@@ -104,15 +102,12 @@ export const GET = withClientAdmin(async (req: Request, { clientId, assignedClie
   const channel = channelParam ? sanitizeString(channelParam, 50) : null
   const stage = stageParam ? sanitizeString(stageParam, 20) : null
 
-  // 필요한 컬럼만 select
+  // 필요한 컬럼만 select (Agatha 도메인: leads.status로 퍼널 단계 관리)
   let query = supabase
     .from('contacts')
     .select(`
       id, name, phone_number, first_source, created_at, client_id,
-      leads(id, utm_source, utm_campaign, landing_page_id, created_at, landing_page:landing_pages(id, name)),
-      consultations(status),
-      payments(payment_amount, treatment_name),
-      bookings(status)
+      leads(id, utm_source, utm_campaign, status, conversion_value, landing_page_id, created_at, landing_page:landing_pages(id, name))
     `)
     .order('created_at', { ascending: false })
     .limit(MAX_EXPORT)
@@ -147,11 +142,7 @@ export const GET = withClientAdmin(async (req: Request, { clientId, assignedClie
     // 캠페인 필터: 해당 캠페인으로 유입된 리드가 있는 고객만
     if (utmCampaign && !c.leads.some((l: any) => l.utm_campaign === utmCampaign)) continue
 
-    const stageKey = getFunnelStageKey({
-      bookings: c.bookings || [],
-      consultations: c.consultations || [],
-      payments: c.payments || [],
-    })
+    const stageKey = getFunnelStageKey({ leads: c.leads || [] })
     const stageLabel = STAGE_LABELS[stageKey] || stageKey
 
     // 퍼널 단계 필터 — 영문 키 또는 한글 라벨 모두 허용
@@ -174,10 +165,10 @@ export const GET = withClientAdmin(async (req: Request, { clientId, assignedClie
       }
     }
 
-    const treatment = (c.payments || [])
-      .map((p: any) => p.treatment_name)
-      .filter(Boolean)
-      .join(', ')
+    // 전환 금액 합계 (treatment 컬럼 자리에 — 기존 의미와 가장 가까운 정보)
+    const totalConversion = (c.leads || [])
+      .filter((l: any) => l.status === 'converted' && l.conversion_value != null)
+      .reduce((s: number, l: any) => s + (Number(l.conversion_value) || 0), 0)
 
     rows.push({
       name: c.name || '',
@@ -186,7 +177,7 @@ export const GET = withClientAdmin(async (req: Request, { clientId, assignedClie
       campaign: latestLead?.utm_campaign || '',
       stage: stageLabel,
       createdAt: getKstDateString(toUtcDate(c.created_at)),
-      treatment: treatment || '',
+      treatment: totalConversion > 0 ? String(totalConversion) : '',
       landingPage: (() => {
         const lp = latestLead?.landing_page as { id: number; name: string }[] | { id: number; name: string } | null
         if (!lp) return ''
@@ -223,7 +214,7 @@ interface CsvRow {
 }
 
 function buildCsvResponse(rows: CsvRow[]): NextResponse {
-  const headers = ['이름', '전화번호', '유입채널', '캠페인', '퍼널단계', '유입일', '시술', '랜딩페이지']
+  const headers = ['이름', '전화번호', '유입채널', '캠페인', '퍼널단계', '유입일', '전환금액', '랜딩페이지']
   const lines = [
     headers.join(','),
     ...rows.map(r =>

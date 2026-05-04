@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { startOfDay, startOfMonth } from 'date-fns'
 import { DateRange } from 'react-day-picker'
-import { RefreshCw, Play } from 'lucide-react'
+import { RefreshCw, Play, History } from 'lucide-react'
 import { toast } from 'sonner'
 import { useClient } from '@/components/ClientContext'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 import { getKstDateString } from '@/lib/date'
 import AdsOverviewTab from '@/components/ads/ads-overview-tab'
 import AdsCampaignTab from '@/components/ads/ads-campaign-tab'
+import BackfillDialog from '@/components/ads/backfill-dialog'
 
 const TABS = [
   { key: 'overview', label: '성과 개요' },
@@ -23,8 +24,10 @@ export default function AdsPage() {
   const { data: session } = useSession()
   const user = session?.user
   const canSync = user?.role !== 'client_staff'
+  const isSuperAdmin = user?.role === 'superadmin'
 
-  const { selectedClientId } = useClient()
+  const { selectedClientId, clients } = useClient()
+  const selectedClient = clients.find(c => c.id === selectedClientId)
   const [activeTab, setActiveTab] = useState('overview')
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const today = startOfDay(new Date())
@@ -32,6 +35,7 @@ export default function AdsPage() {
   })
   const [syncing, setSyncing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [backfillOpen, setBackfillOpen] = useState(false)
 
   // KST 기준 YYYY-MM-DD 문자열 (ad_campaign_stats.stat_date와 동일 형식)
   const startDate = dateRange.from ? getKstDateString(dateRange.from) : getKstDateString(startOfMonth(new Date()))
@@ -117,6 +121,16 @@ export default function AdsPage() {
               <Button variant="ghost" size="icon" onClick={handleRefresh}>
                 <RefreshCw size={16} />
               </Button>
+              {isSuperAdmin && selectedClientId && (
+                <Button
+                  variant="outline"
+                  onClick={() => setBackfillOpen(true)}
+                  disabled={syncing}
+                  title="과거 광고 데이터 채우기 (최대 90일)"
+                >
+                  <History size={14} /> 과거 데이터 백필
+                </Button>
+              )}
               {canSync && (
                 <Button
                   onClick={handleSync}
@@ -130,6 +144,16 @@ export default function AdsPage() {
           ) : undefined
         }
       />
+
+      {isSuperAdmin && selectedClientId && (
+        <BackfillDialog
+          open={backfillOpen}
+          onOpenChange={setBackfillOpen}
+          clientId={selectedClientId}
+          clientName={selectedClient?.name}
+          onComplete={handleRefresh}
+        />
+      )}
 
       {/* Tab bar */}
       <div className="flex gap-1 mb-6 border-b border-border dark:border-white/5 pb-px">

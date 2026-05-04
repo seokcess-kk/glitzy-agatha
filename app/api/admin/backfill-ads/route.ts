@@ -1,5 +1,7 @@
+import { getServerSession } from 'next-auth'
 import { syncClient } from '@/lib/services/adSyncManager'
-import { apiError, apiSuccess } from '@/lib/api-middleware'
+import { apiError, apiSuccess, type AuthUser } from '@/lib/api-middleware'
+import { authOptions } from '@/lib/auth'
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
 
@@ -8,16 +10,32 @@ const logger = createLogger('BackfillAds')
 export const maxDuration = 300
 
 /**
- * 광고 데이터 backfill API (관리자 전용)
+ * 광고 데이터 backfill API
  *
- * 사용법:
- *   curl -X POST http://localhost:3000/api/admin/backfill-ads \
+ * 두 가지 인증 모드 지원:
+ *   1. Cron / 외부 스크립트: Authorization: Bearer ${CRON_SECRET}
+ *   2. Web UI (superadmin): NextAuth 세션 + role === 'superadmin'
+ *
+ * 사용법 (curl):
+ *   curl -X POST https://agatha.glitzy.kr/api/admin/backfill-ads \
  *     -H "Authorization: Bearer $CRON_SECRET" \
  *     -H "Content-Type: application/json" \
  *     -d '{"clientId": 1, "startDate": "2026-03-01", "endDate": "2026-03-25"}'
  */
 export async function POST(req: Request) {
-  if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  // 1) Bearer 토큰 검증 (Cron 등 외부 호출)
+  const cronAuthorized =
+    req.headers.get('Authorization') === `Bearer ${process.env.CRON_SECRET}`
+
+  // 2) 세션 superadmin 검증 (UI 호출)
+  let sessionAuthorized = false
+  if (!cronAuthorized) {
+    const session = await getServerSession(authOptions)
+    const user = session?.user as AuthUser | undefined
+    sessionAuthorized = user?.role === 'superadmin'
+  }
+
+  if (!cronAuthorized && !sessionAuthorized) {
     return apiError('Unauthorized', 401)
   }
 

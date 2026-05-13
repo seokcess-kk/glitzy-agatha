@@ -131,11 +131,16 @@ async function fetchNaverStats(
   ids: string[],
   dateStr: string,
   auth: { customerId: string; accessLicense: string; secretKey: string },
+  debugLabel?: string,
 ): Promise<NaverStatRow[]> {
   if (ids.length === 0) return []
 
   const allRows: NaverStatRow[] = []
   const uri = '/stats'
+  // 캠페인 레벨이 모든 지표 0 으로 들어오는 문제 진단용 임시 카운터
+  // (debugLabel 지정된 경우만 처음 N개 호출의 raw 응답을 로그에 노출)
+  let debugLogged = 0
+  const DEBUG_LIMIT = 3
   // convCnt = 네이버 전환추적(NPLA/공통키 기반) 전환수. 광고주가 설정한 전환 이벤트
   // (예: "신규 서비스 신청 완료") 기준. 캠페인 레벨에서 ad_campaign_stats.conversions 로 저장.
   // (광고 레벨 ad_stats 에는 conversions 컬럼이 없어 저장되지 않음 — 1차 범위 밖)
@@ -169,6 +174,19 @@ async function fetchNaverStats(
       })
 
       const text = await response.text().catch(() => '')
+
+      // 임시 디버그: debugLabel 지정 시 처음 N개 호출의 raw 응답을 로그에 그대로 노출
+      // (캠페인 레벨 0 진단용. 진단 끝나면 제거 예정)
+      if (debugLabel && debugLogged < DEBUG_LIMIT) {
+        debugLogged++
+        logger.info(`[debug:${debugLabel}] /stats raw response`, {
+          id,
+          dateStr,
+          status: response.status,
+          bodyLength: text.length,
+          body: text.slice(0, 2000),
+        })
+      }
 
       if (!response.ok) {
         throw new Error(`Naver API error (${response.status}) at ${uri}?id=${id}: ${text}`)
@@ -263,9 +281,16 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
       return { platform: 'naver_ads', count: 0 }
     }
 
-    // 2. 통계 조회 (캠페인 ID 배열)
+    // 임시 디버그: 캠페인 목록 첫 1건 raw 형태 (id 접두사 형식 확인용)
+    logger.info('[debug:campaign] /ncc/campaigns 첫 1건', {
+      clientId: options?.clientId,
+      count: campaigns.length,
+      sample: campaigns[0],
+    })
+
+    // 2. 통계 조회 (캠페인 ID 배열) — 디버그 라벨 'campaign' 로 stats raw 응답 로깅
     const campaignIds = campaigns.map((c) => c.nccCampaignId)
-    const statRows = await fetchNaverStats(campaignIds, dateStr, auth)
+    const statRows = await fetchNaverStats(campaignIds, dateStr, auth, 'campaign')
 
     // 캠페인 ID → 통계 매핑
     const statMap = new Map<string, NaverStatRow>()

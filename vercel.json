@@ -6,6 +6,10 @@
       "schedule": "0 21 * * *"
     },
     {
+      "path": "/api/cron/sync-naver-resync",
+      "schedule": "0 22 * * *"
+    },
+    {
       "path": "/api/cron/send-reports",
       "schedule": "0 23 * * *"
     }

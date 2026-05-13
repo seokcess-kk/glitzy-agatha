@@ -7,6 +7,15 @@
 
 ---
 
+## Naver SA convCnt 수집 보강 + 21일 rolling resync (2026-05-14)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| N-2 | Naver `/stats` fields 에 `convCnt` 추가 | `lib/services/naverAds.ts:139` — 매핑은 있었으나 fields 누락으로 항상 0 저장되던 버그 수정 (캠페인 레벨 `ad_campaign_stats.conversions`) | 05-14 |
+| N-3 | 네이버 21일 rolling resync cron | `resyncNaverCampaigns(daysBack)` 헬퍼 + `/api/cron/sync-naver-resync` route (UTC 22:00 / KST 07:00). 전환추적기간 내 후행 보정 자동화. ad 레벨은 1차 범위 밖 (5000+ 소재 timeout 위험) | 05-14 |
+
+---
+
 ## 레거시 테이블 참조 일괄 제거 (2026-05-04)
 
 | # | 작업 | 핵심 내용 | 날짜 |

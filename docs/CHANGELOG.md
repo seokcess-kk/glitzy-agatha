@@ -2,6 +2,16 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## Naver SA 전환수(convCnt) 수집 보강 & 21일 rolling resync (2026-05-14)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-14 | fix: `lib/services/naverAds.ts:139` — `/stats` 요청 fields 배열에 `convCnt` 누락. `ad_campaign_stats.conversions` 매핑은 이미 있었으나 응답에 필드가 없어 항상 0으로 저장되던 버그 |
+| 2026-05-14 | feat: `lib/services/adSyncManager.ts` — `resyncNaverCampaigns(daysBack=21)` 헬퍼 추가. 네이버 전환추적기간 내 후행 보정 대응을 위해 최근 N일 캠페인 레벨 재동기화. ad 레벨은 1차 범위 밖 (5000+ 소재 timeout 위험) |
+| 2026-05-14 | feat: `/api/cron/sync-naver-resync` 신규 cron route — 매일 UTC 22:00 (KST 07:00) 실행, 메인 `sync-ads`(KST 06:00)와 `send-reports`(KST 08:00) 사이 |
+| 2026-05-14 | feat: `vercel.json` — `sync-naver-resync` cron 등록 |
+| 2026-05-14 | note: "리드/매체 전환/인입" 개념 분리. 네이버 SA처럼 자체 랜딩 없이 광고주 사이트로 송출하는 검색광고는 `leads`에 들어오지 않으므로 `ad_campaign_stats.conversions`를 "매체 전환"으로 별도 표기 예정. UI/API 노출은 2차 작업 |
+
 ## 레거시 테이블 참조 일괄 제거 (2026-05-04)
 
 | 날짜 | 내용 |

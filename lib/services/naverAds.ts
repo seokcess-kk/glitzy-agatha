@@ -136,7 +136,10 @@ async function fetchNaverStats(
 
   const allRows: NaverStatRow[] = []
   const uri = '/stats'
-  const fieldsJson = JSON.stringify(['impCnt', 'clkCnt', 'salesAmt'])
+  // convCnt = 네이버 전환추적(NPLA/공통키 기반) 전환수. 광고주가 설정한 전환 이벤트
+  // (예: "신규 서비스 신청 완료") 기준. 캠페인 레벨에서 ad_campaign_stats.conversions 로 저장.
+  // (광고 레벨 ad_stats 에는 conversions 컬럼이 없어 저장되지 않음 — 1차 범위 밖)
+  const fieldsJson = JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'convCnt'])
   const timeRangeJson = JSON.stringify({ since: dateStr, until: dateStr })
 
   // Naver Search Ads API rate limit 대응:

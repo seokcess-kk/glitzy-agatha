@@ -118,14 +118,18 @@ async function naverGet<T>(
 /**
  * stats 엔드포인트 호출 (캠페인/광고 공용)
  *
- * Naver Search Ads `/stats` 는 공식 Python SDK 기준 `id` 단일 호출이 가장 안정적이다.
- * (`ids` multi-value 또는 statType 명시 모두 환경에 따라 400 으로 거부됨).
+ * 네이버 SA `/stats` 는 `id` 단일 모드와 `ids` 다중 모드를 모두 지원하지만,
+ * 운영 환경에서 캠페인 단일 `id=cmp-...` 호출이 400 (잘못된 파라미터 형식) 으로
+ * 거부되는 케이스가 확인됐다. 안전하게 `ids` multi-value 방식으로 통일한다.
  *
- * 따라서 ID 마다 한 번씩 GET `/stats?id={id}&fields={fields}&timeRange={timeRange}` 호출.
- * 동시에 너무 많이 보내지 않도록 10개씩 청크 병렬 처리하고, 일부 실패는 warn 로깅 후 진행.
+ * - `ids` 에는 한 종류의 ID 만 포함 (캠페인 ID 만 / 광고 ID 만 / ...) — 섞으면 400
+ *   ref. https://github.com/naver/searchad-apidoc/issues/976
+ * - URLSearchParams.append('ids', id) 를 반복해 multi-value 인코딩
+ * - 청크 크기 100 (네이버 한 요청 ID 개수 안전선, 첫 검증 후 조정 가능)
  *
- * @param ids nccCampaignId 또는 nccAdId 배열
+ * @param ids 동일 종류의 ID 배열 (nccCampaignId 만 또는 nccAdId 만)
  * @param dateStr YYYY-MM-DD
+ * @param debugLabel 지정 시 첫 청크 응답 메타데이터 로깅 (인증/URL 미노출)
  */
 async function fetchNaverStats(
   ids: string[],
@@ -137,101 +141,106 @@ async function fetchNaverStats(
 
   const allRows: NaverStatRow[] = []
   const uri = '/stats'
-  // 캠페인 레벨이 모든 지표 0 으로 들어오는 문제 진단용 임시 카운터
-  // (debugLabel 지정된 경우만 처음 N개 호출의 raw 응답을 로그에 노출)
-  let debugLogged = 0
-  const DEBUG_LIMIT = 3
   // convCnt = 네이버 전환추적(NPLA/공통키 기반) 전환수. 광고주가 설정한 전환 이벤트
   // (예: "신규 서비스 신청 완료") 기준. 캠페인 레벨에서 ad_campaign_stats.conversions 로 저장.
   // (광고 레벨 ad_stats 에는 conversions 컬럼이 없어 저장되지 않음 — 1차 범위 밖)
   const fieldsJson = JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'convCnt'])
   const timeRangeJson = JSON.stringify({ since: dateStr, until: dateStr })
 
-  // Naver Search Ads API rate limit 대응:
-  //  - 청크 내 동시 호출 5개 (10 → 5로 축소)
-  //  - 청크 사이 200ms sleep 으로 burst 완화
-  //  - 광고 레벨 호출 시 ID 가 수백~수천 개라 직렬에 가깝게 운영
-  const CHUNK_SIZE = 5
+  // ids 다중 모드 청크 크기. 호출 횟수 감소 + rate limit 안전선.
+  const CHUNK_SIZE = 100
   const CHUNK_GAP_MS = 200
+
+  // 첫 청크 응답 형태만 디버그 로깅 (인증/URL/전체 body 미노출)
+  let debugLogged = false
 
   for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
     const chunk = ids.slice(i, i + CHUNK_SIZE)
 
-    const promises = chunk.map(async (id): Promise<NaverStatRow[]> => {
-      const params = new URLSearchParams()
-      params.set('id', id)
-      params.set('fields', fieldsJson)
-      params.set('timeRange', timeRangeJson)
+    const params = new URLSearchParams()
+    for (const id of chunk) {
+      params.append('ids', id)
+    }
+    params.set('fields', fieldsJson)
+    params.set('timeRange', timeRangeJson)
 
-      const headers = buildNaverHeaders('GET', uri, auth)
-      const url = `${BASE_URL}${uri}?${params.toString()}`
+    const headers = buildNaverHeaders('GET', uri, auth)
+    const url = `${BASE_URL}${uri}?${params.toString()}`
 
+    let status = 0
+    let text = ''
+    try {
       const { response } = await fetchWithRetry(url, {
         service: SERVICE_NAME,
-        timeout: 15000,
+        timeout: 30000,
         retries: 1,
         headers,
       })
-
-      const text = await response.text().catch(() => '')
-
-      // 임시 디버그: debugLabel 지정 시 처음 N개 호출의 raw 응답을 로그에 그대로 노출
-      // (캠페인 레벨 0 진단용. 진단 끝나면 제거 예정)
-      if (debugLabel && debugLogged < DEBUG_LIMIT) {
-        debugLogged++
-        logger.info(`[debug:${debugLabel}] /stats raw response`, {
-          id,
-          dateStr,
-          status: response.status,
-          bodyLength: text.length,
-          body: text.slice(0, 2000),
-        })
-      }
-
-      if (!response.ok) {
-        throw new Error(`Naver API error (${response.status}) at ${uri}?id=${id}: ${text}`)
-      }
-
-      let json: unknown
-      try {
-        json = JSON.parse(text)
-      } catch {
-        return []
-      }
-
-      // Naver /stats 단일 ID 응답: { summary, data: [{ ...메트릭 }], compTm, cycleBaseTm }
-      // - data[] 의 row 에는 id 가 들어있지 않으므로 호출 시 사용한 id 로 항상 보강
-      // - 하위호환: 객체 직접/배열/{id,...} 형태도 대응
-      let rows: NaverStatRow[] = []
-      if (Array.isArray(json)) {
-        rows = (json as Record<string, unknown>[]).map(row => (
-          ('id' in row ? row : { id, ...row }) as unknown as NaverStatRow
-        ))
-      } else if (json && typeof json === 'object') {
-        const obj = json as Record<string, unknown>
-        if ('data' in obj && Array.isArray(obj.data)) {
-          rows = (obj.data as Record<string, unknown>[]).map(row => (
-            ('id' in row ? row : { id, ...row }) as unknown as NaverStatRow
-          ))
-        } else if ('id' in obj) {
-          rows = [obj as unknown as NaverStatRow]
-        } else {
-          rows = [{ id, ...obj } as unknown as NaverStatRow]
-        }
-      }
-      return rows
-    })
-
-    const settled = await Promise.allSettled(promises)
-    for (const r of settled) {
-      if (r.status === 'fulfilled') {
-        allRows.push(...r.value)
-      } else {
-        logger.warn('Naver stats 단일 ID 호출 실패', { error: String(r.reason) })
-      }
+      status = response.status
+      text = await response.text().catch(() => '')
+    } catch (err) {
+      logger.warn('Naver stats ids 호출 실패', {
+        error: String(err),
+        chunkIndex: Math.floor(i / CHUNK_SIZE),
+        chunkSize: chunk.length,
+      })
+      continue
     }
 
-    // 다음 청크 전 짧은 대기 (마지막 청크는 생략)
+    // 디버그: 첫 청크의 메타데이터만 (인증값/전체 URL 미노출)
+    if (debugLabel && !debugLogged) {
+      debugLogged = true
+      const idPrefix = chunk[0]?.split('-')[0] ?? ''
+      let shape: 'array' | 'object.data' | 'object' | 'invalid_json' | 'unknown' = 'unknown'
+      try {
+        const parsed = JSON.parse(text)
+        if (Array.isArray(parsed)) shape = 'array'
+        else if (parsed && typeof parsed === 'object') {
+          shape = 'data' in parsed && Array.isArray((parsed as { data?: unknown }).data) ? 'object.data' : 'object'
+        }
+      } catch {
+        shape = 'invalid_json'
+      }
+      logger.info(`[debug:${debugLabel}] /stats ids response`, {
+        idPrefix,
+        idsCount: chunk.length,
+        status,
+        bodyLength: text.length,
+        shape,
+        bodyPreview: text.slice(0, 600),
+      })
+    }
+
+    if (status < 200 || status >= 300) {
+      logger.warn('Naver stats ids non-2xx', {
+        status,
+        chunkSize: chunk.length,
+        bodyPreview: text.slice(0, 300),
+      })
+      continue
+    }
+
+    // 방어적 파싱: 배열 / { data: [...] } / 단일 객체 모두 대응
+    let json: unknown
+    try {
+      json = JSON.parse(text)
+    } catch {
+      continue
+    }
+
+    let rows: NaverStatRow[] = []
+    if (Array.isArray(json)) {
+      rows = json as NaverStatRow[]
+    } else if (json && typeof json === 'object') {
+      const obj = json as Record<string, unknown>
+      if ('data' in obj && Array.isArray(obj.data)) {
+        rows = obj.data as NaverStatRow[]
+      } else if ('id' in obj) {
+        rows = [obj as unknown as NaverStatRow]
+      }
+    }
+    allRows.push(...rows)
+
     if (i + CHUNK_SIZE < ids.length) {
       await new Promise(resolve => setTimeout(resolve, CHUNK_GAP_MS))
     }

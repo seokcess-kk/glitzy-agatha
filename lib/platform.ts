@@ -80,6 +80,31 @@ export const API_REQUIRED_FIELDS: Record<ApiPlatform, string[]> = {
   dable_ads: ['advertiser_id', 'api_key'],
 }
 
+// ═══ 인입(Inflow) 모델 ═══
+//
+// "리드" = 자체 랜딩페이지/웹훅으로 들어와 leads 테이블에 식별 가능한 row 가 생기는 유입.
+// "매체 전환" = 광고 매체(예: 네이버 SA)가 보고한 전환수. 고객 식별 불가, 집계 수치만.
+// "인입" = 운영 KPI 용 통합 지표. 채널마다 둘 중 하나를 source 로 선택.
+//
+// PLATFORM_INFLOW_DEFAULTS — 매체별 기본 source. client_api_configs.config.inflow_source
+// 로 클라이언트별 override 가능. 검색광고처럼 자체 랜딩이 없는 매체는 media_conversion 기본.
+
+export type InflowSource = 'lead_webhook' | 'media_conversion'
+
+export const PLATFORM_INFLOW_DEFAULTS: Record<ApiPlatform, InflowSource> = {
+  meta_ads: 'lead_webhook',
+  google_ads: 'lead_webhook',
+  tiktok_ads: 'lead_webhook',
+  naver_ads: 'media_conversion', // 검색광고: 자체 랜딩 없음, NPLA 전환추적 기반
+  kakao_ads: 'lead_webhook',
+  dable_ads: 'lead_webhook',
+}
+
+export const INFLOW_SOURCE_LABELS: Record<InflowSource, string> = {
+  lead_webhook: '리드(폼/웹훅)',
+  media_conversion: '매체 전환',
+}
+
 // ═══ 2계층: Campaign Type (플랫폼 하위) ═══
 
 export const CAMPAIGN_TYPES_BY_PLATFORM: Record<ApiPlatform, string[]> = {

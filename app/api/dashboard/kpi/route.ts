@@ -4,6 +4,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { getKstDateString, getKstDayStartISO } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { isDemoViewer, getDemoKpi } from '@/lib/demo-data'
+import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
 
 const logger = createLogger('DashboardKpi')
 
@@ -33,8 +34,9 @@ async function fetchMetrics(
   const statEnd = getKstDateString(new Date(new Date(end).getTime() - 86400000))
 
   // 범위 패턴: [start, end) — fetchTodaySummary와 동일한 gte/lt 패턴
+  //   ad_campaign_stats 에 platform/conversions 추가 select — 매체 전환 기반 인입 계산
   const [adStatsRes, leadsRes, conversionsRes, bookedRes, consultRes] = await Promise.all([
-    applyClientFilter(supabase.from('ad_campaign_stats').select('spend_amount, clicks, impressions').gte('stat_date', statStart).lte('stat_date', statEnd), ctx)!,
+    applyClientFilter(supabase.from('ad_campaign_stats').select('platform, spend_amount, clicks, impressions, conversions').gte('stat_date', statStart).lte('stat_date', statEnd), ctx)!,
     applyClientFilter(supabase.from('leads').select('contact_id').gte('created_at', start).lt('created_at', end).limit(5000), ctx)!,
     // 전환 매출: status='converted' + conversion_value 있는 리드, status_changed_at 기준
     applyClientFilter(
@@ -59,6 +61,19 @@ async function fetchMetrics(
   const totalClicks = adStatsRes.data?.reduce((s, r) => s + Number(r.clicks || 0), 0) || 0
   const totalImpressions = adStatsRes.data?.reduce((s, r) => s + Number(r.impressions || 0), 0) || 0
   const totalLeads = leadsRes.data?.length || 0
+
+  // 매체 전환 기반 인입 — PLATFORM_INFLOW_DEFAULTS 가 'media_conversion' 인 플랫폼만 합산
+  //   (예: 네이버 SA. 검색광고는 자체 랜딩 없이 매체 전환수로 인입 측정)
+  //   이중 집계 방지: lead_webhook 모드 플랫폼은 leads 테이블로만 카운트, conversions 무시
+  const mediaConversionsTotal = (adStatsRes.data || []).reduce((sum, r) => {
+    const platform = r.platform
+    if (!isApiPlatform(platform)) return sum
+    if (PLATFORM_INFLOW_DEFAULTS[platform] !== 'media_conversion') return sum
+    return sum + Number(r.conversions || 0)
+  }, 0)
+
+  // 글로벌 인입 = 폼/웹훅 리드 + 매체 전환 채널 conversions 합산
+  const inflowCountTotal = totalLeads + mediaConversionsTotal
   const totalRevenue = conversionsRes.data?.reduce((s, r) => s + Number(r.conversion_value), 0) || 0
   const bookedCount = bookedRes.count || 0
   const consultCount = consultRes.count || 0
@@ -83,12 +98,20 @@ async function fetchMetrics(
   // ARPC: 총 전환 금액 / 전환 완료 고객 수
   const arpc = payingContactCount > 0 ? Math.round(totalRevenue / payingContactCount) : 0
 
+  // CPL 분모: 통합 인입 카운트 사용 (매체 전환 채널의 인입까지 반영해 CPL 왜곡 방지)
+  const cplDenominator = inflowCountTotal > 0 ? inflowCountTotal : totalLeads
+
   return {
-    cpl: totalLeads > 0 ? Math.round(totalSpend / totalLeads) : 0,
+    cpl: cplDenominator > 0 ? Math.round(totalSpend / cplDenominator) : 0,
     roas: totalSpend > 0 ? Number((leadRevenue / totalSpend).toFixed(2)) : 0,
     bookingRate: totalLeads > 0 ? Number(((bookedCount / totalLeads) * 100).toFixed(1)) : 0,
     totalRevenue,
-    totalLeads,
+    // 기존 totalLeads 응답 키는 호환 위해 inflowCountTotal 로 의미 전환.
+    // 정밀 분리값은 actualLeads / mediaConversionsTotal / inflowCountTotal 신규 필드 참고.
+    totalLeads: inflowCountTotal,
+    actualLeads: totalLeads,
+    mediaConversionsTotal,
+    inflowCountTotal,
     totalSpend,
     totalConsultations: consultCount,
     cac,
@@ -159,7 +182,9 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     // agency_staff 배정 클라이언트 0개 → 빈 결과
     if (assignedClientIds !== null && assignedClientIds.length === 0) {
       return apiSuccess({
-        cpl: 0, roas: 0, bookingRate: 0, totalRevenue: 0, totalLeads: 0, totalSpend: 0, totalConsultations: 0, cac: 0, arpc: 0, payingContactCount: 0,
+        cpl: 0, roas: 0, bookingRate: 0, totalRevenue: 0,
+        totalLeads: 0, actualLeads: 0, mediaConversionsTotal: 0, inflowCountTotal: 0,
+        totalSpend: 0, totalConsultations: 0, cac: 0, arpc: 0, payingContactCount: 0,
         totalClicks: 0, totalImpressions: 0, cpc: 0, ctr: 0,
         today: { leads: 0, bookings: 0, revenue: 0, leadsDiff: 0, bookingsDiff: 0, revenueDiff: 0 },
       })

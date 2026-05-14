@@ -2,6 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
 import { sourceToChannel } from '@/lib/platform'
+import { resolveInflowSourceForChannel, computeInflowCount } from '@/lib/inflow'
 import { getKstDateString } from '@/lib/date'
 import { isDemoViewer, getDemoChannel } from '@/lib/demo-data'
 
@@ -47,9 +48,10 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
   // 2. 광고 지출 데이터 — stat_date(DATE 컬럼)는 KST 날짜 문자열로 비교
+  //    conversions 컬럼도 가져와 매체 전환 기반 인입(media_conversion) 채널에서 사용
   let adStatsQuery = supabase
     .from('ad_campaign_stats')
-    .select('platform, spend_amount, clicks, impressions, stat_date')
+    .select('platform, spend_amount, clicks, impressions, conversions, stat_date')
   adStatsQuery = applyClientFilter(adStatsQuery, ctx)!
   if (startKst) adStatsQuery = adStatsQuery.gte('stat_date', startKst)
   if (endKst) adStatsQuery = adStatsQuery.lte('stat_date', endKst)
@@ -102,27 +104,38 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }
   }
 
-  // 광고 지출/클릭/노출 — 플랫폼 레벨 집계 (ad_campaign_stats.platform 기준)
+  // 광고 지출/클릭/노출 + 매체 전환수 — 플랫폼 레벨 집계 (ad_campaign_stats.platform 기준)
   const spendByChannel: Record<string, number> = {}
   const clicksByChannel: Record<string, number> = {}
   const impressionsByChannel: Record<string, number> = {}
+  const mediaConvByChannel: Record<string, number> = {}
   for (const row of adStatsRes.data || []) {
     const channel = sourceToChannel(row.platform) // meta_ads → Meta
     spendByChannel[channel] = (spendByChannel[channel] || 0) + Number(row.spend_amount)
     clicksByChannel[channel] = (clicksByChannel[channel] || 0) + Number(row.clicks || 0)
     impressionsByChannel[channel] = (impressionsByChannel[channel] || 0) + Number(row.impressions || 0)
+    mediaConvByChannel[channel] = (mediaConvByChannel[channel] || 0) + Number(row.conversions || 0)
   }
 
   // 결과 생성 — 플랫폼 단위로 광고비 직접 매칭 (안분 불필요)
-  const allChannels = Object.keys(leadsByChannel)
+  //   - leads 만 있는 채널 + 광고비만 있는 채널 모두 포함하기 위해 두 집합 합집합
+  const allChannels = Array.from(new Set([
+    ...Object.keys(leadsByChannel),
+    ...Object.keys(spendByChannel),
+  ]))
 
   const result = allChannels
-    .filter(ch => ch !== 'Unknown' || leadsByChannel[ch]?.size > 0)
+    .filter(ch => ch !== 'Unknown' || (leadsByChannel[ch]?.size ?? 0) > 0)
     .map(ch => {
-      const leads = leadsByChannel[ch]?.size || 0
+      const actualLeads = leadsByChannel[ch]?.size || 0
+      const mediaConversions = mediaConvByChannel[ch] || 0
       const spend = spendByChannel[ch] || 0
       const clicks = clicksByChannel[ch] || 0
       const impressions = impressionsByChannel[ch] || 0
+
+      // 채널별 inflow source — 검색광고(Naver 등) 매체 전환 기반, 나머지 폼/웹훅 기반
+      const inflowSource = resolveInflowSourceForChannel(ch)
+      const inflowCount = computeInflowCount(actualLeads, mediaConversions, inflowSource)
 
       const stats = statusByChannel[ch] || { total: 0, converted: 0, lost: 0, hold: 0, noResponse: 0, invalid: 0 }
       // 유효 리드 = 전체 - 무효
@@ -134,12 +147,18 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
       return {
         channel: ch,
-        leads,
+        // 인입 통합 지표 (새 API 응답 4필드)
+        actualLeads,
+        mediaConversions,
+        inflowCount,
+        inflowSource,
+        // 기존 응답 키(`leads`) 호환 — 프론트엔드 라벨 전환 완료될 때까지 유지
+        leads: inflowCount,
         spend,
         revenue,
         clicks,
         impressions,
-        cpl: leads > 0 ? Math.round(spend / leads) : 0,
+        cpl: inflowCount > 0 ? Math.round(spend / inflowCount) : 0,
         roas: 0, // 전환 금액 없이는 계산 불가
         ctr: impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0,
         conversionRate: validLeads > 0 ? Number(((stats.converted / validLeads) * 100).toFixed(1)) : 0,
@@ -148,7 +167,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
         noshowRate: validLeads > 0 ? Number(((stats.noResponse / validLeads) * 100).toFixed(1)) : 0,
       }
     })
-    .sort((a, b) => b.leads - a.leads)
+    .sort((a, b) => b.inflowCount - a.inflowCount)
 
   return apiSuccess(result)
 })

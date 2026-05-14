@@ -115,6 +115,36 @@ async function naverGet<T>(
   return (await response.json()) as T
 }
 
+/**
+ * Naver POST 헬퍼 (시그니처 헤더 + JSON body)
+ */
+async function naverPost<T>(
+  uri: string,
+  body: Record<string, unknown>,
+  auth: { customerId: string; accessLicense: string; secretKey: string },
+): Promise<T> {
+  const headers = buildNaverHeaders('POST', uri, auth)
+  const url = `${BASE_URL}${uri}`
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  })
+
+  const text = await response.text().catch(() => '')
+
+  if (!response.ok) {
+    throw new Error(`Naver API error (${response.status}) at POST ${uri}: ${text}`)
+  }
+
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new Error(`Naver API invalid JSON at POST ${uri}: ${text.slice(0, 200)}`)
+  }
+}
+
 interface FetchNaverStatsOptions {
   debugLabel?: string
   /**
@@ -339,6 +369,109 @@ function toFloat(value: unknown): number {
 }
 
 /**
+ * /stat-reports 비동기 보고서 API — PoC (1차)
+ *
+ * 공식 sample (PHP/Java) 기반 정공법.
+ *   1. POST /stat-reports         body: { reportTp, statDt: YYYYMMDD }
+ *   2. GET /stat-reports/{jobId}  상태 폴링 (REGIST/RUNNING/WAITING/AGGREGATING → BUILT)
+ *   3. response.downloadUrl       TSV 다운로드 (네이버가 fileVersion 파라미터 포함 URL 발급)
+ *
+ * 1차 PoC 범위: 다운로드까지만. TSV 헤더와 첫 2줄을 디버그 로그로 노출.
+ * 컬럼 매핑 + ad_campaign_stats upsert 는 결과 확인 후 2차에서.
+ */
+interface NaverStatReportJob {
+  reportJobId: number
+  status: 'REGIST' | 'RUNNING' | 'WAITING' | 'AGGREGATING' | 'BUILT' | 'DOWNLOADED' | 'ERROR' | 'NONE'
+  downloadUrl?: string
+  reportTp?: string
+  statDt?: string
+}
+
+async function fetchNaverStatReport(
+  reportTp: 'AD' | 'AD_DETAIL' | 'AD_CONVERSION' | 'AD_CONVERSION_DETAIL',
+  statDt: string, // YYYYMMDD
+  auth: { customerId: string; accessLicense: string; secretKey: string },
+  debugLabel?: string,
+): Promise<{ headers: string[]; firstRows: string[][]; totalRows: number } | null> {
+  // 1. POST /stat-reports — 보고서 생성 요청
+  const created = await naverPost<NaverStatReportJob>('/stat-reports', { reportTp, statDt }, auth)
+  if (debugLabel) {
+    logger.info(`[debug:${debugLabel}] stat-report created`, {
+      reportTp,
+      statDt,
+      reportJobId: created.reportJobId,
+      status: created.status,
+    })
+  }
+  if (created.status === 'ERROR' || created.status === 'NONE') {
+    logger.warn('stat-report 생성 직후 종료 상태', { reportTp, statDt, status: created.status })
+    return null
+  }
+
+  // 2. 폴링 (최대 ~60초). PHP sample 은 5초 간격.
+  const POLL_MAX_TRIES = 24
+  const POLL_INTERVAL_MS = 2500
+  let job: NaverStatReportJob = created
+  for (let tries = 0; tries < POLL_MAX_TRIES; tries++) {
+    if (job.status === 'BUILT' || job.status === 'DOWNLOADED') break
+    if (job.status === 'ERROR' || job.status === 'NONE') {
+      logger.warn('stat-report 종료 상태', { reportTp, statDt, status: job.status })
+      return null
+    }
+    await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+    job = await naverGet<NaverStatReportJob>(`/stat-reports/${created.reportJobId}`, undefined, auth)
+  }
+
+  if (job.status !== 'BUILT' && job.status !== 'DOWNLOADED') {
+    logger.warn('stat-report 폴링 timeout', { reportTp, statDt, status: job.status, jobId: created.reportJobId })
+    return null
+  }
+  if (!job.downloadUrl) {
+    logger.warn('stat-report BUILT 인데 downloadUrl 누락', { reportTp, statDt, jobId: created.reportJobId })
+    return null
+  }
+
+  // 3. downloadUrl 그대로 사용 (네이버가 fileVersion 등 파라미터 포함해 발급)
+  //    인증 헤더 불필요 — authtoken query param 포함된 사인된 URL
+  const downloadResponse = await fetch(job.downloadUrl)
+  if (!downloadResponse.ok) {
+    logger.warn('stat-report 다운로드 실패', {
+      reportTp,
+      statDt,
+      status: downloadResponse.status,
+    })
+    return null
+  }
+  const tsv = await downloadResponse.text()
+
+  // 4. TSV 파싱 — 첫 줄을 헤더로 가정. 일부 보고서는 헤더 없을 수 있어 PoC 단계에서 확인.
+  const lines = tsv.split(/\r?\n/).filter(line => line.length > 0)
+  if (lines.length === 0) {
+    logger.info('stat-report 결과 0건', { reportTp, statDt })
+    return { headers: [], firstRows: [], totalRows: 0 }
+  }
+
+  const headers = lines[0].split('\t')
+  const dataLines = lines.slice(1)
+  const firstRows = dataLines.slice(0, 2).map(line => line.split('\t'))
+
+  if (debugLabel) {
+    logger.info(`[debug:${debugLabel}] stat-report TSV preview`, {
+      reportTp,
+      statDt,
+      jobId: created.reportJobId,
+      totalLines: lines.length,
+      headerCount: headers.length,
+      headers, // 1차 PoC: 컬럼명 전체 노출
+      sampleRow1: firstRows[0] ?? null,
+      sampleRow2: firstRows[1] ?? null,
+    })
+  }
+
+  return { headers, firstRows, totalRows: dataLines.length }
+}
+
+/**
  * Naver 캠페인 레벨 일별 성과 수집 → ad_campaign_stats
  */
 export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions) {
@@ -374,13 +507,17 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
       sample: campaigns[0],
     })
 
-    // 2. 통계 조회 — multi-value + statType=CAMPAIGN
-    const campaignIds = campaigns.map((c) => c.nccCampaignId)
-    const statRows = await fetchNaverStats(campaignIds, dateStr, auth, {
-      debugLabel: 'campaign',
-      idsMode: 'multi-value',
-      statType: 'CAMPAIGN',
-    })
+    // 2. 통계 조회 — /stat-reports PoC (1차).
+    //    /stats 5가지 호출 조합 모두 400 거부 확인 후 정공법으로 전환.
+    //    PoC 단계: AD 리포트 TSV 헤더와 첫 2줄을 디버그 로그로 노출. 컬럼 매핑/upsert 는
+    //    결과 확인 후 2차 PR 에서 진행. statRows 는 빈 배열로 두어 메타데이터만 저장.
+    const statDt = dateStr.replace(/-/g, '') // YYYY-MM-DD → YYYYMMDD
+    try {
+      await fetchNaverStatReport('AD', statDt, auth, 'campaign-report')
+    } catch (err) {
+      logger.warn('stat-report PoC 호출 실패', { error: String(err), statDt })
+    }
+    const statRows: NaverStatRow[] = []
 
     // 캠페인 ID → 통계 매핑
     const statMap = new Map<string, NaverStatRow>()

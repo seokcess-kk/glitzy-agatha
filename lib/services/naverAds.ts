@@ -119,11 +119,11 @@ interface FetchNaverStatsOptions {
   debugLabel?: string
   /**
    * - 'single-id': 기존 광고 호출 방식. ID 마다 `?id={id}` 직렬에 가까운 청크(5개) 호출
-   * - 'json-array': 캠페인 호출 방식 (실험). 청크 단위로 `?ids=JSON.stringify([...])` 호출
+   * - 'multi-value': 캠페인 호출 방식. 청크 단위로 multi-value `?ids=a&ids=b...` 호출
    * default: 'single-id'
    */
-  idsMode?: 'single-id' | 'json-array'
-  /** json-array 모드에서만 사용. 캠페인 검증 시 'CAMPAIGN' 지정 가능 */
+  idsMode?: 'single-id' | 'multi-value'
+  /** multi-value 모드에서만 사용. 캠페인 호출 시 'CAMPAIGN' 명시 */
   statType?: 'CAMPAIGN' | 'ADGROUP' | 'AD'
 }
 
@@ -131,13 +131,18 @@ interface FetchNaverStatsOptions {
  * stats 엔드포인트 호출 (캠페인/광고 공용)
  *
  * 광고(ad) 레벨은 `?id={nccAdId}` 단일 호출이 운영 환경에서 통하던 방식이므로
- * 기본값(`'single-id'`)으로 유지. 캠페인 레벨은 단일/multi-value 둘 다 400 거부 사례가
- * 확인돼 검증용으로 `json-array` 모드 + 선택적 `statType=CAMPAIGN` 옵션을 제공.
+ * 기본값(`'single-id'`)으로 유지. 캠페인 레벨은 다음 진단 결과를 반영해 multi-value + statType 사용:
  *
- * - single-id: 청크 5개 병렬, ID 마다 한 번씩 GET `/stats?id={id}&fields=...&timeRange=...`
- * - json-array: 청크 100개, GET `/stats?ids=[...]&fields=...&timeRange=...[&statType=...]`
+ *   - single-id `?id=cmp-...`           → 400 "잘못된 파라미터 형식"
+ *   - multi-value `?ids=a&ids=b` (단독)  → 400 "잘못된 파라미터 형식"
+ *   - json-array `?ids=["a","b"]`        → 400 "유효하지 않은 ID 형식"
+ *   - json-array + statType=CAMPAIGN     → 400 Spring generic Bad Request
  *
- * ref. https://github.com/naver/searchad-apidoc/issues/976 (ids 에 다른 종류 ID 섞으면 400)
+ * 마지막 미시도 조합: **multi-value + statType=CAMPAIGN** — 기존 multi-value 가 statType 누락
+ * 때문에 거부된 것이라는 가설 검증. ref. https://github.com/naver/searchad-apidoc/issues/976
+ *
+ * - single-id: 청크 5개 병렬, ID 마다 `?id={id}&fields=...&timeRange=...`
+ * - multi-value: 청크 100개, `?ids=a&ids=b&...&fields=...&timeRange=...[&statType=...]`
  *
  * @param ids 동일 종류의 ID 배열 (nccCampaignId 만 또는 nccAdId 만)
  */
@@ -252,7 +257,7 @@ async function fetchNaverStats(
     return allRows
   }
 
-  // idsMode === 'json-array' — 캠페인 검증 모드
+  // idsMode === 'multi-value' — 캠페인 호출 모드
   const CHUNK_SIZE = 100
   const CHUNK_GAP_MS = 200
 
@@ -260,7 +265,9 @@ async function fetchNaverStats(
     const chunk = ids.slice(i, i + CHUNK_SIZE)
 
     const params = new URLSearchParams()
-    params.set('ids', JSON.stringify(chunk))
+    for (const id of chunk) {
+      params.append('ids', id)
+    }
     params.set('fields', fieldsJson)
     params.set('timeRange', timeRangeJson)
     if (statType) params.set('statType', statType)
@@ -280,7 +287,7 @@ async function fetchNaverStats(
       status = response.status
       text = await response.text().catch(() => '')
     } catch (err) {
-      logger.warn('Naver stats json-array 호출 실패', {
+      logger.warn('Naver stats multi-value 호출 실패', {
         error: String(err),
         chunkSize: chunk.length,
       })
@@ -290,7 +297,7 @@ async function fetchNaverStats(
     logDebug({ idPrefix: chunk[0]?.split('-')[0] ?? '', chunkSize: chunk.length, status, bodyPreview: text })
 
     if (status < 200 || status >= 300) {
-      logger.warn('Naver stats json-array non-2xx', { status, chunkSize: chunk.length, statType: statType ?? null })
+      logger.warn('Naver stats multi-value non-2xx', { status, chunkSize: chunk.length, statType: statType ?? null })
       continue
     }
 
@@ -367,21 +374,13 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
       sample: campaigns[0],
     })
 
-    // 2. 통계 조회 — json-array 모드. A(statType 없음) → B(statType=CAMPAIGN) 자동 fallback
-    //    한 번의 backfill 로 두 케이스 응답을 디버그 로그로 비교 가능.
+    // 2. 통계 조회 — multi-value + statType=CAMPAIGN
     const campaignIds = campaigns.map((c) => c.nccCampaignId)
-    let statRows = await fetchNaverStats(campaignIds, dateStr, auth, {
-      debugLabel: 'campaign-A',
-      idsMode: 'json-array',
+    const statRows = await fetchNaverStats(campaignIds, dateStr, auth, {
+      debugLabel: 'campaign',
+      idsMode: 'multi-value',
+      statType: 'CAMPAIGN',
     })
-    if (statRows.length === 0) {
-      logger.info('[debug:campaign] A(statType 없음) 빈 결과 → B(statType=CAMPAIGN) 재시도')
-      statRows = await fetchNaverStats(campaignIds, dateStr, auth, {
-        debugLabel: 'campaign-B',
-        idsMode: 'json-array',
-        statType: 'CAMPAIGN',
-      })
-    }
 
     // 캠페인 ID → 통계 매핑
     const statMap = new Map<string, NaverStatRow>()
@@ -417,9 +416,28 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
     }
 
     const duration = Date.now() - startTime
+
+    // stats 전부 실패 케이스: 캠페인 메타는 받았는데 통계 0건
+    //  → backfill/cron 결과에 error 를 실어 호출자(상위)가 실패로 인지하게 한다.
+    //    (이전엔 count=campaigns.length 만 반환해 성공으로 위장되던 문제 보정)
+    const statsAllFailed = statRows.length === 0
+    if (statsAllFailed) {
+      logger.warn('Naver 캠페인 stats 전부 실패 (메타데이터만 저장)', {
+        clientId: options?.clientId,
+        campaignCount: campaigns.length,
+        duration,
+      })
+      return {
+        platform: 'naver_ads',
+        count: campaigns.length,
+        error: `Campaign stats failed (0/${campaigns.length}). 메타데이터만 저장됨. /stats 응답 거부.`,
+      }
+    }
+
     logger.info('Sync completed', {
       action: 'sync',
       count: campaigns.length,
+      statsMatched: statRows.length,
       duration,
       clientId: options?.clientId,
     })

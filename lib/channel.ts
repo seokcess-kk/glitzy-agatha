@@ -15,6 +15,7 @@ export function normalizeChannel(source: string | null | undefined): string {
     'naver': 'Naver', 'naver_ads': 'Naver',
     'kakao': 'Kakao', 'kakao_ads': 'Kakao',
     'dable': 'Dable', 'dable_ads': 'Dable',
+    'adn': 'ADN', 'adn_ads': 'ADN', 'across': 'ADN', 'acrosspf': 'ADN',
     'instagram': 'Instagram', 'ig': 'Instagram',
     'phone': 'Phone',
     'direct': 'Direct',
@@ -26,7 +27,8 @@ export function normalizeChannel(source: string | null | undefined): string {
   const prefix = normalized.split('_')[0]
   const prefixMap: Record<string, string> = {
     meta: 'Meta', google: 'Google', naver: 'Naver', kakao: 'Kakao',
-    tiktok: 'TikTok', youtube: 'YouTube', dable: 'Dable',
+    tiktok: 'TikTok', youtube: 'YouTube', dable: 'Dable', adn: 'ADN',
+    across: 'ADN', acrosspf: 'ADN',
     facebook: 'Meta', instagram: 'Instagram',
   }
   if (prefixMap[prefix]) return prefixMap[prefix]

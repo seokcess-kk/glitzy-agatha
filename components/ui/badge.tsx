@@ -22,6 +22,7 @@ const badgeVariants = cva(
         naver: "border-transparent bg-green-100 text-green-700 dark:bg-green-500/25 dark:text-green-300",
         kakao: "border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-500/25 dark:text-yellow-300",
         dable: "border-transparent bg-indigo-100 text-indigo-700 dark:bg-indigo-500/25 dark:text-indigo-300",
+        adn: "border-transparent bg-cyan-100 text-cyan-700 dark:bg-cyan-500/25 dark:text-cyan-300",
         // 상태별 variant
         success: "border-transparent bg-emerald-100 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-300",
         warning: "border-transparent bg-amber-100 text-amber-700 dark:bg-amber-500/25 dark:text-amber-300",

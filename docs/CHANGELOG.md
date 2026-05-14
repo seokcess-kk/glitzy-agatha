@@ -2,6 +2,17 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## ADN(Across DN) 매체 추가 (2026-05-14)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-14 | feat: `lib/platform.ts` — `adn_ads` 추가 (`API_PLATFORMS / SYNC_ENABLED_PLATFORMS / API_PLATFORM_LABELS('ADN') / API_PLATFORM_SHORT('A') / API_PLATFORM_FIELDS([api_key]) / API_REQUIRED_FIELDS / CAMPAIGN_TYPES_BY_PLATFORM(['display'])`). `PLATFORM_INFLOW_DEFAULTS.adn_ads = 'media_conversion'` (디스플레이 네트워크, 매체 conv_cnt 기반) |
+| 2026-05-14 | feat: `lib/channel.ts` / `lib/channel-colors.ts` — 'adn' / 'across' / 'acrosspf' → 'ADN' 매핑, 색상 cyan-500(`#06b6d4`) |
+| 2026-05-14 | feat: `components/ui/badge.tsx` `adn` variant + `components/common/channel-badge.tsx` adn 분기 |
+| 2026-05-14 | feat: `lib/services/adnAds.ts` 신규 — `fetchAdnAds()`. `GET https://manage.acrosspf.com/api/api_report/across_adn_api_report.php` (헤더 `API-KEY`). 응답 일별→캠페인→groups 3-tier 파싱, `ad_campaign_stats` + `ad_group_stats` 동시 upsert. campaign_id/group_id 부재 → name 그대로 ID 사용. ad/소재 단위 없음(`fetchAdnAdStats` 미구현). 환경변수 폴백 `ADN_ADS_API_KEY` |
+| 2026-05-14 | feat: `lib/services/adSyncManager.ts` — `case 'adn_ads'` 추가, `syncAllClients`/`syncClient` 환경변수 폴백 경로에 `fetchAdnAds` 포함. `/api/admin/backfill-ads` 도 자동 적용 (skipAdLevel 무관 — ad 레벨 없음) |
+| 2026-05-14 | note: ADN 은 `media_conversion` 모드라 `creatives-performance / dashboard/campaign / platform-summary / day-analysis / efficiency-trend / campaign-ranking-table` 등 인입 모델 적용된 모든 화면에 자동 노출 |
+
 ## 광고그룹 단위 통계 — 검색광고용 운영 단위 통합 (2026-05-14)
 
 | 날짜 | 내용 |

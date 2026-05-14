@@ -16,6 +16,7 @@ const getChannelVariant = (channel: string): ChannelVariant => {
   if (lower.includes('naver') || lower.includes('네이버')) return 'naver'
   if (lower.includes('kakao') || lower.includes('카카오')) return 'kakao'
   if (lower.includes('dable') || lower.includes('데이블')) return 'dable'
+  if (lower.includes('adn') || lower.includes('across')) return 'adn'
   return 'secondary'
 }
 

@@ -22,7 +22,7 @@
 - `CRON_SECRET` (Cron Job 인증)
 
 ### 선택 (서비스별)
-- 광고: `GOOGLE_ADS_*`, `META_*`, `TIKTOK_*` (+ 클라이언트별 `client_api_configs`)
+- 광고: `GOOGLE_ADS_*`, `META_*`, `TIKTOK_*`, `NAVER_ADS_*`, `ADN_ADS_API_KEY` (+ 클라이언트별 `client_api_configs`)
 - SMS: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_SENDER_NUMBER`
 - 메시징: `QSTASH_*`
 - 에러 알림: `ADMIN_ALERT_PHONES` (프로덕션 에러 SMS 수신 번호)
@@ -84,6 +84,7 @@
 | `services/metaAds.ts` | `fetchMetaAds`, `fetchMetaAdStats` | Meta 캠페인 + ad 레벨 수집 |
 | `services/tiktokAds.ts` | `fetchTikTokAds`, `fetchTikTokAdStats` | TikTok 캠페인 + ad 레벨 수집 |
 | `services/naverAds.ts` | `fetchNaverAds`, `fetchNaverAdStats` | Naver Search Ads 캠페인 + ad 레벨 수집 (HMAC-SHA256 시그니처 인증) |
+| `services/adnAds.ts` | `fetchAdnAds` | ADN(Across DN — manage.acrosspf.com) 캠페인 + 광고그룹 레벨 수집 (`API-KEY` 헤더). ad/소재 레벨 없음 |
 | `services/metaCapi.ts` | Meta CAPI 전송 | 리드 유입 시 서버사이드 전환 이벤트 전송 |
 | `services/erpClient.ts` | `fetchErpClients`, `createErpClient`, `fetchQuotes`, `fetchQuoteDetail`, `fetchInvoices`, `fetchInvoiceDetail`, `respondToQuote` | glitzy-web ERP API 프록시 (거래처/견적서/계산서) |
 

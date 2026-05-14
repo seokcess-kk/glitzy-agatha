@@ -7,6 +7,17 @@
 
 ---
 
+## ADN(Across DN) 매체 추가 (2026-05-14)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| A-1 | 플랫폼/채널 상수 등록 | platform.ts(adn_ads enum + INFLOW_DEFAULTS=media_conversion), channel.ts/channel-colors.ts(cyan-500), badge.tsx adn variant | 05-14 |
+| A-2 | ADN API 동기화 구현 | `lib/services/adnAds.ts` 신규. acrosspf api_report 호출, 일별→캠페인→groups 파싱, ad_campaign_stats + ad_group_stats 동시 upsert. campaign_id/group_id 부재 → name 사용 | 05-14 |
+| A-3 | adSyncManager 통합 | case 'adn_ads' + 환경변수 폴백 경로 추가. /api/admin/backfill-ads 자동 적용 | 05-14 |
+| A-4 | 대시보드 자동 노출 | 기존 PLATFORM_INFLOW_DEFAULTS 기반 인입 모델 화면 모두 자동 반영 (별도 컴포넌트 수정 불필요) | 05-14 |
+
+---
+
 ## 광고그룹 단위 통계 통합 (2026-05-14)
 
 | # | 작업 | 핵심 내용 | 날짜 |

@@ -11,6 +11,7 @@ import { fetchMetaAds, fetchMetaAdStats } from '@/lib/services/metaAds'
 import { fetchGoogleAds } from '@/lib/services/googleAds'
 import { fetchTikTokAds, fetchTikTokAdStats } from '@/lib/services/tiktokAds'
 import { fetchNaverAds, fetchNaverAdStats } from '@/lib/services/naverAds'
+import { fetchAdnAds } from '@/lib/services/adnAds'
 import { type ApiPlatform, SYNC_ENABLED_PLATFORMS, API_PLATFORM_LABELS } from '@/lib/platform'
 
 const logger = createLogger('AdSyncManager')
@@ -140,6 +141,20 @@ async function syncPlatform(
           error: campaignResult.error || adResult.error || undefined,
         }
       }
+      case 'adn_ads': {
+        // ADN 은 응답에 ad/소재 단위가 없어 ad 레벨이 존재하지 않는다 → skipAdLevel 옵션 무관.
+        const result = await fetchAdnAds(date, {
+          clientId,
+          apiKey: decrypted.api_key as string,
+        })
+        return {
+          clientId,
+          clientName,
+          platform: result.platform,
+          count: result.count,
+          error: result.error,
+        }
+      }
       default:
         return {
           clientId,
@@ -245,9 +260,10 @@ export async function syncAllClients(date: Date = new Date()): Promise<SyncResul
         count: c.count + a.count,
         error: c.error || a.error || undefined,
       })),
+      fetchAdnAds(date),
     ])
 
-    const platformNames = ['meta_ads', 'google_ads', 'tiktok_ads', 'naver_ads']
+    const platformNames = ['meta_ads', 'google_ads', 'tiktok_ads', 'naver_ads', 'adn_ads']
     for (let i = 0; i < fallbackResults.length; i++) {
       const r = fallbackResults[i]
       if (r.status === 'fulfilled') {
@@ -479,9 +495,10 @@ export async function syncClient(
         count: c.count + a.count,
         error: c.error || a.error || undefined,
       })),
+      fetchAdnAds(date),
     ])
 
-    const platformNames = ['meta_ads', 'google_ads', 'tiktok_ads', 'naver_ads']
+    const platformNames = ['meta_ads', 'google_ads', 'tiktok_ads', 'naver_ads', 'adn_ads']
     for (let i = 0; i < fallbackResults.length; i++) {
       const r = fallbackResults[i]
       if (r.status === 'fulfilled') {

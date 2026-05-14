@@ -9,15 +9,15 @@
 
 export const API_PLATFORMS = [
   'meta_ads', 'google_ads', 'tiktok_ads',
-  'naver_ads', 'kakao_ads', 'dable_ads',
+  'naver_ads', 'kakao_ads', 'dable_ads', 'adn_ads',
 ] as const
 
 export type ApiPlatform = (typeof API_PLATFORMS)[number]
 
 /** 동기화 활성 플랫폼 — adSyncManager에서 실제 API 호출 대상 */
-export const SYNC_ENABLED_PLATFORMS: ApiPlatform[] = ['meta_ads', 'google_ads', 'tiktok_ads', 'naver_ads']
+export const SYNC_ENABLED_PLATFORMS: ApiPlatform[] = ['meta_ads', 'google_ads', 'tiktok_ads', 'naver_ads', 'adn_ads']
 
-/** API 설정 UI에 표시할 플랫폼 (6개 전부) */
+/** API 설정 UI에 표시할 플랫폼 (7개 전부) */
 export const API_CONFIG_PLATFORMS: readonly ApiPlatform[] = API_PLATFORMS
 
 export const API_PLATFORM_LABELS: Record<ApiPlatform, string> = {
@@ -27,6 +27,7 @@ export const API_PLATFORM_LABELS: Record<ApiPlatform, string> = {
   naver_ads: 'Naver',
   kakao_ads: 'Kakao',
   dable_ads: 'Dable',
+  adn_ads: 'ADN',
 }
 
 export const API_PLATFORM_SHORT: Record<ApiPlatform, string> = {
@@ -36,6 +37,7 @@ export const API_PLATFORM_SHORT: Record<ApiPlatform, string> = {
   naver_ads: 'N',
   kakao_ads: 'K',
   dable_ads: 'D',
+  adn_ads: 'A',
 }
 
 /** 플랫폼별 API 키 필드 정의 */
@@ -68,6 +70,9 @@ export const API_PLATFORM_FIELDS: Record<ApiPlatform, { key: string; label: stri
     { key: 'advertiser_id', label: 'Advertiser ID', placeholder: 'Dable Advertiser ID' },
     { key: 'api_key', label: 'API Key', placeholder: 'Dable API Key' },
   ],
+  adn_ads: [
+    { key: 'api_key', label: 'API Key', placeholder: 'ADN(Across) API Key' },
+  ],
 }
 
 /** 플랫폼별 API 저장 시 필수 필드 */
@@ -78,6 +83,7 @@ export const API_REQUIRED_FIELDS: Record<ApiPlatform, string[]> = {
   naver_ads: ['customer_id', 'access_license', 'secret_key'],
   kakao_ads: ['ad_account_id', 'access_token'],
   dable_ads: ['advertiser_id', 'api_key'],
+  adn_ads: ['api_key'],
 }
 
 // ═══ 인입(Inflow) 모델 ═══
@@ -98,6 +104,7 @@ export const PLATFORM_INFLOW_DEFAULTS: Record<ApiPlatform, InflowSource> = {
   naver_ads: 'media_conversion', // 검색광고: 자체 랜딩 없음, NPLA 전환추적 기반
   kakao_ads: 'lead_webhook',
   dable_ads: 'lead_webhook',
+  adn_ads: 'media_conversion', // ADN: 디스플레이 네트워크, conv_cnt 매체 전환 기반
 }
 
 export const INFLOW_SOURCE_LABELS: Record<InflowSource, string> = {
@@ -114,6 +121,7 @@ export const CAMPAIGN_TYPES_BY_PLATFORM: Record<ApiPlatform, string[]> = {
   naver_ads: ['search_ad', 'gfa', 'brand_search'],
   kakao_ads: ['moment', 'keyword', 'bizboard'],
   dable_ads: ['native'],
+  adn_ads: ['display'],
 }
 
 export const CAMPAIGN_TYPE_LABELS: Record<string, string> = {
@@ -129,6 +137,8 @@ export const CAMPAIGN_TYPE_LABELS: Record<string, string> = {
   moment: '모먼트', keyword: '키워드', bizboard: '비즈보드',
   // Dable
   native: 'Native',
+  // ADN
+  display: '디스플레이',
 }
 
 // ═══ 소재 등록용 Platform ═══

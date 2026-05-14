@@ -392,7 +392,7 @@ async function fetchNaverStatReport(
   statDt: string, // YYYYMMDD
   auth: { customerId: string; accessLicense: string; secretKey: string },
   debugLabel?: string,
-): Promise<{ headers: string[]; firstRows: string[][]; totalRows: number } | null> {
+): Promise<{ rows: string[][] } | null> {
   // 1. POST /stat-reports — 보고서 생성 요청
   const created = await naverPost<NaverStatReportJob>('/stat-reports', { reportTp, statDt }, auth)
   if (debugLabel) {
@@ -452,31 +452,23 @@ async function fetchNaverStatReport(
   }
   const tsv = await downloadResponse.text()
 
-  // 4. TSV 파싱 — 첫 줄을 헤더로 가정. 일부 보고서는 헤더 없을 수 있어 PoC 단계에서 확인.
+  // 4. TSV 파싱 — 네이버 AD 리포트는 헤더 없음. 모든 줄을 데이터로 처리.
   const lines = tsv.split(/\r?\n/).filter(line => line.length > 0)
-  if (lines.length === 0) {
-    logger.info('stat-report 결과 0건', { reportTp, statDt })
-    return { headers: [], firstRows: [], totalRows: 0 }
-  }
-
-  const headers = lines[0].split('\t')
-  const dataLines = lines.slice(1)
-  const firstRows = dataLines.slice(0, 2).map(line => line.split('\t'))
+  const rows = lines.map(line => line.split('\t'))
 
   if (debugLabel) {
-    logger.info(`[debug:${debugLabel}] stat-report TSV preview`, {
+    logger.info(`[debug:${debugLabel}] stat-report parsed`, {
       reportTp,
       statDt,
       jobId: created.reportJobId,
-      totalLines: lines.length,
-      headerCount: headers.length,
-      headers, // 1차 PoC: 컬럼명 전체 노출
-      sampleRow1: firstRows[0] ?? null,
-      sampleRow2: firstRows[1] ?? null,
+      totalRows: rows.length,
+      columnCount: rows[0]?.length ?? 0,
+      sampleRow0: rows[0] ?? null,
+      sampleRow1: rows[1] ?? null,
     })
   }
 
-  return { headers, firstRows, totalRows: dataLines.length }
+  return { rows }
 }
 
 /**
@@ -515,36 +507,68 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
       sample: campaigns[0],
     })
 
-    // 2. 통계 조회 — /stat-reports PoC (1차).
-    //    /stats 5가지 호출 조합 모두 400 거부 확인 후 정공법으로 전환.
-    //    PoC 단계: AD 리포트 TSV 헤더와 첫 2줄을 디버그 로그로 노출. 컬럼 매핑/upsert 는
-    //    결과 확인 후 2차 PR 에서 진행. statRows 는 빈 배열로 두어 메타데이터만 저장.
+    // 2. 통계 조회 — /stat-reports AD 리포트 → 캠페인 기준 SUM
+    //    AD 리포트는 광고(ad) 단위 row. 14 컬럼.
+    //    가설 매핑 (광고관리 비교로 확정):
+    //      [0]=statDt, [1]=customerId, [2]=nccCampaignId, [3]=adgroup, [4]=keyword,
+    //      [5]=adId, [6]=businessChannelId, [7]=광고타입, [8]=디바이스(P/M),
+    //      [9]=impressions, [10]=clicks, [11]=cost, [12]=?, [13]=conversions (가설)
     const statDt = dateStr.replace(/-/g, '') // YYYY-MM-DD → YYYYMMDD
+    interface CampaignAgg { impressions: number; clicks: number; cost: number; col12: number; col13: number }
+    const aggMap = new Map<string, CampaignAgg>()
+
     try {
-      await fetchNaverStatReport('AD', statDt, auth, 'campaign-report')
+      const report = await fetchNaverStatReport('AD', statDt, auth, 'campaign-report')
+      if (report) {
+        for (const row of report.rows) {
+          if (row.length < 14) continue
+          const campaignId = row[2]
+          if (!campaignId) continue
+
+          if (!aggMap.has(campaignId)) {
+            aggMap.set(campaignId, { impressions: 0, clicks: 0, cost: 0, col12: 0, col13: 0 })
+          }
+          const agg = aggMap.get(campaignId)!
+          agg.impressions += toInt(row[9])
+          agg.clicks += toInt(row[10])
+          agg.cost += toFloat(row[11])
+          agg.col12 += toFloat(row[12])
+          agg.col13 += toFloat(row[13])
+        }
+
+        // 매핑 검증용 — 타겟 캠페인 합산. 광고관리 화면값과 비교 후 conversions 컬럼 확정.
+        const TARGET = 'cmp-a001-01-000000010582071'
+        const target = aggMap.get(TARGET)
+        if (target) {
+          logger.info('[debug:campaign-report] aggregate sample', {
+            campaignId: TARGET,
+            impressions: target.impressions,
+            clicks: target.clicks,
+            cost: target.cost,
+            col12Sum: target.col12,
+            col13Sum: target.col13,
+            note: '광고관리 비교: 노출 1763 / 클릭 15 / 비용 104161 / 전환 3 — col12 vs col13 중 3 매칭 확인',
+          })
+        }
+      }
     } catch (err) {
-      logger.warn('stat-report PoC 호출 실패', { error: String(err), statDt })
-    }
-    const statRows: NaverStatRow[] = []
-
-    // 캠페인 ID → 통계 매핑
-    const statMap = new Map<string, NaverStatRow>()
-    for (const row of statRows) {
-      statMap.set(row.id, row)
+      logger.warn('stat-report 호출 실패', { error: String(err), statDt })
     }
 
-    // 3. 매핑 후 upsert
+    // 3. 캠페인별 aggregate 결과로 upsert.
+    //    매핑 가설: col13 = conversions (광고관리 비교로 확정 예정).
+    //    aggMap 에 없는 캠페인은 0 으로 저장 (메타데이터는 보존).
     const dbRows = campaigns.map((c) => {
-      const stat = statMap.get(c.nccCampaignId)
+      const agg = aggMap.get(c.nccCampaignId)
       return {
         platform: 'naver_ads',
         campaign_id: c.nccCampaignId,
         campaign_name: c.name,
         campaign_type: c.campaignTp || null,
-        spend_amount: toFloat(stat?.salesAmt),
-        clicks: toInt(stat?.clkCnt),
-        impressions: toInt(stat?.impCnt),
-        conversions: toInt(stat?.convCnt),
+        spend_amount: agg?.cost ?? 0,
+        clicks: agg?.clicks ?? 0,
+        impressions: agg?.impressions ?? 0,
+        conversions: agg ? Math.round(agg.col13) : 0,
         stat_date: dateStr,
         client_id: options?.clientId || null,
       }
@@ -562,12 +586,10 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
 
     const duration = Date.now() - startTime
 
-    // stats 전부 실패 케이스: 캠페인 메타는 받았는데 통계 0건
-    //  → backfill/cron 결과에 error 를 실어 호출자(상위)가 실패로 인지하게 한다.
-    //    (이전엔 count=campaigns.length 만 반환해 성공으로 위장되던 문제 보정)
-    const statsAllFailed = statRows.length === 0
-    if (statsAllFailed) {
-      logger.warn('Naver 캠페인 stats 전부 실패 (메타데이터만 저장)', {
+    // aggregate 0 케이스: 캠페인 메타는 받았는데 stat-report 결과 매칭 0
+    //   → 에러로 집계 (backfill/cron 의 errorCount 반영)
+    if (aggMap.size === 0) {
+      logger.warn('Naver stat-report aggregate 결과 0 (메타데이터만 저장)', {
         clientId: options?.clientId,
         campaignCount: campaigns.length,
         duration,
@@ -575,14 +597,14 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
       return {
         platform: 'naver_ads',
         count: campaigns.length,
-        error: `Campaign stats failed (0/${campaigns.length}). 메타데이터만 저장됨. /stats 응답 거부.`,
+        error: `stat-report aggregate 0 (0/${campaigns.length}). 메타데이터만 저장됨.`,
       }
     }
 
     logger.info('Sync completed', {
       action: 'sync',
       count: campaigns.length,
-      statsMatched: statRows.length,
+      campaignsWithStats: aggMap.size,
       duration,
       clientId: options?.clientId,
     })

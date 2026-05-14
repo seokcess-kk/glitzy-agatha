@@ -431,14 +431,22 @@ async function fetchNaverStatReport(
     return null
   }
 
-  // 3. downloadUrl 그대로 사용 (네이버가 fileVersion 등 파라미터 포함해 발급)
-  //    인증 헤더 불필요 — authtoken query param 포함된 사인된 URL
-  const downloadResponse = await fetch(job.downloadUrl)
+  // 3. downloadUrl 호출 — 공식 PHP sample 기준 시그니처 헤더가 필요하다.
+  //    signature 계산 시 path 는 '/report-download' (querystring 제외).
+  //    네이버가 발급한 downloadUrl 에는 fileVersion 등 query param 이 포함돼 있어 그대로 사용.
+  const downloadUrlObj = new URL(job.downloadUrl)
+  const downloadPath = downloadUrlObj.pathname || '/report-download'
+  const downloadHeaders = buildNaverHeaders('GET', downloadPath, auth)
+
+  const downloadResponse = await fetch(job.downloadUrl, { headers: downloadHeaders })
   if (!downloadResponse.ok) {
+    const errBody = await downloadResponse.text().catch(() => '')
     logger.warn('stat-report 다운로드 실패', {
       reportTp,
       statDt,
       status: downloadResponse.status,
+      downloadPath,
+      bodyPreview: errBody.slice(0, 500),
     })
     return null
   }

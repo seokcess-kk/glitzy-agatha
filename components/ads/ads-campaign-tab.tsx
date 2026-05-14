@@ -22,7 +22,8 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
 
   const fetchPlatforms = useCallback(async () => {
     try {
-      const qs = new URLSearchParams({ days })
+      // startDate/endDate 직접 전달 — 선택 기간 내 사용된 매체 목록 조회
+      const qs = new URLSearchParams({ startDate, endDate })
       if (selectedClientId) qs.set('client_id', String(selectedClientId))
       const res = await fetch(`/api/ads/stats?${qs}`)
       if (!res.ok) return
@@ -33,7 +34,7 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
     } catch {
       // silently fail — keep default ['all']
     }
-  }, [days, selectedClientId])
+  }, [startDate, endDate, selectedClientId])
 
   useEffect(() => {
     fetchPlatforms()

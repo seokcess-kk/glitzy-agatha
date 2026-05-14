@@ -82,8 +82,8 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const days = String(Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1))
-      const qs = new URLSearchParams({ days })
+      // startDate/endDate 직접 전달 — days 변환 시 종료일이 항상 "오늘"로 고정되던 버그 수정
+      const qs = new URLSearchParams({ startDate, endDate })
       if (selectedClientId) qs.set('client_id', String(selectedClientId))
       if (platformFilter) qs.set('platform', platformFilter)
 

@@ -11,6 +11,7 @@ import { parseId } from '@/lib/security'
 import { decryptApiConfig } from '@/lib/crypto'
 import { fetchWithRetry } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
+import { getKstDateString } from '@/lib/date'
 import { API_CONFIG_PLATFORMS, isApiPlatform, type ApiPlatform } from '@/lib/platform'
 
 const logger = createLogger('ApiConfigTest')
@@ -190,6 +191,60 @@ async function testNaverAds(config: Record<string, unknown>): Promise<TestResult
 }
 
 /**
+ * ADN(Across DN) 연결 테스트
+ * GET https://manage.acrosspf.com/api/api_report/across_adn_api_report.php?start_date=...&end_date=...
+ * (헤더 API-KEY)
+ *
+ * 인증만 검증하면 충분하므로 단일 일자(KST 오늘) 범위로 호출.
+ * 응답이 배열이면 성공 — 빈 배열이라도 인증은 통과한 것으로 간주.
+ */
+async function testAdnAds(config: Record<string, unknown>): Promise<TestResult> {
+  const apiKey = config.api_key as string | undefined
+
+  if (!apiKey) {
+    return { success: false, error: 'api_key가 필요합니다.', platform: 'adn_ads' }
+  }
+
+  const dateApi = getKstDateString(new Date()).replace(/-/g, '') // 'YYYYMMDD'
+  const url = `https://manage.acrosspf.com/api/api_report/across_adn_api_report.php?start_date=${dateApi}&end_date=${dateApi}`
+
+  const { response } = await fetchWithRetry(url, {
+    timeout: TEST_TIMEOUT,
+    retries: 0,
+    service: 'AdnAdsTest',
+    headers: {
+      'API-KEY': apiKey,
+      'content-type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => 'Unknown error')
+    return {
+      success: false,
+      error: `ADN API 오류 (${response.status}): ${body.slice(0, 200)}`,
+      platform: 'adn_ads',
+    }
+  }
+
+  const data = (await response.json().catch(() => null)) as unknown
+  if (!Array.isArray(data)) {
+    return {
+      success: false,
+      error: 'ADN API 응답 형식이 배열이 아닙니다.',
+      platform: 'adn_ads',
+    }
+  }
+
+  // 첫 캠페인명을 accountName 으로 사용 (오늘 데이터 없으면 'ADN Account')
+  const firstDay = data[0] as { campaign?: Array<{ campaign_name?: string }> } | undefined
+  const firstCampName = firstDay?.campaign?.[0]?.campaign_name
+  const accountName = firstCampName || 'ADN Account'
+
+  return { success: true, accountName, platform: 'adn_ads' }
+}
+
+/**
  * POST: 매체 연결 테스트 실행
  */
 export const POST = withSuperAdmin(async (req: Request) => {
@@ -258,6 +313,9 @@ export const POST = withSuperAdmin(async (req: Request) => {
         break
       case 'naver_ads':
         result = await testNaverAds(config)
+        break
+      case 'adn_ads':
+        result = await testAdnAds(config)
         break
       case 'kakao_ads':
       case 'dable_ads':

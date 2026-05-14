@@ -12,11 +12,12 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   const supabase = serverSupabase()
   const url = new URL(req.url)
 
-  // 오늘(KST)부터 28일 전까지 모든 날짜를 미리 생성
+  // 기간 결정 — startDate/endDate 우선, 없으면 최근 DAYS 일 폴백
   const today = getKstDateString()
   const startDate = url.searchParams.get('startDate') || getKstDateString(new Date(Date.now() - DAYS * 86400000))
+  const endDate = url.searchParams.get('endDate') || today
 
-  // 28일 전~오늘까지 빈 날짜 틀 생성 (데이터 없는 날도 0으로)
+  // 요청 기간의 모든 날짜를 빈 틀로 생성 (데이터 없는 날도 0으로)
   //   leads = 인입 카운트(actualLeads + 매체전환 채널의 conversions, 기존 응답 키 호환)
   interface TrendDay {
     date: string
@@ -27,25 +28,31 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     inflowCount: number
   }
   const dayMap = new Map<string, TrendDay>()
-  for (let i = DAYS; i >= 0; i--) {
-    const d = getKstDateString(new Date(Date.now() - i * 86400000))
-    if (d >= startDate && d <= today) {
-      dayMap.set(d, { date: d, spend: 0, leads: 0, actualLeads: 0, mediaConversions: 0, inflowCount: 0 })
-    }
+  const start = new Date(startDate + 'T00:00:00+09:00')
+  const end = new Date(endDate + 'T00:00:00+09:00')
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const key = getKstDateString(new Date(d))
+    dayMap.set(key, { date: key, spend: 0, leads: 0, actualLeads: 0, mediaConversions: 0, inflowCount: 0 })
   }
+
+  // leads 의 created_at(timestamp) 범위 — KST 자정 [start, end+1) 다음날 00:00 exclusive
+  const tsEndDate = new Date(endDate + 'T00:00:00+09:00')
+  tsEndDate.setDate(tsEndDate.getDate() + 1)
+  const tsEnd = tsEndDate.toISOString()
 
   // 광고 지출 + 리드 수 병렬 조회 — conversions / platform 추가 select 로 일별 매체 전환수 합산
   let adQuery = supabase
     .from('ad_campaign_stats')
     .select('stat_date, platform, spend_amount, conversions')
     .gte('stat_date', startDate)
-    .lte('stat_date', today)
+    .lte('stat_date', endDate)
     .order('stat_date')
 
   let leadQuery = supabase
     .from('leads')
     .select('created_at')
-    .gte('created_at', startDate)
+    .gte('created_at', `${startDate}T00:00:00+09:00`)
+    .lt('created_at', tsEnd)
     .order('created_at')
 
   const adFiltered = applyClientFilter(adQuery, { clientId, assignedClientIds })

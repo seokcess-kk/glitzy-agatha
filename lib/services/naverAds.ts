@@ -507,16 +507,27 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
       sample: campaigns[0],
     })
 
-    // 2. 통계 조회 — /stat-reports AD 리포트 → 캠페인 기준 SUM
-    //    AD 리포트는 광고(ad) 단위 row. 14 컬럼.
-    //    가설 매핑 (광고관리 비교로 확정):
-    //      [0]=statDt, [1]=customerId, [2]=nccCampaignId, [3]=adgroup, [4]=keyword,
-    //      [5]=adId, [6]=businessChannelId, [7]=광고타입, [8]=디바이스(P/M),
-    //      [9]=impressions, [10]=clicks, [11]=cost, [12]=?, [13]=conversions (가설)
+    // 2. 통계 조회 — /stat-reports 두 리포트 merge.
+    //    매핑 (광고관리 비교 검증 완료):
+    //      AD 리포트 (14 컬럼, 광고 단위):
+    //        [2]=nccCampaignId, [9]=impressions, [10]=clicks, [11]=cost(salesAmt)
+    //      AD_CONVERSION 리포트 (13 컬럼, 광고×전환이벤트 단위):
+    //        [2]=nccCampaignId, [10]=전환이벤트명("lead"), [11]=conversions, [12]=전환금액(추정)
+    //    캠페인 단위로 GROUP BY SUM 후 두 결과 merge.
     const statDt = dateStr.replace(/-/g, '') // YYYY-MM-DD → YYYYMMDD
-    interface CampaignAgg { impressions: number; clicks: number; cost: number; col12: number; col13: number }
+    interface CampaignAgg { impressions: number; clicks: number; cost: number; conversions: number }
     const aggMap = new Map<string, CampaignAgg>()
 
+    function getOrInit(campaignId: string): CampaignAgg {
+      let agg = aggMap.get(campaignId)
+      if (!agg) {
+        agg = { impressions: 0, clicks: 0, cost: 0, conversions: 0 }
+        aggMap.set(campaignId, agg)
+      }
+      return agg
+    }
+
+    // 2-1. AD 리포트 (impressions, clicks, cost)
     try {
       const report = await fetchNaverStatReport('AD', statDt, auth, 'campaign-report')
       if (report) {
@@ -524,74 +535,33 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
           if (row.length < 14) continue
           const campaignId = row[2]
           if (!campaignId) continue
-
-          if (!aggMap.has(campaignId)) {
-            aggMap.set(campaignId, { impressions: 0, clicks: 0, cost: 0, col12: 0, col13: 0 })
-          }
-          const agg = aggMap.get(campaignId)!
+          const agg = getOrInit(campaignId)
           agg.impressions += toInt(row[9])
           agg.clicks += toInt(row[10])
           agg.cost += toFloat(row[11])
-          agg.col12 += toFloat(row[12])
-          agg.col13 += toFloat(row[13])
-        }
-
-        // 매핑 검증용 — 타겟 캠페인 합산. 광고관리 화면값과 비교 후 conversions 컬럼 확정.
-        const TARGET = 'cmp-a001-01-000000010582071'
-        const target = aggMap.get(TARGET)
-        if (target) {
-          logger.info('[debug:campaign-report] aggregate sample', {
-            campaignId: TARGET,
-            impressions: target.impressions,
-            clicks: target.clicks,
-            cost: target.cost,
-            col12Sum: target.col12,
-            col13Sum: target.col13,
-            note: '광고관리 비교: 노출 1763 / 클릭 15 / 비용 104161 / 전환 3 — col12 vs col13 중 3 매칭 확인',
-          })
         }
       }
     } catch (err) {
-      logger.warn('stat-report 호출 실패', { error: String(err), statDt })
+      logger.warn('AD stat-report 호출 실패', { error: String(err), statDt })
     }
 
-    // 2-2. AD_CONVERSION 리포트 — AD 에 conversions 없음 확인됨(col13Sum=0).
-    //      컬럼 구조 미상이라 우선 타겟 캠페인의 모든 숫자 컬럼 sum 을 디버그로 노출,
-    //      광고관리 전환 3 과 매칭되는 컬럼 식별 후 다음 PR 에서 merge upsert.
+    // 2-2. AD_CONVERSION 리포트 (conversions)
     try {
       const convReport = await fetchNaverStatReport('AD_CONVERSION', statDt, auth, 'campaign-conversion')
-      if (convReport && convReport.rows.length > 0) {
-        const TARGET = 'cmp-a001-01-000000010582071'
-        const targetSums: Record<string, number> = {}
-        let targetRowCount = 0
+      if (convReport) {
         for (const row of convReport.rows) {
-          if (row[2] !== TARGET) continue
-          targetRowCount++
-          for (let i = 0; i < row.length; i++) {
-            const val = parseFloat(row[i])
-            if (Number.isFinite(val)) {
-              targetSums[`col${i}`] = (targetSums[`col${i}`] || 0) + val
-            }
-          }
+          if (row.length < 12) continue
+          const campaignId = row[2]
+          if (!campaignId) continue
+          const agg = getOrInit(campaignId)
+          agg.conversions += toInt(row[11])
         }
-        logger.info('[debug:campaign-conversion] target sums', {
-          campaignId: TARGET,
-          targetRowCount,
-          totalReportRows: convReport.rows.length,
-          columnCount: convReport.rows[0]?.length ?? 0,
-          sums: targetSums,
-          note: '광고관리 전환 3 과 일치하는 col 식별',
-        })
-      } else {
-        logger.info('[debug:campaign-conversion] no rows', { statDt })
       }
     } catch (err) {
       logger.warn('AD_CONVERSION stat-report 호출 실패', { error: String(err), statDt })
     }
 
-    // 3. 캠페인별 aggregate 결과로 upsert.
-    //    매핑 가설: col13 = conversions (광고관리 비교로 확정 예정).
-    //    aggMap 에 없는 캠페인은 0 으로 저장 (메타데이터는 보존).
+    // 3. campaign meta + agg merge upsert
     const dbRows = campaigns.map((c) => {
       const agg = aggMap.get(c.nccCampaignId)
       return {
@@ -602,7 +572,7 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
         spend_amount: agg?.cost ?? 0,
         clicks: agg?.clicks ?? 0,
         impressions: agg?.impressions ?? 0,
-        conversions: agg ? Math.round(agg.col13) : 0,
+        conversions: agg?.conversions ?? 0,
         stat_date: dateStr,
         client_id: options?.clientId || null,
       }

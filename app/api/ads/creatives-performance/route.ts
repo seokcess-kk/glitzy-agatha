@@ -360,6 +360,24 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     // 지출 높은순 정렬, 동률 시 리드수 높은순
     allCreatives.sort((a, b) => b.spend - a.spend || b.leads - a.leads)
 
+    // 임시 디버그 (캠페인 → 소재 매칭 실패 진단용. 진단 후 제거)
+    logger.info('[debug:creative-summary]', {
+      clientId,
+      startDate,
+      endDate,
+      leadsCount: leads.length,
+      adStatsCount: adStatsData.length,
+      adStatsWithUtmContent: adStatsData.filter(r => r.utm_content).length,
+      directUtmStatsSize: directUtmStats.size,
+      contentCampaignMapSize: contentCampaignMap.size,
+      allUtmContentsSize: allUtmContents.size,
+      sampleCreativeCampaignIds: allCreatives.slice(0, 5).map(c => ({
+        utm_content: c.utm_content,
+        platform: c.platform,
+        campaign_ids: c.campaign_ids,
+      })),
+    })
+
     return apiSuccess({ creatives: allCreatives })
   } catch (error) {
     logger.error('소재별 성과 조회 실패', error, { clientId })

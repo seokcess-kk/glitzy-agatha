@@ -114,6 +114,23 @@ export default function CreativePerformance({ startDate, endDate, campaignFilter
   // 캠페인 필터 변경 시 페이지네이션 리셋
   useEffect(() => { setExpanded(false) }, [campaignFilter])
 
+  // 임시 디버그: 캠페인 필터 매칭 진단용 (브라우저 콘솔로 확인. 진단 끝나면 제거)
+  useEffect(() => {
+    if (!campaignFilter) return
+    // eslint-disable-next-line no-console
+    console.log('[debug:creative-filter]', {
+      campaignFilter,
+      creativesCount: creatives.length,
+      filteredCount: filtered.length,
+      sampleCampaignIds: creatives.slice(0, 5).map(c => ({
+        utm_content: c.utm_content,
+        name: c.name,
+        platform: c.platform,
+        campaign_ids: c.campaign_ids,
+      })),
+    })
+  }, [campaignFilter, creatives, filtered])
+
   const sorted = useMemo(() => {
     const copy = [...filtered]
     copy.sort((a, b) => {

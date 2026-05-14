@@ -187,17 +187,19 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }
 
     // ad_stats: 1차 utm_content 직접 매칭, 2차 campaign_id별 집계
-    const directUtmStats = new Map<string, { spend: number; clicks: number; impressions: number }>()
+    //   directUtmStats 에 campaignIds 도 저장해 캠페인 선택 → 소재 필터 매칭에 활용
+    const directUtmStats = new Map<string, { spend: number; clicks: number; impressions: number; campaignIds: Set<string> }>()
     const campaignStats = new Map<string, { spend: number; clicks: number; impressions: number }>()
 
     for (const row of adStatsData) {
       // 1차: utm_content가 있으면 직접 매칭
       if (row.utm_content) {
         const key = (row.utm_content as string).toLowerCase()
-        const existing = directUtmStats.get(key) || { spend: 0, clicks: 0, impressions: 0 }
+        const existing = directUtmStats.get(key) || { spend: 0, clicks: 0, impressions: 0, campaignIds: new Set<string>() }
         existing.spend += Number(row.spend_amount) || 0
         existing.clicks += row.clicks || 0
         existing.impressions += row.impressions || 0
+        if (row.campaign_id) existing.campaignIds.add(row.campaign_id)
         directUtmStats.set(key, existing)
       }
       // campaign_id별 집계 (2차 폴백용)
@@ -275,21 +277,19 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
       const { spend, clicks, impressions } = adMetrics
 
-      // campaign_name 역매핑: contentCampaignMap의 campaign_id → ad_campaign_stats의 campaign_name
-      const campIds = contentCampaignMap.get(utmContent)
-      const campaignNames: string[] = []
-      if (campIds) {
-        for (const campId of campIds.keys()) {
-          // adStatsData에서 해당 campaign_id의 campaign_name 찾기 (ad_campaign_stats와 동일)
-          const matchedAd = adStatsData.find(a => a.campaign_id === campId)
-          if (matchedAd) {
-            // ad_stats에는 campaign_name이 없으므로, campaign_id만 사용
-            campaignNames.push(campId)
-          } else {
-            campaignNames.push(campId)
-          }
-        }
+      // campaign_ids: leads.inflow_url 의 utm_id + ad_stats.campaign_id 합집합
+      //   메타 는 utm_id ≒ campaign_id 라 leads 만으로도 매칭됐지만, 다른 매체는 utm_id 누락/형식 차이로
+      //   매칭 실패하던 문제 보정. ad_stats 의 utm_content 직접 매칭된 campaign_id 도 포함시킨다.
+      const utmIdSet = contentCampaignMap.get(utmContent)
+      const adCampIds = directUtmStats.get(utmContent)?.campaignIds
+      const campaignIdSet = new Set<string>()
+      if (utmIdSet) {
+        for (const id of utmIdSet.keys()) campaignIdSet.add(id)
       }
+      if (adCampIds) {
+        for (const id of adCampIds) campaignIdSet.add(id)
+      }
+      const campaignNames: string[] = Array.from(campaignIdSet)
 
       allCreatives.push({
         utm_content: utmContent,

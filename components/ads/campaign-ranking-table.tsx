@@ -240,11 +240,11 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                   <TableHead className={`${thClass} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'spend' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('spend')} onKeyDown={(e) => e.key === 'Enter' && handleSort('spend')}>
                     지출 <SortIcon field="spend" sortField={sortField} sortDir={sortDir} />
                   </TableHead>
-                  <TableHead className={`${thClass} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'clicks' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('clicks')} onKeyDown={(e) => e.key === 'Enter' && handleSort('clicks')}>
-                    클릭 <SortIcon field="clicks" sortField={sortField} sortDir={sortDir} />
-                  </TableHead>
                   <TableHead className={`${thClass} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'impressions' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('impressions')} onKeyDown={(e) => e.key === 'Enter' && handleSort('impressions')}>
                     노출 <SortIcon field="impressions" sortField={sortField} sortDir={sortDir} />
+                  </TableHead>
+                  <TableHead className={`${thClass} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'clicks' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('clicks')} onKeyDown={(e) => e.key === 'Enter' && handleSort('clicks')}>
+                    클릭 <SortIcon field="clicks" sortField={sortField} sortDir={sortDir} />
                   </TableHead>
                   <TableHead className={`${thClass} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'cpc' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('cpc')} onKeyDown={(e) => e.key === 'Enter' && handleSort('cpc')}>
                     CPC <SortIcon field="cpc" sortField={sortField} sortDir={sortDir} />
@@ -297,10 +297,10 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                         ₩{row.spend.toLocaleString()}
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.clicks.toLocaleString()}
+                        {row.impressions.toLocaleString()}
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.impressions.toLocaleString()}
+                        {row.clicks.toLocaleString()}
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm">
                         <span className={

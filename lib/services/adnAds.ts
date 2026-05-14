@@ -106,7 +106,45 @@ export async function fetchAdnAds(date: Date = new Date(), options?: AdnAdsOptio
       throw new Error(`ADN API error: ${response.status} ${response.statusText}`)
     }
 
-    const json = (await response.json()) as unknown
+    // ─── 임시 진단 로그 (수집 미동작 원인 추적). 진단 끝나면 제거 ─────────────
+    const rawText = await response.text()
+    let json: unknown
+    try {
+      json = JSON.parse(rawText)
+    } catch (parseErr) {
+      logger.warn('[debug:adn] JSON parse 실패', {
+        clientId: options?.clientId,
+        status: response.status,
+        rawSample: rawText.slice(0, 500),
+        parseErr: String(parseErr),
+      })
+      return { platform: 'adn_ads', count: 0, error: 'JSON parse failed' }
+    }
+
+    logger.info('[debug:adn] API 응답', {
+      clientId: options?.clientId,
+      dateApi,
+      status: response.status,
+      isArray: Array.isArray(json),
+      length: Array.isArray(json) ? json.length : 'N/A',
+      rawSample: rawText.slice(0, 500),
+      firstRowKeys: Array.isArray(json) && json.length > 0 && typeof json[0] === 'object'
+        ? Object.keys(json[0] as Record<string, unknown>)
+        : 'N/A',
+      firstCampaignKeys:
+        Array.isArray(json) && json.length > 0 && typeof json[0] === 'object'
+          ? (() => {
+              const r = json[0] as Record<string, unknown>
+              const camps = (r.campaign as unknown[]) || (r.campaigns as unknown[])
+              if (Array.isArray(camps) && camps.length > 0 && typeof camps[0] === 'object') {
+                return Object.keys(camps[0] as Record<string, unknown>)
+              }
+              return 'N/A'
+            })()
+          : 'N/A',
+    })
+    // ─────────────────────────────────────────────────────────────────────
+
     if (!Array.isArray(json)) {
       logger.warn('ADN 응답이 배열이 아님', {
         clientId: options?.clientId,

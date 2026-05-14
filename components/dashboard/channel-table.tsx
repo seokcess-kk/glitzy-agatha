@@ -10,7 +10,11 @@ import Link from 'next/link'
 
 interface ChannelData {
   channel: string
-  leads: number
+  leads: number // 호환 — inflowCount 동일값
+  actualLeads?: number
+  mediaConversions?: number
+  inflowCount?: number
+  inflowSource?: 'lead_webhook' | 'media_conversion'
   spend: number
   revenue: number
   cpl: number
@@ -33,7 +37,7 @@ type SortKey = 'leads' | 'spend' | 'cpl' | 'roas' | 'conversionRate' | 'lostRate
 
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: 'spend', label: '광고비' },
-  { key: 'leads', label: '리드' },
+  { key: 'leads', label: '인입' },
   { key: 'cpl', label: 'CPL' },
   { key: 'roas', label: 'ROAS' },
   { key: 'conversionRate', label: '전환율' },
@@ -117,8 +121,18 @@ export function ChannelTable({ data, loading }: ChannelTableProps) {
                   <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
                     {row.spend > 0 ? `₩${row.spend.toLocaleString()}` : '-'}
                   </td>
-                  <td className="text-right py-2.5 px-2 tabular-nums font-medium text-foreground">
-                    {row.leads.toLocaleString()}
+                  <td
+                    className="text-right py-2.5 px-2 tabular-nums font-medium text-foreground"
+                    title={row.inflowSource === 'media_conversion'
+                      ? `매체 전환 기반 (검색광고 NPLA 전환추적)\n매체 전환수: ${(row.mediaConversions ?? 0).toLocaleString()}`
+                      : `리드 폼/웹훅 기반\n실제 리드: ${(row.actualLeads ?? row.leads).toLocaleString()}`}
+                  >
+                    <span className="inline-flex items-center justify-end gap-1">
+                      {row.leads.toLocaleString()}
+                      {row.inflowSource === 'media_conversion' && (
+                        <span className="text-[10px] text-muted-foreground font-normal bg-muted/50 px-1 rounded">매</span>
+                      )}
+                    </span>
                   </td>
                   <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
                     {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}

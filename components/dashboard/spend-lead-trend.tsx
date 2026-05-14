@@ -16,7 +16,10 @@ const fmtKrw = (v: number) => `₩${(v / 10000).toFixed(0)}만`
 interface TrendDataItem {
   date: string
   spend: number
-  leads: number
+  leads: number // 호환 — inflowCount 동일값
+  actualLeads?: number
+  mediaConversions?: number
+  inflowCount?: number
 }
 
 interface SpendLeadTrendProps {
@@ -84,7 +87,7 @@ function DualChart({ data, height, fontSize, dotRadius, gradientId, showLegend }
           />
         )}
         <Area yAxisId="spend" type="monotone" dataKey="spend" name="광고비" stroke={CHART_SEMANTIC.brand} fill={`url(#${gradientId})`} strokeWidth={2} />
-        <Line yAxisId="leads" type="monotone" dataKey="leads" name="리드 수" stroke={CHART_SEMANTIC.lead} strokeWidth={2} dot={dotRadius > 0 ? { r: dotRadius, fill: CHART_SEMANTIC.lead } : false} />
+        <Line yAxisId="leads" type="monotone" dataKey="leads" name="인입 수" stroke={CHART_SEMANTIC.lead} strokeWidth={2} dot={dotRadius > 0 ? { r: dotRadius, fill: CHART_SEMANTIC.lead } : false} />
       </ComposedChart>
     </ResponsiveContainer>
   )
@@ -96,7 +99,7 @@ export function SpendLeadTrend({ data, loading, periodLabel }: SpendLeadTrendPro
     <Card variant="glass" className="p-5 w-full">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">광고비 · 리드 추이</h2>
+          <h2 className="text-sm font-semibold text-foreground">광고비 · 인입 추이</h2>
           {/* 모바일 인라인 범례 */}
           <div className="flex items-center gap-3 mt-1 md:hidden">
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -105,7 +108,7 @@ export function SpendLeadTrend({ data, loading, periodLabel }: SpendLeadTrendPro
             </span>
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: CHART_SEMANTIC.lead }} />
-              리드 수
+              인입 수
             </span>
           </div>
         </div>

@@ -7,6 +7,16 @@
 
 ---
 
+## 인입(Inflow) 모델 도입 (2026-05-14)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| I-1 | 인입 모델 백엔드 | lib/platform.ts (PLATFORM_INFLOW_DEFAULTS) + lib/inflow.ts 헬퍼 + dashboard/{kpi,channel,trend} API 4 필드 (actualLeads / mediaConversions / inflowCount / inflowSource) | 05-14 |
+| I-2 | 인입 모델 프론트엔드 | KPI 카드 "리드"→"인입" 라벨 + 매체 전환 분해 subtitle, 채널 테이블 "매" 배지 + 툴팁, trend 차트 "인입 수" | 05-14 |
+| I-3 | SMS 일일 리포트 인입 동기화 | send-reports cron 의 totalLeads → totalInflow, CPL 분모 변경, 매체 전환 분해 표기 | 05-14 |
+
+---
+
 ## Naver SA 캠페인 stats /stat-reports 전환 (2026-05-14)
 
 | # | 작업 | 핵심 내용 | 날짜 |

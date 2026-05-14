@@ -2,6 +2,21 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 인입(Inflow) 모델 도입 — KPI/Channel/Trend/SMS (2026-05-14)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-14 | feat: "리드 / 매체 전환 / 인입" 3개 개념 분리. 네이버 SA 처럼 자체 랜딩 없이 매체 전환수로만 유입 측정되는 채널을 대시보드에 정합성 있게 통합 |
+| 2026-05-14 | feat: `lib/platform.ts` — `InflowSource` 타입 + `PLATFORM_INFLOW_DEFAULTS` (naver_ads=media_conversion, 나머지=lead_webhook) |
+| 2026-05-14 | feat: `lib/inflow.ts` (신규) — `resolveInflowSourceForChannel`, `computeInflowCount`, 채널→플랫폼 매핑 헬퍼 |
+| 2026-05-14 | feat: `/api/dashboard/channel` 응답에 `actualLeads / mediaConversions / inflowCount / inflowSource` 4 필드 추가. spend 만 있고 leads 0 인 채널(네이버 SA) 결과 포함되도록 채널 집합 합집합 사용 |
+| 2026-05-14 | feat: `/api/dashboard/kpi` 응답에 `actualLeads / mediaConversionsTotal / inflowCountTotal` 추가. CPL 분모를 inflowCountTotal 로 전환. 기존 `totalLeads` 키는 inflowCountTotal 동일값 (호환) |
+| 2026-05-14 | feat: `/api/dashboard/trend` 일별 `actualLeads / mediaConversions / inflowCount` 추가. 매체 전환수는 media_conversion 모드 플랫폼만 합산 (이중 집계 방지) |
+| 2026-05-14 | feat: KPI 카드 "리드"→"인입" 라벨. 매체 전환이 있으면 subtitle 에 `리드 N · 매체 M` 분해. actualLeads=0 && mediaConversions>0 케이스는 클릭 시 광고 페이지로 (고객관리 비어 보임 방지) |
+| 2026-05-14 | feat: 채널 테이블 "리드"→"인입" 컬럼. 매체 전환 기반 채널에 "매" 배지 + hover 툴팁 (`매체 전환 기반 (검색광고 NPLA 전환추적)`) |
+| 2026-05-14 | feat: 광고비·리드 추이 → "광고비·인입 추이". 차트 line name "리드 수"→"인입 수" |
+| 2026-05-14 | feat: SMS 일일 리포트 `send-reports` cron 인입 기준 동기화. 매체 전환 있으면 `인입: N건 (리드 X · 매체 Y)` 분해. CPL 분모 인입 카운트 |
+
 ## Naver SA 캠페인 stats 정공법 전환 — /stat-reports (2026-05-14)
 
 | 날짜 | 내용 |

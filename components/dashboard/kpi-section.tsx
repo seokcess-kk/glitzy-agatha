@@ -4,6 +4,10 @@ import { StatsCard } from '@/components/common'
 
 interface KpiData {
   totalLeads?: number
+  // 인입 모델 — totalLeads 는 inflowCountTotal 과 동일값 (호환). 정밀 분해는 아래 3 필드.
+  actualLeads?: number
+  mediaConversionsTotal?: number
+  inflowCountTotal?: number
   totalRevenue?: number
   totalSpend?: number
   cpl?: number
@@ -38,10 +42,21 @@ interface KpiSectionProps {
 }
 
 export function KpiSection({ data, loading, onNavigate }: KpiSectionProps) {
-  const totalLeads = data?.totalLeads ?? 0
+  // 인입 = 폼/웹훅 리드 + 매체 전환(검색광고 등). totalLeads 는 inflowCountTotal 동일값 (호환).
+  const inflowCount = data?.inflowCountTotal ?? data?.totalLeads ?? 0
+  const actualLeads = data?.actualLeads ?? 0
+  const mediaConversions = data?.mediaConversionsTotal ?? 0
   const totalSpend = data?.totalSpend ?? 0
   const cpl = data?.cpl ?? 0
   const todayLeads = data?.today?.leads ?? 0
+
+  // 인입 카드 subtitle — 매체 전환이 있으면 분해, 없으면 오늘 추가 인입
+  const inflowSubtitle = mediaConversions > 0
+    ? `리드 ${actualLeads} · 매체 ${mediaConversions}`
+    : `오늘 +${todayLeads}`
+  const inflowSubtitleColor: SubtitleColor = mediaConversions > 0
+    ? 'default'
+    : (todayLeads > 0 ? 'positive' : 'default')
 
   const cards: KpiCard[] = data ? [
     {
@@ -54,14 +69,15 @@ export function KpiSection({ data, loading, onNavigate }: KpiSectionProps) {
       path: '/ads',
     },
     {
-      label: '리드',
-      value: `${totalLeads.toLocaleString()}건`,
+      label: '인입',
+      value: `${inflowCount.toLocaleString()}건`,
       trend: data.comparison?.totalLeads !== undefined && data.comparison.totalLeads !== 0
         ? { value: Math.abs(data.comparison.totalLeads), isPositive: data.comparison.totalLeads > 0 }
         : undefined,
-      subtitle: `오늘 +${todayLeads}`,
-      subtitleColor: todayLeads > 0 ? 'positive' : 'default',
-      path: '/customers',
+      subtitle: inflowSubtitle,
+      subtitleColor: inflowSubtitleColor,
+      // 매체 전환만 있는 케이스(실제 리드 없음)는 고객관리 비어 보임 → 광고 페이지로 안내
+      path: actualLeads === 0 && mediaConversions > 0 ? '/ads' : '/customers',
     },
     {
       label: 'CPL',
@@ -90,7 +106,7 @@ export function KpiSection({ data, loading, onNavigate }: KpiSectionProps) {
       subtitleColor: 'default',
       path: '/attribution',
     },
-  ] : ['광고비', '리드', 'CPL', '매출', 'ROAS'].map(label => ({
+  ] : ['광고비', '인입', 'CPL', '매출', 'ROAS'].map(label => ({
     label,
     value: '-',
     subtitleColor: 'default' as SubtitleColor,

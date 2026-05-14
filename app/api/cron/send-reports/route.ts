@@ -2,6 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { apiError, apiSuccess } from '@/lib/api-middleware'
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
+import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
 
 const logger = createLogger('CronSendReports')
 
@@ -95,25 +96,36 @@ export async function GET(req: Request) {
           .gte('created_at', tsStart)
           .lte('created_at', tsEnd)
 
-        const totalLeads = leads?.length || 0
+        const actualLeads = leads?.length || 0
         const convertedLeads = leads?.filter(l => l.status === 'converted').length || 0
 
-        // 광고비 합계
+        // 광고비 + 매체 전환수 합계 (검색광고 등 media_conversion 모드 플랫폼만 conversions 합산)
         const { data: adStats } = await supabase
           .from('ad_campaign_stats')
-          .select('spend_amount')
+          .select('platform, spend_amount, conversions')
           .eq('client_id', clientId)
           .gte('stat_date', monthStart)
           .lte('stat_date', kstToday)
 
         const totalSpend = (adStats || []).reduce((sum, r) => sum + Number(r.spend_amount || 0), 0)
-        const cpl = totalLeads > 0 ? Math.round(totalSpend / totalLeads) : 0
+        const mediaConversions = (adStats || []).reduce((sum, r) => {
+          if (!isApiPlatform(r.platform)) return sum
+          if (PLATFORM_INFLOW_DEFAULTS[r.platform] !== 'media_conversion') return sum
+          return sum + Number(r.conversions || 0)
+        }, 0)
 
-        // 리포트 메시지 생성
+        // 인입 = 폼/웹훅 리드 + 매체 전환 (네이버 SA 등 자체 랜딩 없는 매체)
+        const totalInflow = actualLeads + mediaConversions
+        const cpl = totalInflow > 0 ? Math.round(totalSpend / totalInflow) : 0
+
+        // 리포트 메시지 생성 — 인입 기준. 매체 전환이 있으면 분해 표시
+        const inflowLine = mediaConversions > 0
+          ? `인입: ${totalInflow}건 (리드 ${actualLeads} · 매체 ${mediaConversions})`
+          : `인입: ${totalInflow}건`
         const reportText = [
           `[Agatha] ${client.name} 마케팅 리포트`,
           `기간: ${monthStart} ~ ${kstToday}`,
-          `리드: ${totalLeads}건`,
+          inflowLine,
           `전환: ${convertedLeads}건`,
           `광고비: ${totalSpend.toLocaleString()}원`,
           `CPL: ${cpl.toLocaleString()}원`,

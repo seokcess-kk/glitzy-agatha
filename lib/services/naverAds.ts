@@ -555,6 +555,40 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
       logger.warn('stat-report 호출 실패', { error: String(err), statDt })
     }
 
+    // 2-2. AD_CONVERSION 리포트 — AD 에 conversions 없음 확인됨(col13Sum=0).
+    //      컬럼 구조 미상이라 우선 타겟 캠페인의 모든 숫자 컬럼 sum 을 디버그로 노출,
+    //      광고관리 전환 3 과 매칭되는 컬럼 식별 후 다음 PR 에서 merge upsert.
+    try {
+      const convReport = await fetchNaverStatReport('AD_CONVERSION', statDt, auth, 'campaign-conversion')
+      if (convReport && convReport.rows.length > 0) {
+        const TARGET = 'cmp-a001-01-000000010582071'
+        const targetSums: Record<string, number> = {}
+        let targetRowCount = 0
+        for (const row of convReport.rows) {
+          if (row[2] !== TARGET) continue
+          targetRowCount++
+          for (let i = 0; i < row.length; i++) {
+            const val = parseFloat(row[i])
+            if (Number.isFinite(val)) {
+              targetSums[`col${i}`] = (targetSums[`col${i}`] || 0) + val
+            }
+          }
+        }
+        logger.info('[debug:campaign-conversion] target sums', {
+          campaignId: TARGET,
+          targetRowCount,
+          totalReportRows: convReport.rows.length,
+          columnCount: convReport.rows[0]?.length ?? 0,
+          sums: targetSums,
+          note: '광고관리 전환 3 과 일치하는 col 식별',
+        })
+      } else {
+        logger.info('[debug:campaign-conversion] no rows', { statDt })
+      }
+    } catch (err) {
+      logger.warn('AD_CONVERSION stat-report 호출 실패', { error: String(err), statDt })
+    }
+
     // 3. 캠페인별 aggregate 결과로 upsert.
     //    매핑 가설: col13 = conversions (광고관리 비교로 확정 예정).
     //    aggMap 에 없는 캠페인은 0 으로 저장 (메타데이터는 보존).

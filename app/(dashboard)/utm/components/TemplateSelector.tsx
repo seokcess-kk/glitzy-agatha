@@ -15,6 +15,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -183,6 +184,9 @@ export function TemplateSelector({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>템플릿으로 저장</DialogTitle>
+            <DialogDescription className="text-xs">
+              현재 입력값을 템플릿으로 저장해 다음 캠페인에 재사용합니다.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
@@ -234,6 +238,9 @@ export function TemplateSelector({
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>템플릿 삭제</DialogTitle>
+            <DialogDescription className="text-xs">
+              선택한 템플릿을 영구 삭제합니다. 되돌릴 수 없습니다.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">

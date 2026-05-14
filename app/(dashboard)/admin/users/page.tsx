@@ -30,6 +30,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -210,6 +211,9 @@ export default function UsersPage() {
         <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>신규 계정 생성</DialogTitle>
+            <DialogDescription className="text-xs">
+              사용자 계정과 역할을 등록합니다. 비밀번호는 첫 로그인 시 변경을 안내해주세요.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -327,6 +331,9 @@ export default function UsersPage() {
         <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>권한 설정</DialogTitle>
+            <DialogDescription className="text-xs">
+              사용자의 클라이언트 배정과 메뉴 접근 권한을 설정합니다.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -381,6 +382,9 @@ export default function ClientApiConfigDialog({ clientId, clientName, open, onCl
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{clientName} &mdash; API 설정</DialogTitle>
+          <DialogDescription className="text-xs">
+            매체별 API 키를 등록하고 연결을 테스트합니다. 저장된 키는 백필/동기화에 사용됩니다.
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (

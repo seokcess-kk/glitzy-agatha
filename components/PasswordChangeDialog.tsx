@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -88,6 +89,9 @@ export default function PasswordChangeDialog({ open, onOpenChange }: PasswordCha
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>비밀번호 변경</DialogTitle>
+          <DialogDescription className="text-xs">
+            계정 보안을 위해 정기적으로 비밀번호를 변경해주세요.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-2">

@@ -21,6 +21,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -328,6 +329,9 @@ export default function ClientsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>신규 클라이언트 등록</DialogTitle>
+            <DialogDescription className="text-xs">
+              새 클라이언트 고객사를 등록합니다. 이후 API 키와 사용자 배정을 진행하세요.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -504,6 +508,9 @@ export default function ClientsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>클라이언트 설정 - {notifyTarget?.name}</DialogTitle>
+            <DialogDescription className="text-xs">
+              알림톡 수신 번호와 리포트 발송 설정을 관리합니다.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">

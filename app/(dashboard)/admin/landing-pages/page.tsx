@@ -31,6 +31,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -250,6 +251,9 @@ export default function LandingPagesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? '랜딩 페이지 수정' : '신규 랜딩 페이지 등록'}</DialogTitle>
+            <DialogDescription className="text-xs">
+              리드 수집 랜딩페이지의 기본 정보와 UTM 매핑을 설정합니다.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">

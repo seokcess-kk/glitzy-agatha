@@ -30,6 +30,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -365,6 +366,9 @@ export default function AdCreativesPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? '광고 소재 수정' : '신규 광고 소재 등록'}</DialogTitle>
+            <DialogDescription className="text-xs">
+              소재 파일과 메타데이터(매체/UTM)를 등록합니다.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* 소재 파일 업로드 */}
@@ -583,6 +587,8 @@ export default function AdCreativesPage() {
       {/* 소재 원본 보기 모달 */}
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
         <DialogContent className="max-w-4xl p-2 bg-black/90 border-border dark:border-white/10">
+          <DialogTitle className="sr-only">소재 원본 보기</DialogTitle>
+          <DialogDescription className="sr-only">광고 소재 이미지 또는 영상을 원본 크기로 표시합니다.</DialogDescription>
           {viewerSrc && (
             viewerType?.startsWith('video/') ? (
               <video src={viewerSrc} className="w-full max-h-[80vh] object-contain rounded-lg" controls autoPlay muted />

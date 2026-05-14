@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -31,6 +32,9 @@ export function QRCodeDialog({ open, onOpenChange, url, label }: QRCodeDialogPro
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>QR 코드</DialogTitle>
+            <DialogDescription className="text-xs">
+              생성된 UTM 링크의 QR 코드를 다운로드하거나 인쇄용으로 사용할 수 있습니다.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-8 text-center text-muted-foreground">
             URL을 먼저 생성해주세요.

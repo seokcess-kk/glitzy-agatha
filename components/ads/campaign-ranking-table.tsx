@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { BarChart2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
+import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform, type ApiPlatform } from '@/lib/platform'
 
 function fmtShort(iso: string) {
   const d = new Date(iso)
@@ -28,6 +29,7 @@ interface AdStatRecord {
   spend_amount: number
   clicks: number
   impressions: number
+  conversions?: number | null
 }
 
 interface CampaignRow {
@@ -37,9 +39,10 @@ interface CampaignRow {
   spend: number
   clicks: number
   impressions: number
+  mediaConversions: number // 매체 보고 전환수 (media_conversion 모드 매체만)
   cpc: number
   ctr: number
-  leads: number
+  leads: number // 인입(inflow) 카운트 — lead_webhook=리드, media_conversion=전환
   cpl: number
 }
 
@@ -118,11 +121,18 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
 
     for (const record of rawData) {
       const key = record.campaign_name || '(미설정)'
+      // 매체 전환 합산 — media_conversion 모드 매체만 (네이버 SA 등). 이중 집계 방지.
+      const isMediaConversion =
+        isApiPlatform(record.platform ?? '') &&
+        PLATFORM_INFLOW_DEFAULTS[record.platform as ApiPlatform] === 'media_conversion'
+      const convAdd = isMediaConversion ? Number(record.conversions) || 0 : 0
+
       const existing = map.get(key)
       if (existing) {
         existing.spend += Number(record.spend_amount) || 0
         existing.clicks += record.clicks || 0
         existing.impressions += record.impressions || 0
+        existing.mediaConversions += convAdd
         if (!existing.platform && record.platform) existing.platform = record.platform
         if (!existing.campaign_id && record.campaign_id) existing.campaign_id = record.campaign_id
       } else {
@@ -133,6 +143,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
           spend: Number(record.spend_amount) || 0,
           clicks: record.clicks || 0,
           impressions: record.impressions || 0,
+          mediaConversions: convAdd,
           cpc: 0,
           ctr: 0,
           leads: 0,
@@ -141,9 +152,15 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
       }
     }
 
-    // Compute derived metrics + CPL via campaignLeadCounts
+    // Compute derived metrics + 인입(inflow) 카운트.
+    //   lead_webhook 매체: leads = campaignLeadCounts[campaign_id]
+    //   media_conversion 매체(네이버 SA 등): leads = mediaConversions (campaignLeadCounts 미사용)
     return Array.from(map.values()).map(row => {
-      const leads = row.campaign_id ? (campaignLeadCounts[row.campaign_id] || 0) : 0
+      const inflowSource = isApiPlatform(row.platform ?? '')
+        ? PLATFORM_INFLOW_DEFAULTS[row.platform as ApiPlatform]
+        : 'lead_webhook'
+      const actualLeads = row.campaign_id ? (campaignLeadCounts[row.campaign_id] || 0) : 0
+      const leads = inflowSource === 'media_conversion' ? row.mediaConversions : actualLeads
       return {
         ...row,
         cpc: row.clicks > 0 ? row.spend / row.clicks : 0,

@@ -7,6 +7,14 @@
 
 ---
 
+## Naver SA 캠페인 stats /stat-reports 전환 (2026-05-14)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| N-4 | /stats → /stat-reports 정공법 전환 | `/stats` 5가지 호출 조합 모두 400 확인 → 공식 PHP/Java sample 기반 `/stat-reports` 채택. POST + 폴링 + TSV 다운로드(시그니처 헤더). AD 리포트(imp/clk/cost) + AD_CONVERSION 리포트(conversions) 캠페인 기준 merge. 광고관리 화면값과 정확 매칭 확인 | 05-14 |
+
+---
+
 ## Naver SA convCnt 수집 보강 + 21일 rolling resync (2026-05-14)
 
 | # | 작업 | 핵심 내용 | 날짜 |

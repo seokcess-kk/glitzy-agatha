@@ -1,3 +1,6 @@
 .env.local
 .next
 node_modules
+
+# 로컬 참고용 임시 디렉토리 (외부 저장소 clone 등)
+_tmp_*/

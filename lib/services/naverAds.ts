@@ -500,13 +500,6 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
       return { platform: 'naver_ads', count: 0 }
     }
 
-    // 임시 디버그: 캠페인 목록 첫 1건 raw 형태 (id 접두사 형식 확인용)
-    logger.info('[debug:campaign] /ncc/campaigns 첫 1건', {
-      clientId: options?.clientId,
-      count: campaigns.length,
-      sample: campaigns[0],
-    })
-
     // 2. 통계 조회 — /stat-reports 두 리포트 merge.
     //    매핑 (광고관리 비교 검증 완료):
     //      AD 리포트 (14 컬럼, 광고 단위):
@@ -529,7 +522,7 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
 
     // 2-1. AD 리포트 (impressions, clicks, cost)
     try {
-      const report = await fetchNaverStatReport('AD', statDt, auth, 'campaign-report')
+      const report = await fetchNaverStatReport('AD', statDt, auth)
       if (report) {
         for (const row of report.rows) {
           if (row.length < 14) continue
@@ -547,7 +540,7 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
 
     // 2-2. AD_CONVERSION 리포트 (conversions)
     try {
-      const convReport = await fetchNaverStatReport('AD_CONVERSION', statDt, auth, 'campaign-conversion')
+      const convReport = await fetchNaverStatReport('AD_CONVERSION', statDt, auth)
       if (convReport) {
         for (const row of convReport.rows) {
           if (row.length < 12) continue

@@ -2,6 +2,17 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## Naver SA 캠페인 stats 정공법 전환 — /stat-reports (2026-05-14)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-14 | fix: `/stats` 단일 ID + multi-value + JSON 배열 + statType=CAMPAIGN 5가지 조합 모두 400 거부 확인 후 `/stat-reports` 비동기 보고서 API 로 정공법 전환 |
+| 2026-05-14 | feat: `fetchNaverStatReport(reportTp, statDt, auth)` 신설 — POST `/stat-reports` → 폴링 (REGIST/RUNNING/WAITING/AGGREGATING → BUILT) → downloadUrl TSV 다운로드 (시그니처 헤더 필수) |
+| 2026-05-14 | feat: `fetchNaverAds` 가 AD 리포트(impressions/clicks/cost) + AD_CONVERSION 리포트(conversions) 두 결과를 campaign_id 기준 merge → `ad_campaign_stats` upsert |
+| 2026-05-14 | note: 매핑 검증 완료 — AD `[2]=campaignId, [9]=imp, [10]=clk, [11]=cost`, AD_CONVERSION `[2]=campaignId, [10]=전환이벤트명("lead"), [11]=conversions`. 광고관리 화면값과 1763/15/104161/3 정확 매칭 |
+| 2026-05-14 | chore: `_tmp_*` gitignore 추가 (로컬 참고용 외부 저장소 무시) |
+| 2026-05-14 | chore: `tsconfig.json` exclude 에 `_tmp_*` 추가 (빌드 영향 차단) |
+
 ## Naver SA 전환수(convCnt) 수집 보강 & 21일 rolling resync (2026-05-14)
 
 | 날짜 | 내용 |

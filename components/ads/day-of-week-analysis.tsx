@@ -49,7 +49,7 @@ function DayTooltip({ active, payload, label }: ChartTooltipProps) {
     <div className="bg-card border border-border rounded-lg p-3 text-xs shadow-xl backdrop-blur-sm">
       <p className="font-medium text-foreground/80 mb-1.5">{label}</p>
       <p className="text-muted-foreground">
-        리드 수: <span className="text-foreground font-medium">{d.leads}건</span>
+        인입 수: <span className="text-foreground font-medium">{d.leads}건</span>
       </p>
       <p className="text-muted-foreground">
         광고비: <span className="text-foreground font-medium">₩{d.spend.toLocaleString()}</span>
@@ -131,7 +131,7 @@ export default function DayOfWeekAnalysis({ startDate, endDate }: Props) {
   return (
     <Card variant="glass" className="p-5 flex flex-col">
       <div className="flex items-center justify-between mb-4 gap-4">
-        <h2 className="font-semibold text-foreground shrink-0">요일별 리드 분석</h2>
+        <h2 className="font-semibold text-foreground shrink-0">요일별 인입 분석</h2>
         <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
       </div>
 
@@ -141,7 +141,7 @@ export default function DayOfWeekAnalysis({ startDate, endDate }: Props) {
         <EmptyState
           icon={CalendarDays}
           title="요일별 분석 데이터가 없습니다"
-          description="광고 데이터가 동기화되면 요일별 리드 패턴을 확인할 수 있습니다."
+          description="광고 데이터가 동기화되면 요일별 인입 패턴을 확인할 수 있습니다."
         />
       ) : (
         <div className="flex-1 min-h-[200px]">
@@ -163,7 +163,7 @@ export default function DayOfWeekAnalysis({ startDate, endDate }: Props) {
               <Tooltip content={<DayTooltip />} cursor={{ fill: 'hsl(var(--muted-foreground) / 0.08)' }} />
               <Bar
                 dataKey="leads"
-                name="리드 수"
+                name="인입 수"
                 radius={[4, 4, 0, 0]}
                 fill={BAR_COLORS.default}
                 isAnimationActive={false}

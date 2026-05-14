@@ -110,7 +110,7 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
   const worstDropoff = useMemo(() => {
     const stages = [
       { from: '노출', to: '클릭', rate: impressions > 0 ? 100 - (clicks / impressions) * 100 : 0 },
-      { from: '클릭', to: '리드', rate: clicks > 0 ? 100 - (leadCount / clicks) * 100 : 0 },
+      { from: '클릭', to: '인입', rate: clicks > 0 ? 100 - (leadCount / clicks) * 100 : 0 },
     ]
     return stages.reduce((worst, s) => (s.rate > worst.rate ? s : worst), stages[0])
   }, [impressions, clicks, leadCount])
@@ -118,7 +118,7 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
   const steps = useMemo(() => [
     { label: '노출', count: impressions, rate: null as string | null, rateLabel: null as string | null },
     { label: '클릭', count: clicks, rate: metrics.ctr > 0 ? `${metrics.ctr.toFixed(1)}%` : null, rateLabel: 'CTR' },
-    { label: '리드', count: leadCount, rate: metrics.clickToLead > 0 ? `${metrics.clickToLead.toFixed(1)}%` : null, rateLabel: '전환율' },
+    { label: '인입', count: leadCount, rate: metrics.clickToLead > 0 ? `${metrics.clickToLead.toFixed(1)}%` : null, rateLabel: '전환율' },
   ], [impressions, clicks, leadCount, metrics])
 
   return (
@@ -138,7 +138,7 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
         <EmptyState
           icon={TrendingDown}
           title="퍼널 데이터가 없습니다"
-          description="광고 통계 및 리드 데이터가 유입되면 표시됩니다."
+          description="광고 통계 및 인입 데이터가 들어오면 표시됩니다."
         />
       ) : (
         <div className="flex flex-col items-center flex-1 justify-center">

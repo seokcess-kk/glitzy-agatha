@@ -21,7 +21,7 @@ export function RecentLeads({ data, loading }: RecentLeadsProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <MessageSquare size={16} className="text-brand-400" />
-          <h2 className="text-sm font-semibold text-foreground">최근 리드</h2>
+          <h2 className="text-sm font-semibold text-foreground">최근 인입</h2>
         </div>
         <span className="text-xs text-muted-foreground">실시간</span>
       </div>
@@ -58,7 +58,7 @@ export function RecentLeads({ data, loading }: RecentLeadsProps) {
           <EmptyState
             icon={MessageSquare}
             title="아직 문의가 없습니다"
-            description="리드가 유입되면 여기에 표시됩니다."
+            description="인입이 발생하면 여기에 표시됩니다."
           />
         </div>
       )}
@@ -68,7 +68,7 @@ export function RecentLeads({ data, loading }: RecentLeadsProps) {
           href="/customers"
           className="inline-flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 transition-colors"
         >
-          리드 전체 보기
+          전체 보기
           <ArrowRight size={12} />
         </Link>
       </div>

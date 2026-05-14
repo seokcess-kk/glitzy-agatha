@@ -7,6 +7,16 @@
 
 ---
 
+## 인입(Inflow) 통합 확장 (2026-05-14)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| I-4 | 광고/캠페인 API 인입 모델 | dashboard/campaign, ads/{platform-summary,day-analysis,efficiency-trend} API 응답에 인입 4 필드 추가. CPL/지표 분모 inflowCount 기준 | 05-14 |
+| I-5 | 광고 페이지 UI 라벨 통일 | campaign-ranking-table / platform-comparison-table / ads-kpi-cards / day-of-week-analysis / ads-funnel / landing-page-{analysis,performance,trend-chart} / CreativePerformance / recent-leads / funnel-section 모든 "리드" 라벨 → "인입" | 05-14 |
+| I-6 | funnel/stats 제외 결정 | dashboard/funnel 은 leads status 추적이라 매체 전환 합산 시 왜곡 위험. ads/stats 는 raw 반환이라 컴포넌트에서 처리 | 05-14 |
+
+---
+
 ## 인입(Inflow) 모델 도입 (2026-05-14)
 
 | # | 작업 | 핵심 내용 | 날짜 |

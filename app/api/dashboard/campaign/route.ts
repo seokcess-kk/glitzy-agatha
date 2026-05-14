@@ -1,6 +1,8 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
+import { resolveInflowSourceForChannel, computeInflowCount } from '@/lib/inflow'
+import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
 import { getKstDateString } from '@/lib/date'
 import { isDemoViewer, getDemoCampaigns } from '@/lib/demo-data'
 
@@ -56,9 +58,10 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   }
 
   // 2. 광고 지출 데이터 (캠페인별) — stat_date(DATE 컬럼)는 KST 날짜 문자열로 비교
+  //    conversions 컬럼 추가 — 매체 전환 모드 플랫폼(네이버 SA 등) 인입 합산용
   let adStatsQuery = supabase
     .from('ad_campaign_stats')
-    .select('campaign_name, campaign_id, platform, spend_amount, clicks, impressions, stat_date')
+    .select('campaign_name, campaign_id, platform, spend_amount, clicks, impressions, conversions, stat_date')
   adStatsQuery = applyClientFilter(adStatsQuery, ctx)!
   if (startKst) adStatsQuery = adStatsQuery.gte('stat_date', startKst)
   if (endKst) adStatsQuery = adStatsQuery.lte('stat_date', endKst)
@@ -120,15 +123,20 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   }
 
   // 광고 지출 집계 (campaign_name 또는 campaign_id 기준)
-  const spendByCampaign: Record<string, { spend: number; clicks: number; impressions: number }> = {}
+  //   + 매체 전환수 (media_conversion 모드 플랫폼만) 합산
+  const spendByCampaign: Record<string, { spend: number; clicks: number; impressions: number; mediaConversions: number }> = {}
   for (const row of adStatsRes.data || []) {
     const campaignKey = row.campaign_name || row.campaign_id || 'Unknown'
     if (!spendByCampaign[campaignKey]) {
-      spendByCampaign[campaignKey] = { spend: 0, clicks: 0, impressions: 0 }
+      spendByCampaign[campaignKey] = { spend: 0, clicks: 0, impressions: 0, mediaConversions: 0 }
     }
     spendByCampaign[campaignKey].spend += Number(row.spend_amount) || 0
     spendByCampaign[campaignKey].clicks += Number(row.clicks) || 0
     spendByCampaign[campaignKey].impressions += Number(row.impressions) || 0
+    // 매체 전환 합산 — 검색광고 등 매체 전환 기반 인입
+    if (isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] === 'media_conversion') {
+      spendByCampaign[campaignKey].mediaConversions += Number(row.conversions) || 0
+    }
   }
 
   // 캠페인별 매출 집계 (전환된 리드 기준)
@@ -147,12 +155,17 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }
   }
 
-  // 결과 생성
+  // 결과 생성 — 인입 모델 적용
+  //   inflowCount: 채널 inflowSource 에 따라 actualLeads 또는 mediaConversions 선택
+  //   leads 키는 inflowCount 동일값으로 호환 유지
   const result = Object.values(campaignStats)
     .map(stat => {
-      const leads = stat.leads.size
-      const adData = spendByCampaign[stat.campaign] || { spend: 0, clicks: 0, impressions: 0 }
+      const actualLeads = stat.leads.size
+      const adData = spendByCampaign[stat.campaign] || { spend: 0, clicks: 0, impressions: 0, mediaConversions: 0 }
       const spend = adData.spend
+      const mediaConversions = adData.mediaConversions
+      const inflowSource = resolveInflowSourceForChannel(stat.channel)
+      const inflowCount = computeInflowCount(actualLeads, mediaConversions, inflowSource)
       const revenue = revenueByCampaign[stat.campaign] || 0
       const payingContacts = payingContactsByCampaign[stat.campaign]?.size || 0
       const bookings = stat.bookedContacts.size
@@ -160,22 +173,28 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       return {
         campaign: stat.campaign,
         channel: stat.channel,
-        leads,
+        // 인입 4 필드
+        actualLeads,
+        mediaConversions,
+        inflowCount,
+        inflowSource,
+        // 호환 — leads = inflowCount
+        leads: inflowCount,
         bookings,
         payingContacts,
         spend,
         revenue,
         clicks: adData.clicks,
         impressions: adData.impressions,
-        cpl: leads > 0 ? Math.round(spend / leads) : 0,
+        cpl: inflowCount > 0 ? Math.round(spend / inflowCount) : 0,
         roas: spend > 0 ? Number((revenue / spend).toFixed(2)) : 0,
         roasPercent: spend > 0 ? Math.round((revenue / spend) * 100) : 0,
-        bookingRate: leads > 0 ? Number(((bookings / leads) * 100).toFixed(1)) : 0,
-        conversionRate: leads > 0 ? Number(((payingContacts / leads) * 100).toFixed(1)) : 0,
+        bookingRate: inflowCount > 0 ? Number(((bookings / inflowCount) * 100).toFixed(1)) : 0,
+        conversionRate: inflowCount > 0 ? Number(((payingContacts / inflowCount) * 100).toFixed(1)) : 0,
         ctr: adData.impressions > 0 ? Number(((adData.clicks / adData.impressions) * 100).toFixed(2)) : 0,
       }
     })
-    .sort((a, b) => b.leads - a.leads) // 리드 많은 순
+    .sort((a, b) => b.inflowCount - a.inflowCount) // 인입 많은 순
     .slice(0, 20) // 상위 20개
 
   return apiSuccess(result)

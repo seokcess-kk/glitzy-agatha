@@ -129,7 +129,7 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
                   <TableHead className={`${thClass} text-right`}>광고비</TableHead>
                   <TableHead className={`${thClass} text-right`}>노출</TableHead>
                   <TableHead className={`${thClass} text-right`}>클릭</TableHead>
-                  <TableHead className={`${thClass} text-right`}>리드</TableHead>
+                  <TableHead className={`${thClass} text-right`}>인입</TableHead>
                   <TableHead className={`${thClass} text-right`}>CPC</TableHead>
                   <TableHead className={`${thClass} text-right`}>CTR</TableHead>
                   <TableHead className={`${thClass} text-right`}>CPL</TableHead>

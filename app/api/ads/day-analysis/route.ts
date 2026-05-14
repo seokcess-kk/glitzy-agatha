@@ -3,6 +3,7 @@ import { withClientFilter, ClientContext, applyClientFilter, apiSuccess, apiErro
 import { isDemoViewer, getDemoDayAnalysis } from '@/lib/demo-data'
 import { getKstDateString, toUtcDate } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
+import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
 
 const logger = createLogger('AdsDayAnalysis')
 
@@ -52,10 +53,10 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (tsStart) leadsQuery = leadsQuery.gte('created_at', tsStart)
     if (tsEnd) leadsQuery = leadsQuery.lt('created_at', tsEnd)
 
-    // 2. 광고 지출 stat_date + spend_amount 조회
+    // 2. 광고 지출 stat_date + spend_amount + 매체 전환수 조회
     let adStatsQuery = supabase
       .from('ad_campaign_stats')
-      .select('stat_date, spend_amount')
+      .select('stat_date, platform, spend_amount, conversions')
     const filteredAdStats = applyClientFilter(adStatsQuery, { clientId, assignedClientIds })
     if (filteredAdStats === null) return apiSuccess({ byDay: buildEmptyResult() })
     adStatsQuery = filteredAdStats
@@ -89,24 +90,34 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       leadsByDay[dayOfWeekKst(d)] += 1
     }
 
-    // 요일별 광고 지출 집계 (stat_date는 YYYY-MM-DD 문자열, 날짜 자체가 KST 기준)
+    // 요일별 광고 지출 + 매체 전환수 집계 (stat_date는 YYYY-MM-DD 문자열, 날짜 자체가 KST 기준)
     const spendByDay: number[] = Array(7).fill(0)
+    const mediaConvByDay: number[] = Array(7).fill(0)
     for (const row of adStatsRes.data || []) {
-      // stat_date는 'YYYY-MM-DD' 형식 — Date 생성 시 로컬(KST) 기준 해석되도록 T00:00:00 없이 처리
       const d = new Date(row.stat_date + 'T00:00:00+09:00')
-      const dayOfWeek = d.getUTCDay()  // UTC 기준 요일은 KST midnight (+09:00)와 동일
+      const dayOfWeek = d.getUTCDay()
       spendByDay[dayOfWeek] += Number(row.spend_amount) || 0
+      // 매체 전환수 — media_conversion 모드 플랫폼만
+      if (isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] === 'media_conversion') {
+        mediaConvByDay[dayOfWeek] += Number(row.conversions) || 0
+      }
     }
 
     const byDay = Array.from({ length: 7 }, (_, day) => {
-      const leads = leadsByDay[day]
+      const actualLeads = leadsByDay[day]
+      const mediaConversions = mediaConvByDay[day]
+      const inflowCount = actualLeads + mediaConversions
       const spend = spendByDay[day]
       return {
         day,
         dayLabel: DAY_LABELS[day],
-        leads,
+        // 인입 필드
+        actualLeads,
+        mediaConversions,
+        inflowCount,
+        leads: inflowCount, // 호환
         spend,
-        cpl: leads > 0 ? Math.round(spend / leads) : 0,
+        cpl: inflowCount > 0 ? Math.round(spend / inflowCount) : 0,
       }
     })
 
@@ -121,6 +132,9 @@ function buildEmptyResult() {
   return Array.from({ length: 7 }, (_, day) => ({
     day,
     dayLabel: DAY_LABELS[day],
+    actualLeads: 0,
+    mediaConversions: 0,
+    inflowCount: 0,
     leads: 0,
     spend: 0,
     cpl: 0,

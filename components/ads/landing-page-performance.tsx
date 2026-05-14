@@ -91,7 +91,7 @@ export default function LandingPagePerformance({ startDate, endDate }: Props) {
             <TableHeader>
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
                 <TableHead className={thClass}>페이지명</TableHead>
-                <TableHead className={`${thClass} text-right`}>리드</TableHead>
+                <TableHead className={`${thClass} text-right`}>인입</TableHead>
                 <TableHead className={`${thClass} text-right`}>결제 고객</TableHead>
                 <TableHead className={`${thClass} text-right`}>전환율</TableHead>
                 <TableHead className={`${thClass} text-right`}>매출</TableHead>

@@ -2,6 +2,17 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 인입(Inflow) 통합 확장 — 광고/캠페인/요일/효율/랜딩/소재 (2026-05-14)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-14 | feat: `/api/dashboard/campaign` 응답에 `actualLeads / mediaConversions / inflowCount / inflowSource` 추가. CPL/bookingRate/conversionRate 분모를 inflowCount 로. 정렬 inflowCount 기준 |
+| 2026-05-14 | feat: `/api/ads/platform-summary` 응답에 인입 4 필드 추가. sources 도 각 소스 단위 inflowCount 적용. CPL/conversionRate 인입 기준 |
+| 2026-05-14 | feat: `/api/ads/day-analysis` 요일별 actualLeads / mediaConversions / inflowCount 추가. CPL 인입 기준 |
+| 2026-05-14 | feat: `/api/ads/efficiency-trend` 일별 actualLeads / mediaConversions / inflowCount 추가. CPL 인입 기준 |
+| 2026-05-14 | feat: UI 라벨 일괄 통일 — 요일별 인입 분석, 광고 퍼널 "인입" 단계, 캠페인 랭킹 "인입" 컬럼, 플랫폼 비교 "인입" 컬럼, 총 인입 KPI, 랜딩페이지 인입 차트/테이블, 광고 소재 인입 컬럼, 최근 인입 위젯, 전환 퍼널 "인입 대비" |
+| 2026-05-14 | note: `/api/dashboard/funnel` 은 leads status 기반 추적이라 매체 전환 합산 시 퍼널 왜곡 위험 → 변경 X. 라벨만 funnel-section 에서 통일. `/api/ads/stats` raw 데이터 반환이라 변경 X (소비자 컴포넌트에서 처리) |
+
 ## 인입(Inflow) 모델 도입 — KPI/Channel/Trend/SMS (2026-05-14)
 
 | 날짜 | 내용 |

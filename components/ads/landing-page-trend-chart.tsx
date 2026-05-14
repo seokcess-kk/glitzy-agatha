@@ -43,7 +43,7 @@ export default function LandingPageTrendChart({ trend, pageNames }: Props) {
   return (
     <Card variant="glass" className="p-5">
       <div className="flex items-center justify-between mb-4 gap-4">
-        <h2 className="font-semibold text-foreground shrink-0">랜딩페이지 리드 추이</h2>
+        <h2 className="font-semibold text-foreground shrink-0">랜딩페이지 인입 추이</h2>
         <span className="text-xs text-muted-foreground">상위 {pageNames.length}개 · 일별</span>
       </div>
 

@@ -118,7 +118,7 @@ export function FunnelSection({ data, loading }: FunnelSectionProps) {
         <EmptyState
           icon={Filter}
           title="퍼널 데이터 부족"
-          description="리드가 유입되면 전환 퍼널이 자동 생성됩니다."
+          description="인입이 발생하면 전환 퍼널이 자동 생성됩니다."
         />
       )}
     </Card>
@@ -186,7 +186,7 @@ function FunnelProgress({
           {stages.map((stage, i) => (
             <div key={stage.stage} className="flex flex-col items-center" style={{ minWidth: NODE_SIZE + 16 }}>
               <div
-                aria-label={`${stage.label}: ${stage.count}건 (리드 대비 ${stage.rate}%)`}
+                aria-label={`${stage.label}: ${stage.count}건 (인입 대비 ${stage.rate}%)`}
                 className="rounded-full flex items-center justify-center font-bold text-white dark:text-white cursor-pointer
                   transition-all duration-200 hover:scale-110 hover:ring-2 hover:ring-white/20 hover:shadow-lg hover:shadow-brand-500/20
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -295,7 +295,7 @@ function FunnelProgress({
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground/90">{stage.label}</p>
                   <p className="text-xs text-muted-foreground tabular-nums">
-                    리드 대비 {stage.rate}%
+                    인입 대비 {stage.rate}%
                   </p>
                 </div>
               </div>
@@ -373,7 +373,7 @@ function FunnelTooltip({
           <span className="font-medium tabular-nums">{stage.count}건</span>
         </p>
         <p className="text-foreground/80">
-          <span className="text-muted-foreground">리드 대비:</span>{' '}
+          <span className="text-muted-foreground">인입 대비:</span>{' '}
           <span className="font-medium tabular-nums">{stage.rate}%</span>
         </p>
         {prevRate && (

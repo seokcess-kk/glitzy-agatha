@@ -253,7 +253,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                     CTR <SortIcon field="ctr" sortField={sortField} sortDir={sortDir} />
                   </TableHead>
                   <TableHead className={`${thClass} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'leads' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('leads')} onKeyDown={(e) => e.key === 'Enter' && handleSort('leads')}>
-                    리드 <SortIcon field="leads" sortField={sortField} sortDir={sortDir} />
+                    인입 <SortIcon field="leads" sortField={sortField} sortDir={sortDir} />
                   </TableHead>
                   <TableHead className={`${thClass} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'cpl' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('cpl')} onKeyDown={(e) => e.key === 'Enter' && handleSort('cpl')}>
                     CPL <SortIcon field="cpl" sortField={sortField} sortDir={sortDir} />

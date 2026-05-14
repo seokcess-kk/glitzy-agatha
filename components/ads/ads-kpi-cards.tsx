@@ -90,7 +90,7 @@ export default function AdsKpiCards({ startDate, endDate }: Props) {
         trend={normalTrend(comparison?.totalSpend)}
       />
       <StatsCard
-        label="총 리드"
+        label="총 인입"
         value={loading ? '' : totalLeads.toLocaleString()}
         loading={loading}
         trend={normalTrend(comparison?.totalLeads)}

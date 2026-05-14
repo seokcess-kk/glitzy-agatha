@@ -79,7 +79,7 @@ function BarTooltip({ active, payload }: ChartTooltipProps) {
     <div className="bg-card border border-border rounded-lg p-3 text-xs shadow-xl backdrop-blur-sm">
       <p className="font-medium text-foreground/80 mb-1.5">{d.name}</p>
       <p className="text-muted-foreground">
-        리드: <span className="text-foreground font-medium">{d.leads}건</span>
+        인입: <span className="text-foreground font-medium">{d.leads}건</span>
       </p>
     </div>
   )
@@ -187,7 +187,7 @@ export default function LandingPageAnalysis({ startDate, endDate, mode = 'delive
           </div>
           <p className="text-sm text-foreground/80 mb-4 truncate" title={lp.name}>{lp.name}</p>
           <div className="grid grid-cols-2 gap-3">
-            <StatsCard label="리드" value={`${lp.leads}건`} />
+            <StatsCard label="인입" value={`${lp.leads}건`} />
             <StatsCard label="유입 채널" value={channelCount > 0 ? `${channelCount}개` : '-'} />
           </div>
         </Card>
@@ -211,10 +211,10 @@ export default function LandingPageAnalysis({ startDate, endDate, mode = 'delive
 
   return (
     <>
-      {/* 바차트: 리드 비교 */}
+      {/* 바차트: 인입 비교 */}
       <Card variant="glass" className="p-5">
         <div className="flex items-center justify-between mb-4 gap-4">
-          <h2 className="font-semibold text-foreground shrink-0">랜딩페이지별 리드</h2>
+          <h2 className="font-semibold text-foreground shrink-0">랜딩페이지별 인입</h2>
           <span className="text-xs text-muted-foreground">{fmtShort(startDate)} ~ {fmtShort(endDate)}</span>
         </div>
 
@@ -243,7 +243,7 @@ export default function LandingPageAnalysis({ startDate, endDate, mode = 'delive
             <Tooltip content={<BarTooltip />} cursor={{ fill: 'hsl(var(--muted-foreground) / 0.08)' }} />
             <Bar
               dataKey="leads"
-              name="리드 수"
+              name="인입 수"
               radius={[0, 4, 4, 0]}
               isAnimationActive={false}
             >
@@ -285,7 +285,7 @@ export default function LandingPageAnalysis({ startDate, endDate, mode = 'delive
               <TableRow className="border-b border-border dark:border-white/5 hover:bg-transparent">
                 <TableHead className={thClass}>페이지명</TableHead>
                 <TableHead className={`${thClass} text-center`}>상태</TableHead>
-                <TableHead className={`${thClass} text-right`}>리드</TableHead>
+                <TableHead className={`${thClass} text-right`}>인입</TableHead>
                 {showFull && (
                   <>
                     <TableHead className={`${thClass} text-right`}>예약고객</TableHead>

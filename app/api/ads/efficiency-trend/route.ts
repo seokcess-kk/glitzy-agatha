@@ -2,6 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { isDemoViewer, getDemoEfficiencyTrend } from '@/lib/demo-data'
 import { getKstDateString } from '@/lib/date'
+import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
 
 const DEFAULT_DAYS = 28
 
@@ -10,7 +11,10 @@ interface DayEntry {
   spend: number
   clicks: number
   impressions: number
-  leads: number
+  actualLeads: number
+  mediaConversions: number
+  inflowCount: number
+  leads: number // 호환 — inflowCount 동일값
   cpl: number
   cpc: number
   ctr: number
@@ -33,7 +37,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   const end = new Date(endDate)
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const key = getKstDateString(new Date(d))
-    dayMap.set(key, { date: key, spend: 0, clicks: 0, impressions: 0, leads: 0, cpl: 0, cpc: 0, ctr: 0 })
+    dayMap.set(key, { date: key, spend: 0, clicks: 0, impressions: 0, actualLeads: 0, mediaConversions: 0, inflowCount: 0, leads: 0, cpl: 0, cpc: 0, ctr: 0 })
   }
 
   // Timestamp end: next day midnight exclusive
@@ -41,10 +45,10 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   tsEndDate.setDate(tsEndDate.getDate() + 1)
   const tsEnd = tsEndDate.toISOString()
 
-  // 광고 집계 쿼리
+  // 광고 집계 쿼리 — 매체 전환 합산 위해 platform, conversions 추가
   let adQuery = supabase
     .from('ad_campaign_stats')
-    .select('stat_date, spend_amount, clicks, impressions')
+    .select('stat_date, platform, spend_amount, clicks, impressions, conversions')
     .gte('stat_date', startDate)
     .lte('stat_date', endDate)
     .order('stat_date')
@@ -70,7 +74,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   const [adRes, leadRes] = await Promise.all([
     adFiltered
       ? adQuery
-      : Promise.resolve({ data: [] as { stat_date: string; spend_amount: number; clicks: number; impressions: number }[], error: null }),
+      : Promise.resolve({ data: [] as { stat_date: string; platform: string; spend_amount: number; clicks: number; impressions: number; conversions: number | null }[], error: null }),
     leadFiltered
       ? leadQuery
       : Promise.resolve({ data: [] as { created_at: string }[], error: null }),
@@ -84,27 +88,31 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     return new Date(dateStr).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' })
   }
 
-  // 광고비/클릭/노출 일별 집계
+  // 광고비/클릭/노출 + 매체 전환 일별 집계 (media_conversion 모드 플랫폼만 conversions 합산)
   for (const row of adRes.data || []) {
     const key = row.stat_date.slice(0, 10)
     const entry = dayMap.get(key)
-    if (entry) {
-      entry.spend += Number(row.spend_amount)
-      entry.clicks += Number(row.clicks || 0)
-      entry.impressions += Number(row.impressions || 0)
+    if (!entry) continue
+    entry.spend += Number(row.spend_amount)
+    entry.clicks += Number(row.clicks || 0)
+    entry.impressions += Number(row.impressions || 0)
+    if (isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] === 'media_conversion') {
+      entry.mediaConversions += Number(row.conversions || 0)
     }
   }
 
-  // 리드 일별 집계
+  // 실제 리드 일별 집계
   for (const row of leadRes.data || []) {
     const key = toKstDate(row.created_at)
     const entry = dayMap.get(key)
-    if (entry) entry.leads += 1
+    if (entry) entry.actualLeads += 1
   }
 
-  // 파생 지표 계산
+  // 인입 + 파생 지표 계산
   for (const entry of dayMap.values()) {
-    entry.cpl = entry.leads > 0 ? Math.round(entry.spend / entry.leads) : 0
+    entry.inflowCount = entry.actualLeads + entry.mediaConversions
+    entry.leads = entry.inflowCount // 호환
+    entry.cpl = entry.inflowCount > 0 ? Math.round(entry.spend / entry.inflowCount) : 0
     entry.cpc = entry.clicks > 0 ? Math.round(entry.spend / entry.clicks) : 0
     entry.ctr = entry.impressions > 0 ? Number(((entry.clicks / entry.impressions) * 100).toFixed(2)) : 0
   }

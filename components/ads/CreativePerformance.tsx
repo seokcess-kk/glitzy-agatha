@@ -162,7 +162,7 @@ export default function CreativePerformance({ startDate, endDate, campaignFilter
         <EmptyState
           icon={ImageOff}
           title={campaignFilter ? '해당 캠페인의 소재가 없습니다' : '소재별 성과 데이터가 없습니다'}
-          description={campaignFilter ? '다른 캠페인을 선택하거나 필터를 해제해주세요.' : '광고 소재 관리에서 소재를 등록하고 utm_content가 포함된 리드가 유입되면 성과를 확인할 수 있습니다.'}
+          description={campaignFilter ? '다른 캠페인을 선택하거나 필터를 해제해주세요.' : '광고 소재 관리에서 소재를 등록하고 utm_content가 포함된 인입이 발생하면 성과를 확인할 수 있습니다.'}
         />
       ) : (
         <>
@@ -189,7 +189,7 @@ export default function CreativePerformance({ startDate, endDate, campaignFilter
                   CTR <SortIcon field="ctr" current={sortField} dir={sortDir} />
                 </TableHead>
                 <TableHead className={`${thSort} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'leads' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('leads')} onKeyDown={(e) => e.key === 'Enter' && handleSort('leads')}>
-                  리드 <SortIcon field="leads" current={sortField} dir={sortDir} />
+                  인입 <SortIcon field="leads" current={sortField} dir={sortDir} />
                 </TableHead>
                 <TableHead className={`${thSort} text-right`} role="columnheader" tabIndex={0} aria-sort={sortField === 'cpl' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} onClick={() => handleSort('cpl')} onKeyDown={(e) => e.key === 'Enter' && handleSort('cpl')}>
                   CPL <SortIcon field="cpl" current={sortField} dir={sortDir} />

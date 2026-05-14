@@ -3,7 +3,8 @@ import { withClientFilter, ClientContext, applyClientFilter, apiSuccess, apiErro
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
-import { apiToCreativePlatform, getSourceLabel } from '@/lib/platform'
+import { apiToCreativePlatform, getSourceLabel, PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
+import { resolveInflowSourceForChannel, computeInflowCount } from '@/lib/inflow'
 import { isDemoViewer, getDemoChannel } from '@/lib/demo-data'
 
 const logger = createLogger('AdsPlatformSummary')
@@ -43,10 +44,10 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   if (emptyCheck === null) return apiSuccess([])
 
   try {
-    // 1. 광고 통계 조회 (platform, campaign_type, spend, clicks, impressions)
+    // 1. 광고 통계 조회 — conversions 추가 (매체 전환 기반 인입용)
     let adStatsQuery = supabase
       .from('ad_campaign_stats')
-      .select('platform, campaign_type, spend_amount, clicks, impressions, stat_date')
+      .select('platform, campaign_type, spend_amount, clicks, impressions, conversions, stat_date')
     const filteredAdStats = applyClientFilter(adStatsQuery, { clientId, assignedClientIds })
     if (filteredAdStats === null) return apiSuccess([])
     adStatsQuery = filteredAdStats
@@ -94,29 +95,37 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       return apiError('전환 리드 조회 중 오류가 발생했습니다.', 500)
     }
 
-    // 채널별 광고 지출/클릭/노출 집계 (platform 기준) + 소스별 세분화
-    type AdMetrics = { spend: number; clicks: number; impressions: number }
+    // 채널별 광고 지출/클릭/노출 + 매체 전환 집계 (platform 기준) + 소스별 세분화
+    type AdMetrics = { spend: number; clicks: number; impressions: number; mediaConversions: number }
     const adByChannel: Record<string, AdMetrics> = {}
     const adBySource: Record<string, Record<string, AdMetrics>> = {} // channel → source → metrics
     for (const row of adStatsRes.data || []) {
       const channel = normalizeChannel(row.platform)
       if (!adByChannel[channel]) {
-        adByChannel[channel] = { spend: 0, clicks: 0, impressions: 0 }
+        adByChannel[channel] = { spend: 0, clicks: 0, impressions: 0, mediaConversions: 0 }
       }
       adByChannel[channel].spend += Number(row.spend_amount) || 0
       adByChannel[channel].clicks += Number(row.clicks) || 0
       adByChannel[channel].impressions += Number(row.impressions) || 0
+      // 매체 전환 — media_conversion 모드 플랫폼만
+      const isMediaConvPlatform = isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] === 'media_conversion'
+      if (isMediaConvPlatform) {
+        adByChannel[channel].mediaConversions += Number(row.conversions) || 0
+      }
 
       // 소스별 세분화: platform_prefix + campaign_type → meta_feed, google_search 등
       const prefix = apiToCreativePlatform(row.platform)
       const sourceKey = row.campaign_type ? `${prefix}_${row.campaign_type}` : `${prefix}_etc`
       if (!adBySource[channel]) adBySource[channel] = {}
       if (!adBySource[channel][sourceKey]) {
-        adBySource[channel][sourceKey] = { spend: 0, clicks: 0, impressions: 0 }
+        adBySource[channel][sourceKey] = { spend: 0, clicks: 0, impressions: 0, mediaConversions: 0 }
       }
       adBySource[channel][sourceKey].spend += Number(row.spend_amount) || 0
       adBySource[channel][sourceKey].clicks += Number(row.clicks) || 0
       adBySource[channel][sourceKey].impressions += Number(row.impressions) || 0
+      if (isMediaConvPlatform) {
+        adBySource[channel][sourceKey].mediaConversions += Number(row.conversions) || 0
+      }
     }
 
     // 채널별 리드 집계 + 소스별 리드 집계 + contact→channel 첫 유입 채널 매핑
@@ -155,23 +164,27 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       ...Object.keys(leadsByChannel),
     ])
 
-    // 결과 조합 및 파생 지표 계산
+    // 결과 조합 및 파생 지표 계산 — 인입 모델 적용
     const result = Array.from(allChannels)
       .filter(ch => ch !== 'Unknown' || (leadsByChannel[ch] || 0) > 0)
       .map(channel => {
-        const { spend = 0, clicks = 0, impressions = 0 } = adByChannel[channel] || {}
-        const leads = leadsByChannel[channel] || 0
+        const adData = adByChannel[channel] || { spend: 0, clicks: 0, impressions: 0, mediaConversions: 0 }
+        const { spend, clicks, impressions, mediaConversions } = adData
+        const actualLeads = leadsByChannel[channel] || 0
+        const inflowSource = resolveInflowSourceForChannel(channel)
+        const inflowCount = computeInflowCount(actualLeads, mediaConversions, inflowSource)
         const revenue = revenueByChannel[channel] || 0
         const payingContacts = payingContactsByChannel[channel]?.size || 0
 
-        // 소스별 세분화 데이터 생성
+        // 소스별 세분화 데이터 생성 (UTM source 단위는 채널 inflowSource 그대로 적용)
         const adSources = adBySource[channel] || {}
         const leadSources = leadsBySource[channel] || {}
         const allSourceKeys = new Set([...Object.keys(adSources), ...Object.keys(leadSources)])
         const sources = Array.from(allSourceKeys)
           .map(src => {
-            const ad = adSources[src] || { spend: 0, clicks: 0, impressions: 0 }
-            const srcLeads = leadSources[src] || 0
+            const ad = adSources[src] || { spend: 0, clicks: 0, impressions: 0, mediaConversions: 0 }
+            const srcActualLeads = leadSources[src] || 0
+            const srcInflow = computeInflowCount(srcActualLeads, ad.mediaConversions, inflowSource)
             const label = src.endsWith('_etc') ? '기타' : getSourceLabel(src)
             return {
               source: src,
@@ -179,31 +192,39 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
               spend: ad.spend,
               clicks: ad.clicks,
               impressions: ad.impressions,
-              leads: srcLeads,
-              cpl: srcLeads > 0 ? Math.round(ad.spend / srcLeads) : 0,
+              actualLeads: srcActualLeads,
+              mediaConversions: ad.mediaConversions,
+              inflowCount: srcInflow,
+              leads: srcInflow, // 호환
+              cpl: srcInflow > 0 ? Math.round(ad.spend / srcInflow) : 0,
               cpc: ad.clicks > 0 ? Math.round(ad.spend / ad.clicks) : 0,
               ctr: ad.impressions > 0 ? Number(((ad.clicks / ad.impressions) * 100).toFixed(2)) : 0,
             }
           })
-          .sort((a, b) => b.leads - a.leads || b.spend - a.spend)
+          .sort((a, b) => b.inflowCount - a.inflowCount || b.spend - a.spend)
 
         return {
           channel,
           spend,
           clicks,
           impressions,
-          leads,
+          // 인입 4 필드
+          actualLeads,
+          mediaConversions,
+          inflowCount,
+          inflowSource,
+          leads: inflowCount, // 호환
           revenue,
           payingContacts,
-          cpl: leads > 0 ? Math.round(spend / leads) : 0,
+          cpl: inflowCount > 0 ? Math.round(spend / inflowCount) : 0,
           cpc: clicks > 0 ? Math.round(spend / clicks) : 0,
           ctr: impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0,
           roas: spend > 0 ? Number((revenue / spend).toFixed(2)) : 0,
-          conversionRate: leads > 0 ? Number(((payingContacts / leads) * 100).toFixed(1)) : 0,
+          conversionRate: inflowCount > 0 ? Number(((payingContacts / inflowCount) * 100).toFixed(1)) : 0,
           sources,
         }
       })
-      .sort((a, b) => b.leads - a.leads)
+      .sort((a, b) => b.inflowCount - a.inflowCount)
 
     return apiSuccess(result)
   } catch (error) {

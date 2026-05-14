@@ -7,6 +7,16 @@
 
 ---
 
+## 광고그룹 단위 통계 통합 (2026-05-14)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| G-1 | `ad_group_stats` 테이블 신설 | 광고그룹 레벨 일별 통계. utm_content 매칭 불가 매체(네이버 SA 등) 용. partial UNIQUE 로 환경변수 폴백 모드 호환 | 05-14 |
+| G-2 | Naver SA 광고그룹 동기화 | AD/AD_CONVERSION 리포트 row[3]=adgroupId 동시 집계. `/ncc/adgroups` 1회 호출로 광고그룹 이름 매핑 | 05-14 |
+| G-3 | 소재별 성과 API 통합 | `/api/ads/creatives-performance` 광고그룹 row 통합. `campaign_ids` 로 캠페인 필터 흡수. media_conversion 모드는 conversions→leads 매핑 | 05-14 |
+
+---
+
 ## 인입(Inflow) 통합 확장 (2026-05-14)
 
 | # | 작업 | 핵심 내용 | 날짜 |

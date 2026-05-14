@@ -406,6 +406,7 @@ Samantha 대시보드의 REST API 엔드포인트 문서입니다.
 
 **데이터 소스:**
 - `ad_stats` (utm_content별 spend/clicks/impressions) — Meta ad 레벨 수집
+- `ad_group_stats` (광고그룹 레벨 spend/clicks/impressions/conversions) — 네이버 SA 등 utm_content 매칭 불가 매체용. `utm_content = adgroup_id` 로 결과 row 에 통합, `campaign_ids = [campaign_id]` 로 캠페인 필터 흡수. `media_conversion` 모드는 `conversions → leads` 매핑
 - `leads` (utm_content별 리드 수)
 - `ad_creatives` (소재 메타데이터 — 수동 등록)
 - `payments` (고객 결제/매출 — 리드 기준 귀속)

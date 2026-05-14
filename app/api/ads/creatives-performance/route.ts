@@ -4,6 +4,7 @@ import { isDemoViewer, getDemoCreativesPerformance } from '@/lib/demo-data'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { normalizeChannel } from '@/lib/channel'
+import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform, type ApiPlatform } from '@/lib/platform'
 
 const logger = createLogger('CreativesPerformance')
 
@@ -99,12 +100,24 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (dateStart) adStatsQuery = adStatsQuery.gte('stat_date', dateStart)
     if (dateEnd) adStatsQuery = adStatsQuery.lte('stat_date', dateEnd)
 
+    // 5) ad_group_stats — 광고그룹 단위 통계 (네이버 SA 등 utm_content 매칭 불가 매체용)
+    //    매체별 분기 없이 항상 조회하고 campaign_ids 에 campaign_id 를 넣어 UI 필터링에 흡수.
+    let groupStatsQuery = supabase
+      .from('ad_group_stats')
+      .select('platform, campaign_id, campaign_name, adgroup_id, adgroup_name, spend_amount, clicks, impressions, conversions')
+
+    const filteredGroupStats = applyClientFilter(groupStatsQuery, { clientId, assignedClientIds })
+    if (filteredGroupStats) groupStatsQuery = filteredGroupStats
+    if (dateStart) groupStatsQuery = groupStatsQuery.gte('stat_date', dateStart)
+    if (dateEnd) groupStatsQuery = groupStatsQuery.lte('stat_date', dateEnd)
+
     // 병렬 쿼리 실행
-    const [leadsRes, creativesRes, conversionsRes, adStatsRes] = await Promise.all([
+    const [leadsRes, creativesRes, conversionsRes, adStatsRes, groupStatsRes] = await Promise.all([
       leadsQuery,
       creativesQuery,
       conversionsQuery,
       adStatsQuery,
+      groupStatsQuery,
     ])
 
     if (leadsRes.error) {
@@ -119,6 +132,9 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }
     if (adStatsRes.error) {
       logger.warn('ad_stats 조회 실패', { clientId, error: adStatsRes.error.message })
+    }
+    if (groupStatsRes.error) {
+      logger.warn('ad_group_stats 조회 실패', { clientId, error: groupStatsRes.error.message })
     }
 
     const leads = leadsRes.data || []
@@ -357,26 +373,84 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       })
     }
 
+    // ─── 광고그룹 단위 통계를 creative row 로 통합 ──────────────────────────
+    //   검색광고처럼 utm_content 매칭이 불가능한 매체는 광고그룹 단위가 운영 단위.
+    //   매체별 분기 없이 항상 ad_group_stats 를 함께 조회하고 campaign_ids 에
+    //   campaign_id 를 넣어 기존 UI 필터링(campaign_ids.includes(campaignFilter))에 흡수.
+    //
+    //   인입 모델: media_conversion 모드 매체(네이버 SA)는 leads = conversions 로 매핑해야
+    //   화면(인입/CPL)이 일관됨. lead_webhook 모드는 광고그룹 단위로 leads 매칭이 어렵기 때문에
+    //   1차에서는 0 으로 두고 추후 분석.
+    interface AdGroupStatRow {
+      platform: string | null
+      campaign_id: string | null
+      campaign_name: string | null
+      adgroup_id: string
+      adgroup_name: string | null
+      spend_amount: number | string
+      clicks: number | null
+      impressions: number | null
+      conversions: number | null
+    }
+    const groupAggMap = new Map<string, {
+      platform: string | null
+      campaignId: string | null
+      adgroupName: string | null
+      spend: number
+      clicks: number
+      impressions: number
+      conversions: number
+    }>()
+    for (const row of (groupStatsRes.data as AdGroupStatRow[] | null) || []) {
+      const key = row.adgroup_id
+      if (!key) continue
+      let agg = groupAggMap.get(key)
+      if (!agg) {
+        agg = {
+          platform: row.platform,
+          campaignId: row.campaign_id,
+          adgroupName: row.adgroup_name,
+          spend: 0, clicks: 0, impressions: 0, conversions: 0,
+        }
+        groupAggMap.set(key, agg)
+      }
+      agg.spend += Number(row.spend_amount) || 0
+      agg.clicks += Number(row.clicks) || 0
+      agg.impressions += Number(row.impressions) || 0
+      agg.conversions += Number(row.conversions) || 0
+    }
+
+    for (const [adgroupId, agg] of groupAggMap) {
+      const inflowSource = isApiPlatform(agg.platform ?? '')
+        ? PLATFORM_INFLOW_DEFAULTS[agg.platform as ApiPlatform]
+        : 'lead_webhook'
+      // media_conversion: 광고그룹의 conversions → leads (인입). cpl = spend / conversions.
+      // lead_webhook: 1차에서는 광고그룹별 lead 매칭 미구현 → 0
+      const leads = inflowSource === 'media_conversion' ? agg.conversions : 0
+
+      allCreatives.push({
+        utm_content: adgroupId, // 광고그룹 ID 가 식별자
+        name: agg.adgroupName || adgroupId,
+        platform: normalizeChannel(agg.platform),
+        spend: agg.spend,
+        clicks: agg.clicks,
+        impressions: agg.impressions,
+        cpc: agg.clicks > 0 ? Math.round(agg.spend / agg.clicks) : 0,
+        ctr: agg.impressions > 0 ? Math.round((agg.clicks / agg.impressions) * 10000) / 100 : 0,
+        cpl: leads > 0 ? Math.round(agg.spend / leads) : 0,
+        leads,
+        contacts: 0,
+        revenue: 0,
+        conversionRate: 0,
+        registered: false,
+        file_name: null,
+        file_type: null,
+        campaign_ids: agg.campaignId ? [agg.campaignId] : [],
+      })
+    }
+
     // 지출 높은순 정렬, 동률 시 리드수 높은순
     allCreatives.sort((a, b) => b.spend - a.spend || b.leads - a.leads)
-
-    // 임시 디버그 (캠페인 → 소재 매칭 실패 진단용. 진단 후 제거)
-    logger.info('[debug:creative-summary]', {
-      clientId,
-      startDate,
-      endDate,
-      leadsCount: leads.length,
-      adStatsCount: adStatsData.length,
-      adStatsWithUtmContent: adStatsData.filter(r => r.utm_content).length,
-      directUtmStatsSize: directUtmStats.size,
-      contentCampaignMapSize: contentCampaignMap.size,
-      allUtmContentsSize: allUtmContents.size,
-      sampleCreativeCampaignIds: allCreatives.slice(0, 5).map(c => ({
-        utm_content: c.utm_content,
-        platform: c.platform,
-        campaign_ids: c.campaign_ids,
-      })),
-    })
 
     return apiSuccess({ creatives: allCreatives })
   } catch (error) {

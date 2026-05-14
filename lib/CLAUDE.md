@@ -37,6 +37,7 @@
 | `leads` | 리드/문의 | UTM, `landing_page_id`, `updated_by` |
 | `ad_campaign_stats` | 캠페인 레벨 광고 통계 | 일별 집계 |
 | `ad_stats` | 광고(ad) 레벨 성과 | Meta: utm_content 매핑, TikTok: ad_id 기준 |
+| `ad_group_stats` | 광고그룹 레벨 성과 | 일별 집계. utm_content 매칭 불가 매체용 (네이버 SA 등). `(client_id, platform, adgroup_id, stat_date)` UNIQUE + `client_id IS NULL` partial UNIQUE |
 | `client_api_configs` | 클라이언트별 광고 API 키 | |
 | `landing_pages` | 랜딩 페이지 | 8자리 랜덤 ID |
 | `lead_raw_logs` | 리드 원본 로그 | 멱등성 키로 유실 방지 |

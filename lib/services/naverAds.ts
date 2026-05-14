@@ -503,15 +503,17 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
     // 2. 통계 조회 — /stat-reports 두 리포트 merge.
     //    매핑 (광고관리 비교 검증 완료):
     //      AD 리포트 (14 컬럼, 광고 단위):
-    //        [2]=nccCampaignId, [9]=impressions, [10]=clicks, [11]=cost(salesAmt)
+    //        [2]=nccCampaignId, [3]=nccAdgroupId, [9]=impressions, [10]=clicks, [11]=cost(salesAmt)
     //      AD_CONVERSION 리포트 (13 컬럼, 광고×전환이벤트 단위):
-    //        [2]=nccCampaignId, [10]=전환이벤트명("lead"), [11]=conversions, [12]=전환금액(추정)
-    //    캠페인 단위로 GROUP BY SUM 후 두 결과 merge.
+    //        [2]=nccCampaignId, [3]=nccAdgroupId, [10]=전환이벤트명("lead"), [11]=conversions, [12]=전환금액(추정)
+    //    캠페인 + 광고그룹 단위로 GROUP BY SUM 후 두 결과 merge.
     const statDt = dateStr.replace(/-/g, '') // YYYY-MM-DD → YYYYMMDD
-    interface CampaignAgg { impressions: number; clicks: number; cost: number; conversions: number }
-    const aggMap = new Map<string, CampaignAgg>()
+    interface AggMetrics { impressions: number; clicks: number; cost: number; conversions: number }
+    interface AdgroupAgg extends AggMetrics { campaignId: string }
+    const aggMap = new Map<string, AggMetrics>() // campaign_id 단위 (ad_campaign_stats 용)
+    const adgroupAggMap = new Map<string, AdgroupAgg>() // adgroup_id 단위 (ad_group_stats 용)
 
-    function getOrInit(campaignId: string): CampaignAgg {
+    function getOrInit(campaignId: string): AggMetrics {
       let agg = aggMap.get(campaignId)
       if (!agg) {
         agg = { impressions: 0, clicks: 0, cost: 0, conversions: 0 }
@@ -519,8 +521,16 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
       }
       return agg
     }
+    function getOrInitGroup(adgroupId: string, campaignId: string): AdgroupAgg {
+      let agg = adgroupAggMap.get(adgroupId)
+      if (!agg) {
+        agg = { campaignId, impressions: 0, clicks: 0, cost: 0, conversions: 0 }
+        adgroupAggMap.set(adgroupId, agg)
+      }
+      return agg
+    }
 
-    // 2-1. AD 리포트 (impressions, clicks, cost)
+    // 2-1. AD 리포트 (impressions, clicks, cost) — 캠페인 + 광고그룹 단위 동시 집계
     try {
       const report = await fetchNaverStatReport('AD', statDt, auth)
       if (report) {
@@ -528,17 +538,29 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
           if (row.length < 14) continue
           const campaignId = row[2]
           if (!campaignId) continue
+          const imp = toInt(row[9])
+          const clk = toInt(row[10])
+          const cost = toFloat(row[11])
+
           const agg = getOrInit(campaignId)
-          agg.impressions += toInt(row[9])
-          agg.clicks += toInt(row[10])
-          agg.cost += toFloat(row[11])
+          agg.impressions += imp
+          agg.clicks += clk
+          agg.cost += cost
+
+          const adgroupId = row[3]
+          if (adgroupId) {
+            const groupAgg = getOrInitGroup(adgroupId, campaignId)
+            groupAgg.impressions += imp
+            groupAgg.clicks += clk
+            groupAgg.cost += cost
+          }
         }
       }
     } catch (err) {
       logger.warn('AD stat-report 호출 실패', { error: String(err), statDt })
     }
 
-    // 2-2. AD_CONVERSION 리포트 (conversions)
+    // 2-2. AD_CONVERSION 리포트 (conversions) — 캠페인 + 광고그룹 단위 동시 집계
     try {
       const convReport = await fetchNaverStatReport('AD_CONVERSION', statDt, auth)
       if (convReport) {
@@ -546,12 +568,37 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
           if (row.length < 12) continue
           const campaignId = row[2]
           if (!campaignId) continue
+          const conv = toInt(row[11])
+
           const agg = getOrInit(campaignId)
-          agg.conversions += toInt(row[11])
+          agg.conversions += conv
+
+          const adgroupId = row[3]
+          if (adgroupId) {
+            const groupAgg = getOrInitGroup(adgroupId, campaignId)
+            groupAgg.conversions += conv
+          }
         }
       }
     } catch (err) {
       logger.warn('AD_CONVERSION stat-report 호출 실패', { error: String(err), statDt })
+    }
+
+    // 2-3. /ncc/adgroups 1회 호출(캠페인별) — 광고그룹 이름 매핑
+    //   adgroupAggMap 에 있는 광고그룹 ID 만 이름을 채우면 충분하지만, 캠페인 단위 일괄 조회가 단순.
+    const adgroupNameMap = new Map<string, string>()
+    for (const camp of campaigns) {
+      const adgroups = await naverGet<{ nccAdgroupId: string; name?: string }[]>(
+        '/ncc/adgroups',
+        { nccCampaignId: camp.nccCampaignId },
+        auth,
+      ).catch((err) => {
+        logger.warn('/ncc/adgroups 조회 실패', { campaignId: camp.nccCampaignId, error: String(err) })
+        return [] as { nccAdgroupId: string; name?: string }[]
+      })
+      for (const ag of adgroups) {
+        if (ag.nccAdgroupId) adgroupNameMap.set(ag.nccAdgroupId, ag.name || ag.nccAdgroupId)
+      }
     }
 
     // 3. campaign meta + agg merge upsert
@@ -579,6 +626,37 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
 
     if (error) {
       logger.error('DB upsert error', error, { clientId: options?.clientId })
+    }
+
+    // 3-2. ad_group_stats upsert — 광고그룹 단위
+    //   캠페인명 매핑 (campaign_id → name) 캐시
+    const campaignNameMap = new Map<string, string>()
+    for (const c of campaigns) campaignNameMap.set(c.nccCampaignId, c.name)
+
+    const groupDbRows = Array.from(adgroupAggMap.entries()).map(([adgroupId, agg]) => ({
+      platform: 'naver_ads',
+      campaign_id: agg.campaignId,
+      campaign_name: campaignNameMap.get(agg.campaignId) || null,
+      adgroup_id: adgroupId,
+      adgroup_name: adgroupNameMap.get(adgroupId) || adgroupId,
+      spend_amount: agg.cost,
+      clicks: agg.clicks,
+      impressions: agg.impressions,
+      conversions: agg.conversions,
+      stat_date: dateStr,
+      client_id: options?.clientId || null,
+    }))
+
+    if (groupDbRows.length > 0) {
+      const groupOnConflict = options?.clientId
+        ? 'client_id,platform,adgroup_id,stat_date'
+        : 'platform,adgroup_id,stat_date'
+      const { error: groupError } = await supabase
+        .from('ad_group_stats')
+        .upsert(groupDbRows, { onConflict: groupOnConflict })
+      if (groupError) {
+        logger.warn('ad_group_stats upsert 오류', { error: groupError.message, clientId: options?.clientId })
+      }
     }
 
     const duration = Date.now() - startTime

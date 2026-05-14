@@ -2,6 +2,15 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 광고그룹 단위 통계 — 검색광고용 운영 단위 통합 (2026-05-14)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-14 | feat: `ad_group_stats` 테이블 신설 (`20260514_ad_group_stats.sql`). 컬럼 = `client_id / platform / campaign_id+name / adgroup_id+name / stat_date / impressions / clicks / spend_amount / conversions`. 일반 UNIQUE `(client_id, platform, adgroup_id, stat_date)` + `client_id IS NULL` partial UNIQUE (환경변수 폴백 모드 호환). RLS enable (service_role 우회) |
+| 2026-05-14 | feat: `lib/services/naverAds.ts` — AD/AD_CONVERSION 리포트 row[3]=nccAdgroupId 동시 집계. `/ncc/adgroups` 호출로 광고그룹 이름 매핑. `ad_campaign_stats` + `ad_group_stats` 동시 upsert |
+| 2026-05-14 | feat: `/api/ads/creatives-performance` `ad_group_stats` 병렬 조회 후 광고그룹 row 를 creative 결과에 통합. `campaign_ids = [campaign_id]` 로 기존 캠페인 필터 흡수. `media_conversion` 모드(네이버 SA)는 `conversions → leads` 매핑 (CPL 일관), `lead_webhook` 모드는 광고그룹별 lead 매칭 미구현 → 0 |
+| 2026-05-14 | chore: 이전 임시 디버그 로그 제거 — `creatives-performance/route.ts` `[debug:creative-summary]`, `CreativePerformance.tsx` `[debug:creative-filter]` |
+
 ## 인입(Inflow) 통합 확장 — 광고/캠페인/요일/효율/랜딩/소재 (2026-05-14)
 
 | 날짜 | 내용 |

@@ -7,28 +7,35 @@ const SERVICE_NAME = 'MetaAds'
 const logger = createLogger(SERVICE_NAME)
 
 /**
- * Meta Insights API 의 actions[] 에서 lead 류 전환수 합산.
- * 카운트 대상:
- *   - 'lead'                                — Meta 표준 lead 이벤트
- *   - 'offsite_conversion.fb_pixel_lead'    — 사이트 픽셀 lead
- *   - 'onsite_conversion.lead_grouped'      — Meta Lead Ads 내장 폼
+ * Meta Insights API 의 actions[] 에서 lead 류 전환수 추출.
+ *
+ * Meta 는 같은 lead 이벤트를 여러 action_type 으로 중복 보고한다:
+ *   - 'lead'                              — 통합 카운트 (모든 lead 이벤트 합)
+ *   - 'offsite_conversion.fb_pixel_lead'  — 그 중 사이트 픽셀 부분
+ *   - 'onsite_conversion.lead_grouped'    — 그 중 Meta Lead Ads 내장 폼 부분
+ *
+ * 단순 합산하면 같은 lead 가 2~3배로 부풀려진다. 따라서:
+ *   1) 'lead' 가 응답에 있으면 그것만 사용 (메타 측 통합값)
+ *   2) 'lead' 가 없으면 fb_pixel_lead + lead_grouped 합산 (개별 보고 대비)
  */
 function extractLeadConversions(actions: unknown): number {
   if (!Array.isArray(actions)) return 0
-  const COUNTED_TYPES = new Set<string>([
-    'lead',
-    'offsite_conversion.fb_pixel_lead',
-    'onsite_conversion.lead_grouped',
-  ])
-  let total = 0
+  let leadTotal = 0
+  let fallbackTotal = 0
   for (const a of actions) {
     if (typeof a !== 'object' || a === null) continue
     const row = a as { action_type?: string; value?: string }
-    if (row.action_type && COUNTED_TYPES.has(row.action_type)) {
-      total += parseInt(row.value || '0', 10)
+    const v = parseInt(row.value || '0', 10)
+    if (row.action_type === 'lead') {
+      leadTotal += v
+    } else if (
+      row.action_type === 'offsite_conversion.fb_pixel_lead' ||
+      row.action_type === 'onsite_conversion.lead_grouped'
+    ) {
+      fallbackTotal += v
     }
   }
-  return total
+  return leadTotal > 0 ? leadTotal : fallbackTotal
 }
 
 export interface MetaAdsOptions {
@@ -196,32 +203,6 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
       allAds.push(...(json.data || []))
       nextUrl = json.paging?.next || null
     }
-
-    // ─── 임시 진단 로그 — ad-level actions 응답 구조 추적. 진단 후 제거 ─────
-    //   캠페인 레벨에는 lead 잡히는데 ad 레벨 conversions 가 모두 0인 원인 파악.
-    //   첫 3개 row 의 actions 배열 통째로 + 등장하는 action_type 분포 노출.
-    const actionTypeFreq = new Map<string, number>()
-    for (const ad of allAds) {
-      if (Array.isArray(ad.actions)) {
-        for (const a of ad.actions) {
-          actionTypeFreq.set(a.action_type, (actionTypeFreq.get(a.action_type) || 0) + 1)
-        }
-      }
-    }
-    logger.info('[debug:meta-ad-actions]', {
-      clientId: options?.clientId,
-      dateStr,
-      totalAds: allAds.length,
-      adsWithActions: allAds.filter(a => Array.isArray(a.actions) && a.actions.length > 0).length,
-      actionTypeFreq: Object.fromEntries(actionTypeFreq),
-      sampleAds: allAds.slice(0, 3).map(a => ({
-        ad_id: a.ad_id,
-        ad_name: a.ad_name?.slice(0, 30),
-        clicks: a.clicks,
-        actions: a.actions,
-      })),
-    })
-    // ───────────────────────────────────────────────────────────────────
 
     if (allAds.length === 0) {
       return { platform: 'meta_ads', count: 0 }

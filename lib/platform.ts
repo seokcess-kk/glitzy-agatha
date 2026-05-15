@@ -217,6 +217,7 @@ export function sourceToChannel(source: string): string {
   const channelMap: Record<string, string> = {
     meta: 'Meta', google: 'Google', naver: 'Naver', kakao: 'Kakao',
     tiktok: 'TikTok', youtube: 'YouTube', dable: 'Dable',
+    adn: 'ADN', across: 'ADN', acrosspf: 'ADN',
     facebook: 'Meta', fb: 'Meta', ig: 'Instagram', instagram: 'Instagram',
   }
   return channelMap[prefix] || source

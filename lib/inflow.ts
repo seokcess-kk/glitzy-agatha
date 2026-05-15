@@ -57,6 +57,7 @@ const CHANNEL_TO_API_PLATFORM: Record<string, ApiPlatform> = {
   Naver: 'naver_ads',
   Kakao: 'kakao_ads',
   Dable: 'dable_ads',
+  ADN: 'adn_ads',
 }
 
 export function channelToApiPlatform(channel: string): ApiPlatform | null {

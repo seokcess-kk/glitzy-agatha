@@ -21,19 +21,21 @@ export const PATCH = withClientFilter(async (req: Request, { user, clientId, ass
   if (!leadId) return apiError('유효한 ID가 필요합니다.', 400)
 
   const body = await req.json()
-  const { lead_status, notes } = body
+  // body 키는 status 권장, 하위호환으로 lead_status 도 허용
+  const status: string | undefined = body.status ?? body.lead_status
+  const { notes } = body
 
   // 최소 하나는 있어야 함
-  if (!lead_status && notes === undefined) {
+  if (!status && notes === undefined) {
     return apiError('변경할 항목이 없습니다.', 400)
   }
 
-  if (lead_status && !VALID_LEAD_STATUSES.includes(lead_status)) {
+  if (status && !VALID_LEAD_STATUSES.includes(status as typeof VALID_LEAD_STATUSES[number])) {
     return apiError(`유효하지 않은 상태입니다. (${VALID_LEAD_STATUSES.join(', ')})`, 400)
   }
 
   // 리드 조회 (client_id 권한 확인 포함)
-  let query = supabase.from('leads').select('id, contact_id, client_id, lead_status, notes').eq('id', leadId)
+  let query = supabase.from('leads').select('id, contact_id, client_id, status, notes').eq('id', leadId)
   const filtered = applyClientFilter(query, { clientId, assignedClientIds })
   if (filtered === null) return apiError('접근 권한이 없습니다.', 403)
   query = filtered
@@ -43,7 +45,7 @@ export const PATCH = withClientFilter(async (req: Request, { user, clientId, ass
 
   // 업데이트할 필드 구성
   const updateData: Record<string, unknown> = { updated_by: Number(user.id) }
-  if (lead_status) updateData.lead_status = lead_status
+  if (status) updateData.status = status
   if (notes !== undefined) updateData.notes = sanitizeString(notes, 1000)
 
   const { error: updateError } = await supabase
@@ -54,12 +56,12 @@ export const PATCH = withClientFilter(async (req: Request, { user, clientId, ass
 
   await logActivity(supabase, {
     userId: user.id, clientId: lead.client_id,
-    action: lead_status ? 'lead_status_change' : 'lead_note_update',
+    action: status ? 'lead_status_change' : 'lead_note_update',
     targetTable: 'leads', targetId: leadId,
-    detail: { before: lead.lead_status, after: lead_status, notes_changed: notes !== undefined },
+    detail: { before: lead.status, after: status, notes_changed: notes !== undefined },
   })
 
-  return apiSuccess({ success: true, lead_status, notes: updateData.notes })
+  return apiSuccess({ success: true, status, notes: updateData.notes })
 })
 
 /**

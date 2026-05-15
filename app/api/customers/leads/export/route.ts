@@ -67,7 +67,7 @@ export const GET = withClientAdmin(async (req: Request, { clientId, assignedClie
   let query = supabase
     .from('leads')
     .select(`
-      id, lead_status, utm_source, utm_campaign, conversion_value, lost_reason, conversion_memo, created_at,
+      id, status, utm_source, utm_campaign, conversion_value, lost_reason, conversion_memo, created_at,
       contact:contacts(id, name, phone_number, first_source),
       landing_page:landing_pages(id, name)
     `)
@@ -78,7 +78,7 @@ export const GET = withClientAdmin(async (req: Request, { clientId, assignedClie
   if (filtered === null) return buildCsvResponse([])
   query = filtered
 
-  if (status && status !== 'all') query = query.eq('lead_status', status)
+  if (status && status !== 'all') query = query.eq('status', status)
   if (utmSource && utmSource !== 'all') query = query.eq('utm_source', utmSource)
   if (campaign && campaign !== 'all') query = query.eq('utm_campaign', campaign)
   if (tsStart) query = query.gte('created_at', tsStart)
@@ -96,7 +96,7 @@ export const GET = withClientAdmin(async (req: Request, { clientId, assignedClie
     phone: maskPhone(l.contact?.phone_number),
     channel: normalizeChannel(l.utm_source || l.contact?.first_source),
     campaign: l.utm_campaign || '',
-    status: STATUS_LABELS[l.lead_status] || l.lead_status || '',
+    status: STATUS_LABELS[l.status] || l.status || '',
     conversionValue: l.conversion_value ? String(l.conversion_value) : '',
     lostReason: l.lost_reason || '',
     memo: l.conversion_memo || '',

@@ -76,13 +76,15 @@ export async function sendSmsWithLog(
 
   // DB 로그 기록
   try {
+    // DB 컬럼명: phone_number / detail (운영 스키마). attempts/sent_at/error_message/lead_id 는 마이그레이션으로 추가.
     const { data: log } = await supabase
       .from('sms_send_logs')
       .insert({
         client_id: clientId ?? null,
         lead_id: leadId ?? null,
-        phone: to,
-        message: text,
+        phone_number: to,
+        detail: text,
+        message_type: 'lead_notify',
         status: result.success ? 'sent' : (process.env.QSTASH_TOKEN ? 'retrying' : 'failed'),
         error_message: result.error || null,
         attempts: 1,

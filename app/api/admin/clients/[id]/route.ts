@@ -31,16 +31,16 @@ export const PATCH = withSuperAdmin(async (req: Request) => {
     }
 
     updateData.notify_phones = filtered
-    // 하위 호환: 첫 번째 번호를 notify_phone에도 저장
-    updateData.notify_phone = filtered[0] || null
+    // 주의: 운영 DB 에는 notify_phone(단수) / notify_enabled 컬럼이 없음 → 미사용
   }
 
-  // 기존 단일 번호 (하위 호환)
+  // 기존 단일 번호 입력 호환 — notify_phones 단일 원소로 변환
   if ('notify_phone' in body && !('notify_phones' in body)) {
-    updateData.notify_phone = body.notify_phone
+    const single = body.notify_phone
+    updateData.notify_phones = single ? [String(single)] : []
   }
 
-  if ('notify_enabled' in body) updateData.notify_enabled = body.notify_enabled
+  // notify_enabled 는 DB 미존재 — 비어있는 notify_phones 자체가 "비활성" 의미로 사용
   if ('is_active' in body) updateData.is_active = Boolean(body.is_active)
   if ('erp_client_id' in body) updateData.erp_client_id = body.erp_client_id != null ? String(body.erp_client_id) : null
 

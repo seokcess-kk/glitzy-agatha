@@ -72,7 +72,7 @@ export const PATCH = withClientFilter(async (req: Request, { user, clientId, ass
   }
 
   // 리드 조회 (권한 확인)
-  let query = supabase.from('leads').select('id, contact_id, client_id, lead_status').eq('id', leadId)
+  let query = supabase.from('leads').select('id, contact_id, client_id, status').eq('id', leadId)
   const filtered = applyClientFilter(query, { clientId, assignedClientIds })
   if (filtered === null) return apiError('접근 권한이 없습니다.', 403)
   query = filtered
@@ -82,7 +82,7 @@ export const PATCH = withClientFilter(async (req: Request, { user, clientId, ass
 
   // 업데이트 필드 구성
   const updateData: Record<string, unknown> = {
-    lead_status: status,
+    status,
     updated_by: Number(user.id),
   }
   if (status === 'converted') {
@@ -123,10 +123,10 @@ export const PATCH = withClientFilter(async (req: Request, { user, clientId, ass
     action: 'lead_status_change',
     targetTable: 'leads',
     targetId: leadId,
-    detail: { before: lead.lead_status, after: status, conversion_value, lost_reason, conversion_memo },
+    detail: { before: lead.status, after: status, conversion_value, lost_reason, conversion_memo },
   })
 
-  return apiSuccess({ success: true, lead_status: status })
+  return apiSuccess({ success: true, status })
 })
 
 /**

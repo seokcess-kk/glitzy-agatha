@@ -19,7 +19,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     .from('contacts')
     .select(`
       id, name, phone_number, first_source, total_conversions, total_conversion_value, created_at, client_id,
-      leads(id, utm_source, utm_campaign, utm_medium, utm_content, lead_status, conversion_value, conversion_memo, lost_reason, notes, created_at, landing_page:landing_pages(id, name))
+      leads(id, utm_source, utm_campaign, utm_medium, utm_content, status, conversion_value, conversion_memo, lost_reason, notes, created_at, landing_page:landing_pages(id, name))
     `)
     .eq('id', contactId)
 

@@ -59,7 +59,7 @@ interface CampaignLead {
   chatbot_sent_at: string | null
   created_at: string
   landing_page_id: number | null
-  lead_status: string
+  status: string
   notes: string | null
   custom_data: { survey?: Record<string, string>; marketing_consent?: boolean; name?: string } | null
   contact: { id: number; name: string; phone_number: string; first_source: string } | null
@@ -288,7 +288,7 @@ function LeadCard({ lead, onStatusChange, onNotesChange }: {
   const surveyEntries = survey ? Object.values(survey) : []
   const marketingConsent = lead.custom_data?.marketing_consent
   const leadName = lead.custom_data?.name || lead.contact?.name || '이름 없음'
-  const status = lead.lead_status || 'new'
+  const status = lead.status || 'new'
   const statusConfig = LEAD_STATUS_CONFIG[status] || LEGACY_STATUS[status] || LEAD_STATUS_CONFIG.new
 
   const handleNotesSave = () => {
@@ -448,7 +448,7 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
 
     // 상태 필터
     if (statusFilter !== 'all') {
-      result = result.filter(l => (l.lead_status || 'new') === statusFilter)
+      result = result.filter(l => (l.status || 'new') === statusFilter)
     }
 
     // 정렬
@@ -507,7 +507,7 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
     const res = await fetch(`/api/leads/${leadId}?${params}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lead_status: newStatus }),
+      body: JSON.stringify({ status: newStatus }),
     })
     if (res.ok) {
       const statusLabel = LEAD_STATUS_CONFIG[newStatus]?.label || newStatus
@@ -516,7 +516,7 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
       } else {
         toast.success(`상태가 '${statusLabel}'(으)로 변경되었습니다.`)
       }
-      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, lead_status: newStatus } : l))
+      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l))
     } else {
       toast.error('상태 변경 실패')
     }
@@ -624,7 +624,7 @@ function CampaignDetail({ campaign, onBack }: { campaign: string; onBack: () => 
       {!loading && leads.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-5">
           {Object.entries(LEAD_STATUS_CONFIG).map(([key, cfg]) => {
-            const count = filteredForStatus.filter(l => (l.lead_status || 'new') === key).length
+            const count = filteredForStatus.filter(l => (l.status || 'new') === key).length
             return (
               <Card
                 key={key}

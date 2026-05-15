@@ -299,7 +299,7 @@ export function LeadTab({ onStatsChange }: LeadTabProps) {
                     {lead.utm_campaign || '-'}
                   </TableCell>
                   <TableCell className="text-right">
-                    <StatusBadge status={lead.lead_status || 'new'} />
+                    <StatusBadge status={lead.status || 'new'} />
                   </TableCell>
                   <TableCell className="text-right text-sm font-mono">
                     {lead.conversion_value ? (
@@ -312,7 +312,7 @@ export function LeadTab({ onStatsChange }: LeadTabProps) {
                     {formatDate(lead.created_at)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {lead.lead_status === 'converted' || lead.lead_status === 'lost' || lead.lead_status === 'invalid' ? (
+                    {lead.status === 'converted' || lead.status === 'lost' || lead.status === 'invalid' ? (
                       <span className="text-xs text-muted-foreground">완료</span>
                     ) : (
                       <Button
@@ -369,7 +369,7 @@ export function LeadTab({ onStatsChange }: LeadTabProps) {
           onOpenChange={setStatusDialogOpen}
           leadId={selectedLead.id}
           leadName={selectedLead.contact?.name || '이름 없음'}
-          currentStatus={selectedLead.lead_status || 'new'}
+          currentStatus={selectedLead.status || 'new'}
           onSuccess={handleRefresh}
         />
       )}

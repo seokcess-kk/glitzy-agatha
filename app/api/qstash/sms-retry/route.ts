@@ -47,8 +47,8 @@ export async function POST(req: Request) {
     return apiSuccess({ message: '최대 재시도 초과, 최종 실패 처리' })
   }
 
-  // SMS 재발송
-  const result = await sendSms({ to: log.phone, text: log.message })
+  // SMS 재발송 (DB 컬럼명: phone_number / detail)
+  const result = await sendSms({ to: log.phone_number, text: log.detail })
   const newAttempts = log.attempts + 1
 
   if (result.success) {

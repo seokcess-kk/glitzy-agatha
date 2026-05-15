@@ -229,19 +229,19 @@ export async function POST(req: Request) {
       try {
         const { data: client } = await supabase
           .from('clients')
-          .select('notify_phone, notify_phones, notify_enabled, name')
+          .select('notify_phones, name')
           .eq('id', validClientId)
           .single()
 
-        if (client?.notify_enabled && process.env.SOLAPI_API_KEY) {
-          const phones: string[] =
-            (client.notify_phones && client.notify_phones.length > 0)
-              ? client.notify_phones
-              : (client.notify_phone ? [client.notify_phone] : [])
-
-          if (phones.length > 0) {
+        // 운영 DB 에는 notify_phones[] 만 존재 — 비어있으면 알림 비활성 의미
+        const phones: string[] =
+          Array.isArray(client?.notify_phones) && client.notify_phones.length > 0
+            ? client.notify_phones
+            : []
+        if (phones.length > 0 && process.env.SOLAPI_API_KEY) {
+          {
             const { sendSmsWithLog } = await import('@/lib/solapi')
-            const smsText = `[${client.name}] 상담 유입\n이름: ${sanitizedName || '미입력'}\n연락처: ${normalizedPhone}`
+            const smsText = `[${client?.name ?? ''}] 상담 유입\n이름: ${sanitizedName || '미입력'}\n연락처: ${normalizedPhone}`
             const clientId = validClientId
 
             const results = await Promise.all(

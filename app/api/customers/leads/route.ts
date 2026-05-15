@@ -45,7 +45,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   if (filtered === null) return apiSuccess({ data: [], total: 0, page, per_page: perPage })
   query = filtered
 
-  if (status && status !== 'all') query = query.eq('lead_status', status)
+  if (status && status !== 'all') query = query.eq('status', status)
   if (utmSource && utmSource !== 'all') query = query.eq('utm_source', utmSource)
   if (campaign && campaign !== 'all') query = query.eq('utm_campaign', campaign)
   if (tsStart) query = query.gte('created_at', tsStart)
@@ -131,7 +131,7 @@ export const POST = withClientFilter(async (req: Request, { user, clientId, assi
       client_id: clientId,
       contact_id: contactId,
       utm_source: utmSource,
-      lead_status: 'new',
+      status: 'new',
       notes: memo,
       created_by: Number(user.id),
     })

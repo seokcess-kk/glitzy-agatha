@@ -33,7 +33,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       .from('leads')
       .select(`
         id, contact_id, utm_source, utm_medium, utm_campaign, utm_content,
-        chatbot_sent, chatbot_sent_at, created_at, landing_page_id, custom_data, lead_status, notes,
+        chatbot_sent, chatbot_sent_at, created_at, landing_page_id, custom_data, status, notes,
         contact:contacts(id, name, phone_number, first_source),
         landing_page:landing_pages(id, name)
       `)

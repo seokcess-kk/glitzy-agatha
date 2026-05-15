@@ -62,13 +62,14 @@ async function fetchMetrics(
   const totalImpressions = adStatsRes.data?.reduce((s, r) => s + Number(r.impressions || 0), 0) || 0
   const totalLeads = leadsRes.data?.length || 0
 
-  // 매체 전환 기반 인입 — PLATFORM_INFLOW_DEFAULTS 가 'media_conversion' 인 플랫폼만 합산
-  //   (예: 네이버 SA. 검색광고는 자체 랜딩 없이 매체 전환수로 인입 측정)
+  // 매체 전환 기반 인입 — PLATFORM_INFLOW_DEFAULTS 가 media_conversion / combined 인 플랫폼 합산
+  //   media_conversion: 자체 랜딩 없이 매체 전환수로만 측정 (네이버 SA / ADN)
+  //   combined: 자체 랜딩 + 매체 전환 둘 다 (Meta 등)
   //   이중 집계 방지: lead_webhook 모드 플랫폼은 leads 테이블로만 카운트, conversions 무시
   const mediaConversionsTotal = (adStatsRes.data || []).reduce((sum, r) => {
     const platform = r.platform
     if (!isApiPlatform(platform)) return sum
-    if (PLATFORM_INFLOW_DEFAULTS[platform] !== 'media_conversion') return sum
+    if (PLATFORM_INFLOW_DEFAULTS[platform] === 'lead_webhook') return sum
     return sum + Number(r.conversions || 0)
   }, 0)
 

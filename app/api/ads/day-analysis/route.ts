@@ -97,8 +97,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       const d = new Date(row.stat_date + 'T00:00:00+09:00')
       const dayOfWeek = d.getUTCDay()
       spendByDay[dayOfWeek] += Number(row.spend_amount) || 0
-      // 매체 전환수 — media_conversion 모드 플랫폼만
-      if (isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] === 'media_conversion') {
+      // 매체 전환수 — media_conversion / combined 모드 플랫폼만 (lead_webhook 매체는 이중 집계 방지)
+      if (isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] !== 'lead_webhook') {
         mediaConvByDay[dayOfWeek] += Number(row.conversions) || 0
       }
     }

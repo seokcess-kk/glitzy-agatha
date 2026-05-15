@@ -85,7 +85,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (!entry) continue
     entry.spend += Number(row.spend_amount)
     const platform = row.platform
-    if (isApiPlatform(platform) && PLATFORM_INFLOW_DEFAULTS[platform] === 'media_conversion') {
+    // media_conversion / combined 매체만 conversions 합산 (lead_webhook 매체는 이중 집계 방지)
+    if (isApiPlatform(platform) && PLATFORM_INFLOW_DEFAULTS[platform] !== 'lead_webhook') {
       entry.mediaConversions += Number(row.conversions || 0)
     }
   }

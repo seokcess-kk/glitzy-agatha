@@ -14,7 +14,7 @@ interface ChannelData {
   actualLeads?: number
   mediaConversions?: number
   inflowCount?: number
-  inflowSource?: 'lead_webhook' | 'media_conversion'
+  inflowSource?: 'lead_webhook' | 'media_conversion' | 'combined'
   spend: number
   revenue: number
   cpl: number
@@ -123,14 +123,21 @@ export function ChannelTable({ data, loading }: ChannelTableProps) {
                   </td>
                   <td
                     className="text-right py-2.5 px-2 tabular-nums font-medium text-foreground"
-                    title={row.inflowSource === 'media_conversion'
-                      ? `매체 전환 기반 (검색광고 NPLA 전환추적)\n매체 전환수: ${(row.mediaConversions ?? 0).toLocaleString()}`
-                      : `리드 폼/웹훅 기반\n실제 리드: ${(row.actualLeads ?? row.leads).toLocaleString()}`}
+                    title={
+                      row.inflowSource === 'media_conversion'
+                        ? `매체 전환 기반 (검색광고/디스플레이)\n매체 전환수: ${(row.mediaConversions ?? 0).toLocaleString()}`
+                        : row.inflowSource === 'combined'
+                        ? `리드 + 매체 전환 합산\n리드: ${(row.actualLeads ?? 0).toLocaleString()} · 매체 전환: ${(row.mediaConversions ?? 0).toLocaleString()}`
+                        : `리드 폼/웹훅 기반\n실제 리드: ${(row.actualLeads ?? row.leads).toLocaleString()}`
+                    }
                   >
                     <span className="inline-flex items-center justify-end gap-1">
                       {row.leads.toLocaleString()}
                       {row.inflowSource === 'media_conversion' && (
                         <span className="text-[10px] text-muted-foreground font-normal bg-muted/50 px-1 rounded">매</span>
+                      )}
+                      {row.inflowSource === 'combined' && (
+                        <span className="text-[10px] text-muted-foreground font-normal bg-muted/50 px-1 rounded">복합</span>
                       )}
                     </span>
                   </td>

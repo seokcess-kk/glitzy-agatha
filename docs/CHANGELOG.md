@@ -2,6 +2,17 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## Inflow `combined` 모드 도입 + Meta conversions 매핑 (2026-05-15)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-15 | feat: `InflowSource` 에 `'combined'` 추가 (`lib/platform.ts`). `computeInflowCount` 분기 추가 — `actualLeads + mediaConversions` 단순 합산 (`lib/inflow.ts`). 자체 랜딩과 매체 자체 폼/픽셀 트래킹을 같은 채널에서 동시 운영하는 케이스(예: Meta) 용 |
+| 2026-05-15 | feat: `PLATFORM_INFLOW_DEFAULTS.meta_ads = 'combined'`. 기존 'lead_webhook' → 자체 랜딩 + 메타 픽셀/Lead Ads 전환 모두 인입 카운트 |
+| 2026-05-15 | feat: `lib/services/metaAds.ts` — Insights API 에 `actions` 필드 추가, `extractLeadConversions()` 헬퍼로 lead 류 액션(`lead`, `offsite_conversion.fb_pixel_lead`, `onsite_conversion.lead_grouped`) 합산 → `ad_campaign_stats.conversions` 저장 |
+| 2026-05-15 | feat: 5개 API(`dashboard/{trend,campaign}`, `ads/{day-analysis,efficiency-trend,platform-summary}`) + `creatives-performance` + `campaign-ranking-table` 의 conversions 합산 분기를 `=== 'media_conversion'` → `!== 'lead_webhook'` 로 변경. combined 모드도 자동 합산 |
+| 2026-05-15 | feat: 채널 테이블 UI(`components/dashboard/channel-table.tsx`) "복합" 배지 + tooltip ("리드 + 매체 전환 합산") 추가. 기존 "매" 배지는 `media_conversion` 전용 유지 |
+| 2026-05-15 | note: 기존 Meta `ad_campaign_stats.conversions` 는 0 상태 → 백필 재실행 시 새로 채워짐. 동일 사용자가 자체 랜딩 폼 + Meta 픽셀 lead 둘 다 발사 시 이중 카운트 위험 (캠페인 트래킹 분리로 회피) |
+
 ## ADN(Across DN) 매체 추가 (2026-05-14)
 
 | 날짜 | 내용 |

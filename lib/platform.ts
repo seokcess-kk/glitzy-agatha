@@ -95,10 +95,10 @@ export const API_REQUIRED_FIELDS: Record<ApiPlatform, string[]> = {
 // PLATFORM_INFLOW_DEFAULTS — 매체별 기본 source. client_api_configs.config.inflow_source
 // 로 클라이언트별 override 가능. 검색광고처럼 자체 랜딩이 없는 매체는 media_conversion 기본.
 
-export type InflowSource = 'lead_webhook' | 'media_conversion'
+export type InflowSource = 'lead_webhook' | 'media_conversion' | 'combined'
 
 export const PLATFORM_INFLOW_DEFAULTS: Record<ApiPlatform, InflowSource> = {
-  meta_ads: 'lead_webhook',
+  meta_ads: 'combined', // Meta: 자체 랜딩(actualLeads) + 픽셀/Lead Ads 전환(conversions) 합산
   google_ads: 'lead_webhook',
   tiktok_ads: 'lead_webhook',
   naver_ads: 'media_conversion', // 검색광고: 자체 랜딩 없음, NPLA 전환추적 기반
@@ -110,6 +110,7 @@ export const PLATFORM_INFLOW_DEFAULTS: Record<ApiPlatform, InflowSource> = {
 export const INFLOW_SOURCE_LABELS: Record<InflowSource, string> = {
   lead_webhook: '리드(폼/웹훅)',
   media_conversion: '매체 전환',
+  combined: '리드 + 매체 전환',
 }
 
 // ═══ 2계층: Campaign Type (플랫폼 하위) ═══

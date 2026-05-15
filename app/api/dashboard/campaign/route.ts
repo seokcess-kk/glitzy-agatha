@@ -133,8 +133,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     spendByCampaign[campaignKey].spend += Number(row.spend_amount) || 0
     spendByCampaign[campaignKey].clicks += Number(row.clicks) || 0
     spendByCampaign[campaignKey].impressions += Number(row.impressions) || 0
-    // 매체 전환 합산 — 검색광고 등 매체 전환 기반 인입
-    if (isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] === 'media_conversion') {
+    // 매체 전환 합산 — media_conversion / combined 모드 매체 (lead_webhook 매체는 이중 집계 방지)
+    if (isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] !== 'lead_webhook') {
       spendByCampaign[campaignKey].mediaConversions += Number(row.conversions) || 0
     }
   }

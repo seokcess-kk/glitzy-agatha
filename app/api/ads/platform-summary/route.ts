@@ -107,9 +107,9 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       adByChannel[channel].spend += Number(row.spend_amount) || 0
       adByChannel[channel].clicks += Number(row.clicks) || 0
       adByChannel[channel].impressions += Number(row.impressions) || 0
-      // 매체 전환 — media_conversion 모드 플랫폼만
-      const isMediaConvPlatform = isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] === 'media_conversion'
-      if (isMediaConvPlatform) {
+      // 매체 전환 — media_conversion / combined 모드 플랫폼만 (lead_webhook 매체는 이중 집계 방지)
+      const hasMediaConv = isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] !== 'lead_webhook'
+      if (hasMediaConv) {
         adByChannel[channel].mediaConversions += Number(row.conversions) || 0
       }
 
@@ -123,7 +123,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       adBySource[channel][sourceKey].spend += Number(row.spend_amount) || 0
       adBySource[channel][sourceKey].clicks += Number(row.clicks) || 0
       adBySource[channel][sourceKey].impressions += Number(row.impressions) || 0
-      if (isMediaConvPlatform) {
+      if (hasMediaConv) {
         adBySource[channel][sourceKey].mediaConversions += Number(row.conversions) || 0
       }
     }

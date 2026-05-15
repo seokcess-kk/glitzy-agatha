@@ -34,15 +34,20 @@ export function resolveInflowSource(
  * 단일 채널의 인입 카운트 계산.
  *   - lead_webhook:     actualLeads 사용 (mediaConversions 무시)
  *   - media_conversion: mediaConversions 사용 (actualLeads 무시)
- *
- * 두 source 를 더하면 중복 집계 위험 (랜딩 폼 + 매체 전환이 같은 사건 보고 가능).
+ *   - combined:         actualLeads + mediaConversions 단순 합산.
+ *                       자체 랜딩 + 매체 자체 폼/픽셀 트래킹을 같은 채널에서
+ *                       동시 운영하는 케이스(예: Meta) 용. 동일 사용자가 두
+ *                       경로로 동시 보고될 시 이중 카운트 위험 — 캠페인
+ *                       단위 트래킹 분리(랜딩에는 픽셀 lead 미설치 등)로 회피.
  */
 export function computeInflowCount(
   actualLeads: number,
   mediaConversions: number,
   inflowSource: InflowSource,
 ): number {
-  return inflowSource === 'lead_webhook' ? actualLeads : mediaConversions
+  if (inflowSource === 'lead_webhook') return actualLeads
+  if (inflowSource === 'media_conversion') return mediaConversions
+  return actualLeads + mediaConversions
 }
 
 /**

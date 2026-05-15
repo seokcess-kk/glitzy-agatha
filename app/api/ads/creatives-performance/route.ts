@@ -426,7 +426,9 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
         : 'lead_webhook'
       // media_conversion: 광고그룹의 conversions → leads (인입). cpl = spend / conversions.
       // lead_webhook: 1차에서는 광고그룹별 lead 매칭 미구현 → 0
-      const leads = inflowSource === 'media_conversion' ? agg.conversions : 0
+      // media_conversion / combined: conversions 를 광고그룹 인입으로 사용.
+      // lead_webhook: 광고그룹별 lead 매칭 미구현 → 0
+      const leads = inflowSource === 'lead_webhook' ? 0 : agg.conversions
 
       allCreatives.push({
         utm_content: adgroupId, // 광고그룹 ID 가 식별자

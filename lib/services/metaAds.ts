@@ -6,6 +6,31 @@ import { getKstDateString } from '@/lib/date'
 const SERVICE_NAME = 'MetaAds'
 const logger = createLogger(SERVICE_NAME)
 
+/**
+ * Meta Insights API 의 actions[] 에서 lead 류 전환수 합산.
+ * 카운트 대상:
+ *   - 'lead'                                — Meta 표준 lead 이벤트
+ *   - 'offsite_conversion.fb_pixel_lead'    — 사이트 픽셀 lead
+ *   - 'onsite_conversion.lead_grouped'      — Meta Lead Ads 내장 폼
+ */
+function extractLeadConversions(actions: unknown): number {
+  if (!Array.isArray(actions)) return 0
+  const COUNTED_TYPES = new Set<string>([
+    'lead',
+    'offsite_conversion.fb_pixel_lead',
+    'onsite_conversion.lead_grouped',
+  ])
+  let total = 0
+  for (const a of actions) {
+    if (typeof a !== 'object' || a === null) continue
+    const row = a as { action_type?: string; value?: string }
+    if (row.action_type && COUNTED_TYPES.has(row.action_type)) {
+      total += parseInt(row.value || '0', 10)
+    }
+  }
+  return total
+}
+
 export interface MetaAdsOptions {
   clientId?: number
   accountId?: string
@@ -28,10 +53,11 @@ export async function fetchMetaAds(date = new Date(), options?: MetaAdsOptions) 
 
   try {
     // access_token은 URL이 아닌 Authorization 헤더로 전달 (보안)
+    //   actions 추가 — lead 류 전환수 합산해 conversions 컬럼에 저장
     const url = `https://graph.facebook.com/v19.0/${accountId}/insights?` +
       new URLSearchParams({
         level: 'campaign',
-        fields: 'campaign_id,campaign_name,spend,clicks,impressions',
+        fields: 'campaign_id,campaign_name,spend,clicks,impressions,actions',
         time_range: JSON.stringify({ since: dateStr, until: dateStr }),
         time_increment: '1',
       })
@@ -55,13 +81,14 @@ export async function fetchMetaAds(date = new Date(), options?: MetaAdsOptions) 
 
     // 배치 처리
     if (campaigns.length > 0) {
-      const rows = campaigns.map((c: Record<string, string>) => ({
+      const rows = campaigns.map((c: Record<string, unknown>) => ({
         platform: 'meta_ads',
-        campaign_id: c.campaign_id,
-        campaign_name: c.campaign_name,
-        spend_amount: parseFloat(c.spend || '0'),
-        clicks: parseInt(c.clicks || '0'),
-        impressions: parseInt(c.impressions || '0'),
+        campaign_id: c.campaign_id as string,
+        campaign_name: c.campaign_name as string,
+        spend_amount: parseFloat((c.spend as string) || '0'),
+        clicks: parseInt((c.clicks as string) || '0'),
+        impressions: parseInt((c.impressions as string) || '0'),
+        conversions: extractLeadConversions(c.actions),
         stat_date: dateStr,
         client_id: options?.clientId || null,
       }))

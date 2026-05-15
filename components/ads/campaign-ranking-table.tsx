@@ -121,11 +121,12 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
 
     for (const record of rawData) {
       const key = record.campaign_name || '(미설정)'
-      // 매체 전환 합산 — media_conversion 모드 매체만 (네이버 SA 등). 이중 집계 방지.
-      const isMediaConversion =
-        isApiPlatform(record.platform ?? '') &&
-        PLATFORM_INFLOW_DEFAULTS[record.platform as ApiPlatform] === 'media_conversion'
-      const convAdd = isMediaConversion ? Number(record.conversions) || 0 : 0
+      // 매체 전환 합산 — media_conversion 또는 combined 모드 매체.
+      //   lead_webhook 모드 매체만 conversions 무시 (이중 집계 방지).
+      const inflowMode = isApiPlatform(record.platform ?? '')
+        ? PLATFORM_INFLOW_DEFAULTS[record.platform as ApiPlatform]
+        : 'lead_webhook'
+      const convAdd = inflowMode === 'lead_webhook' ? 0 : Number(record.conversions) || 0
 
       const existing = map.get(key)
       if (existing) {
@@ -153,14 +154,18 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
     }
 
     // Compute derived metrics + 인입(inflow) 카운트.
-    //   lead_webhook 매체: leads = campaignLeadCounts[campaign_id]
-    //   media_conversion 매체(네이버 SA 등): leads = mediaConversions (campaignLeadCounts 미사용)
+    //   lead_webhook:     leads = campaignLeadCounts[campaign_id]
+    //   media_conversion: leads = mediaConversions
+    //   combined:         leads = actualLeads + mediaConversions
     return Array.from(map.values()).map(row => {
       const inflowSource = isApiPlatform(row.platform ?? '')
         ? PLATFORM_INFLOW_DEFAULTS[row.platform as ApiPlatform]
         : 'lead_webhook'
       const actualLeads = row.campaign_id ? (campaignLeadCounts[row.campaign_id] || 0) : 0
-      const leads = inflowSource === 'media_conversion' ? row.mediaConversions : actualLeads
+      const leads =
+        inflowSource === 'media_conversion' ? row.mediaConversions
+        : inflowSource === 'combined' ? actualLeads + row.mediaConversions
+        : actualLeads
       return {
         ...row,
         cpc: row.clicks > 0 ? row.spend / row.clicks : 0,

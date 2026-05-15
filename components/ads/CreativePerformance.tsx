@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ImageOff, Film, Image, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { normalizeChannel } from '@/lib/channel'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 
@@ -59,6 +60,8 @@ interface Props {
   startDate: string
   endDate: string
   campaignFilter?: string | null
+  /** 매체 raw value ('meta_ads' / 'adn_ads' / ...) — 미지정 시 전체 매체 노출 */
+  platformFilter?: string
 }
 
 function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: 'asc' | 'desc' }) {
@@ -72,7 +75,7 @@ function fmtShort(iso: string) {
   return d.toLocaleDateString('ko', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' }).replace(/\.$/, '')
 }
 
-export default function CreativePerformance({ startDate, endDate, campaignFilter }: Props) {
+export default function CreativePerformance({ startDate, endDate, campaignFilter, platformFilter }: Props) {
   const { selectedClientId } = useClient()
   const [data, setData] = useState<CreativePerformanceResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -107,14 +110,23 @@ export default function CreativePerformance({ startDate, endDate, campaignFilter
 
   const creatives = useMemo(() => data?.creatives || [], [data])
 
-  // 캠페인 필터 적용
+  // 매체 + 캠페인 필터 적용
+  //   creative.platform 은 API 에서 이미 normalizeChannel 거친 라벨('Meta'/'ADN'/'Naver'...).
+  //   platformFilter 는 raw value('meta_ads'/'adn_ads'/...) 이므로 동일하게 정규화 후 비교.
   const filtered = useMemo(() => {
-    if (!campaignFilter) return creatives
-    return creatives.filter(c => c.campaign_ids?.includes(campaignFilter))
-  }, [creatives, campaignFilter])
+    let list = creatives
+    if (platformFilter) {
+      const target = normalizeChannel(platformFilter)
+      list = list.filter(c => c.platform === target)
+    }
+    if (campaignFilter) {
+      list = list.filter(c => c.campaign_ids?.includes(campaignFilter))
+    }
+    return list
+  }, [creatives, campaignFilter, platformFilter])
 
-  // 캠페인 필터 변경 시 페이지네이션 리셋
-  useEffect(() => { setExpanded(false) }, [campaignFilter])
+  // 필터 변경 시 페이지네이션 리셋
+  useEffect(() => { setExpanded(false) }, [campaignFilter, platformFilter])
 
   const sorted = useMemo(() => {
     const copy = [...filtered]

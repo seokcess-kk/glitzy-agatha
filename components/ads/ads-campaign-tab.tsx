@@ -76,6 +76,7 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
         startDate={startDate}
         endDate={endDate}
         campaignFilter={selectedCampaignId}
+        platformFilter={platformFilter === 'all' ? undefined : platformFilter}
       />
       <div className="mt-6" />
       <LandingPageAnalysis startDate={startDate} endDate={endDate} mode="delivery" />

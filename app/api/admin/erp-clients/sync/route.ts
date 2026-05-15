@@ -14,17 +14,46 @@ function buildDisplayName(name: string, branchName?: string | null): string {
 
 /**
  * POST /api/admin/erp-clients/sync
- * glitzy-web 거래처 전체를 Agatha clients에 일괄 동기화 (upsert 모드).
- * - 신규: erp_client_id 미매핑 거래처 → 생성
+ * 이미 erp_client_id로 매핑된 Agatha clients의 이름만 ERP 기준으로 갱신.
  * - 갱신: 매핑됐는데 ERP 이름이 달라진 거래처 → name update
- * - 스킵: 매핑됐고 이름도 동일 → no-op
+ * - 스킵: 매핑됐고 이름 동일 → no-op
+ * - 미매핑: 카운트만 보고. 자동 생성하지 않음 (신규 매핑은 webhook 또는 사용자 등록 흐름으로)
  * - superadmin 전용
  */
 export const POST = withSuperAdmin(async () => {
   const supabase = serverSupabase()
 
-  // 1. glitzy-web 거래처 전체 조회 (페이지네이션 순회)
-  const allErpClients: Array<{ id: string; name: string; branch_name?: string | null; business_number?: string }> = []
+  // 1. Agatha의 매핑된 거래처 전체 조회 (id, name, erp_client_id)
+  const { data: existingClients, error: selErr } = await supabase
+    .from('clients')
+    .select('id, name, erp_client_id')
+    .not('erp_client_id', 'is', null)
+  if (selErr) {
+    logger.error('clients 조회 실패', { error: selErr })
+    return apiError('clients 조회에 실패했습니다', 500)
+  }
+
+  if (!existingClients || existingClients.length === 0) {
+    return apiSuccess({
+      matched: 0,
+      updated: 0,
+      skipped: 0,
+      unmapped: 0,
+      message: '매핑된 거래처가 없습니다',
+    })
+  }
+
+  const existingMap = new Map<number, { erpId: string; name: string }>()
+  const mappedErpIds = new Set<string>()
+  for (const c of existingClients) {
+    if (c.erp_client_id) {
+      existingMap.set(c.id, { erpId: c.erp_client_id, name: c.name })
+      mappedErpIds.add(c.erp_client_id)
+    }
+  }
+
+  // 2. glitzy-web 거래처 전체 조회 (페이지네이션 순회)
+  const allErpClients: Array<{ id: string; name: string; branch_name?: string | null }> = []
   let page = 1
   const limit = 100
 
@@ -40,82 +69,63 @@ export const POST = withSuperAdmin(async () => {
     }
   }
 
-  if (allErpClients.length === 0) {
-    return apiSuccess({ created: 0, updated: 0, skipped: 0, total: 0, message: 'glitzy-web에 거래처가 없습니다' })
+  // erpId → ERP 거래처 인덱스
+  const erpMap = new Map<string, { name: string; branch_name?: string | null }>()
+  for (const e of allErpClients) {
+    erpMap.set(e.id, { name: e.name, branch_name: e.branch_name })
   }
 
-  // 2. Agatha의 매핑된 거래처 전체 조회 (id, name 포함) — 이름 비교용
-  const { data: existingClients } = await supabase
-    .from('clients')
-    .select('id, name, erp_client_id')
-    .not('erp_client_id', 'is', null)
-
-  const existingMap = new Map<string, { id: number; name: string }>()
-  for (const c of existingClients || []) {
-    if (c.erp_client_id) existingMap.set(c.erp_client_id, { id: c.id, name: c.name })
-  }
-
-  let created = 0
+  // 3. 매핑된 거래처만 순회 — 이름 갱신 / 스킵
   let updated = 0
   let skipped = 0
-  const errors: Array<{ id: string; name: string; error: string }> = []
+  let mappingMissing = 0 // 매핑된 erp_client_id 인데 ERP에서 사라진 경우
+  const errors: Array<{ clientId: number; erpId: string; error: string }> = []
 
-  // 3. ERP 거래처 순회 — 신규 생성 / 이름 갱신 / 스킵 분기
-  for (const erp of allErpClients) {
-    const displayName = buildDisplayName(erp.name, erp.branch_name)
-    const existing = existingMap.get(erp.id)
-
-    if (!existing) {
-      // 신규 생성
-      const slug = `erp-${erp.id.slice(0, 8)}`
-      const { error } = await supabase.from('clients').insert({
-        name: displayName,
-        erp_client_id: erp.id,
-        slug,
-        is_active: true,
-      })
-      if (error) {
-        logger.error('클라이언트 생성 실패', { erpId: erp.id, name: erp.name, error })
-        errors.push({ id: erp.id, name: erp.name, error: error.message })
-      } else {
-        created++
-      }
+  for (const [clientId, { erpId, name: currentName }] of existingMap) {
+    const erp = erpMap.get(erpId)
+    if (!erp) {
+      mappingMissing++
+      logger.warn('매핑된 ERP 거래처가 ERP 목록에 없음', { clientId, erpId })
       continue
     }
 
-    if (existing.name === displayName) {
+    const displayName = buildDisplayName(erp.name, erp.branch_name)
+    if (currentName === displayName) {
       skipped++
       continue
     }
 
-    // 이름 변동 → update
     const { error } = await supabase
       .from('clients')
       .update({ name: displayName })
-      .eq('id', existing.id)
+      .eq('id', clientId)
     if (error) {
-      logger.error('클라이언트 이름 갱신 실패', { erpId: erp.id, clientId: existing.id, error })
-      errors.push({ id: erp.id, name: erp.name, error: error.message })
+      logger.error('클라이언트 이름 갱신 실패', { clientId, erpId, error })
+      errors.push({ clientId, erpId, error: error.message })
     } else {
       updated++
-      logger.info('이름 동기화', { erpId: erp.id, before: existing.name, after: displayName })
+      logger.info('이름 동기화', { clientId, erpId, before: currentName, after: displayName })
     }
   }
 
-  logger.info('일괄 동기화 완료', {
-    total: allErpClients.length,
-    created,
+  const unmapped = allErpClients.filter((e) => !mappedErpIds.has(e.id)).length
+
+  logger.info('이름 동기화 완료', {
+    matched: existingMap.size,
     updated,
     skipped,
+    mappingMissing,
+    unmapped,
     errors: errors.length,
   })
 
   return apiSuccess({
-    total: allErpClients.length,
-    created,
+    matched: existingMap.size,
     updated,
     skipped,
+    mappingMissing,
+    unmapped,
     errors: errors.length > 0 ? errors : undefined,
-    message: `${created}개 생성, ${updated}개 이름 갱신, ${skipped}개 변경 없음`,
+    message: `${updated}개 이름 갱신, ${skipped}개 변경 없음 (미매핑 ERP 거래처 ${unmapped}개는 처리하지 않음)`,
   })
 })

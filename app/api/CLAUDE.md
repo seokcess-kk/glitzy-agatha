@@ -74,7 +74,7 @@ try {
 | `/api/erp-documents/[id]` | GET | 견적서/계산서 상세 조회 | withClientFilter |
 | `/api/erp-documents/[id]/respond` | PATCH | 견적서 승인/반려 | withClientAdmin |
 | `/api/admin/erp-clients` | GET | glitzy-web 거래처 목록 조회 (pull) | withSuperAdmin |
-| `/api/admin/erp-clients/sync` | POST | 거래처 erp_client_id 일괄 동기화 | withSuperAdmin |
+| `/api/admin/erp-clients/sync` | POST | 매핑된 거래처 이름만 ERP 기준 일괄 갱신 (신규 INSERT 안 함) | withSuperAdmin |
 | `/api/webhook/erp-client` | POST | glitzy-web 거래처 webhook 수신 | ERP_SERVICE_KEY 인증 |
 
 ## 인증/초대 관련 API 엔드포인트

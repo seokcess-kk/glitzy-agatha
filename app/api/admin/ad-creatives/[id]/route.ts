@@ -1,6 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
-import { sanitizeString, parseId } from '@/lib/security'
+import { sanitizeString, sanitizeUrl, parseId } from '@/lib/security'
 import { buildUtmUrl } from '@/lib/utm'
 import { createLogger } from '@/lib/logger'
 import { archiveBeforeDelete } from '@/lib/archive'
@@ -48,20 +48,31 @@ export const PUT = withSuperAdmin(async (req: Request) => {
   const body = await req.json()
   const {
     name, description, utm_content, utm_source, utm_medium, utm_campaign, utm_term,
-    platform, client_id, landing_page_id, is_active, file_name, file_type
+    platform, client_id, landing_page_id, external_url, is_active, file_name, file_type
   } = body
 
   const supabase = serverSupabase()
 
-  // 기존 데이터 확인
+  // 기존 데이터 확인 (현재 매핑값도 함께 — 양자택일 검증에 사용)
   const { data: existing } = await supabase
     .from('ad_creatives')
-    .select('id, client_id')
+    .select('id, client_id, landing_page_id, external_url')
     .eq('id', creativeId)
     .single()
 
   if (!existing) {
     return apiError('광고 소재를 찾을 수 없습니다.', 404)
+  }
+
+  // landing_page_id 와 external_url 양자택일 — 갱신 후 최종 상태 기준 검증
+  const finalLandingPageProvided = landing_page_id !== undefined
+    ? Boolean(landing_page_id)
+    : Boolean(existing.landing_page_id)
+  const finalExternalUrlProvided = external_url !== undefined
+    ? Boolean(external_url)
+    : Boolean(existing.external_url)
+  if (finalLandingPageProvided && finalExternalUrlProvided) {
+    return apiError('연결 랜딩 페이지 또는 외부 URL 중 하나만 입력해주세요.', 400)
   }
 
   // client_id 변경 시 유효성 검증
@@ -102,6 +113,23 @@ export const PUT = withSuperAdmin(async (req: Request) => {
     }
   }
 
+  // external_url 유효성 검증
+  let validExternalUrl: string | null | undefined = undefined
+  if (external_url !== undefined) {
+    if (external_url === null || external_url === '') {
+      validExternalUrl = null
+    } else {
+      const cleaned = sanitizeUrl(String(external_url), 2000).trim()
+      if (!cleaned) {
+        return apiError('유효하지 않은 외부 URL입니다.', 400)
+      }
+      if (!/^https?:\/\//i.test(cleaned)) {
+        return apiError('외부 URL은 http(s):// 로 시작해야 합니다.', 400)
+      }
+      validExternalUrl = cleaned
+    }
+  }
+
   // utm_content 중복 검사 (변경 시, 같은 클라이언트 내, 자기 자신 제외)
   if (utm_content) {
     const checkClientId = validClientId ?? existing.client_id
@@ -132,6 +160,7 @@ export const PUT = withSuperAdmin(async (req: Request) => {
   if (platform !== undefined) updateData.platform = platform ? (creativeToApiPlatform(platform) || sanitizeString(platform, 50)) : null
   if (validClientId !== undefined) updateData.client_id = validClientId
   if (validLandingPageId !== undefined) updateData.landing_page_id = validLandingPageId
+  if (validExternalUrl !== undefined) updateData.external_url = validExternalUrl
   if (is_active !== undefined) updateData.is_active = is_active
   if (file_name !== undefined) updateData.file_name = file_name ? sanitizeString(String(file_name).replace(/[/\\:*?"<>|]/g, ''), 200) : null
   if (file_type !== undefined) updateData.file_type = file_type ? sanitizeString(file_type as string, 50) : null
@@ -151,8 +180,10 @@ export const PUT = withSuperAdmin(async (req: Request) => {
 
   // utm_links 자동 업데이트 (실패해도 메인 응답에 영향 없음)
   try {
-    if (data && data.landing_page_id) {
-      const baseUrl = `${process.env.NEXTAUTH_URL || 'https://localhost:3000'}/lp?id=${data.landing_page_id}`
+    const baseUrl = data?.landing_page_id
+      ? `${process.env.NEXTAUTH_URL || 'https://localhost:3000'}/lp?id=${data.landing_page_id}`
+      : (data?.external_url as string | null | undefined)
+    if (data && baseUrl) {
       const generatedUrl = buildUtmUrl({
         baseUrl,
         source: data.utm_source || undefined,

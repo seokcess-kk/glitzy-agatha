@@ -1,6 +1,6 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
-import { sanitizeString, parseId } from '@/lib/security'
+import { sanitizeString, sanitizeUrl, parseId } from '@/lib/security'
 import { buildUtmUrl } from '@/lib/utm'
 import { createLogger } from '@/lib/logger'
 import { creativeToApiPlatform } from '@/lib/platform'
@@ -53,7 +53,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
   const body = await req.json()
   const {
     name, description, utm_content, utm_source, utm_medium, utm_campaign, utm_term,
-    platform, client_id, landing_page_id, is_active, file_name, file_type
+    platform, client_id, landing_page_id, external_url, is_active, file_name, file_type
   } = body
 
   if (!name || !utm_content) {
@@ -62,6 +62,11 @@ export const POST = withSuperAdmin(async (req: Request) => {
 
   if (!client_id) {
     return apiError('클라이언트을 선택해주세요.', 400)
+  }
+
+  // landing_page_id 와 external_url 양자택일
+  if (landing_page_id && external_url) {
+    return apiError('연결 랜딩 페이지 또는 외부 URL 중 하나만 입력해주세요.', 400)
   }
 
   const supabase = serverSupabase()
@@ -99,6 +104,19 @@ export const POST = withSuperAdmin(async (req: Request) => {
     }
   }
 
+  // external_url 유효성 검증 (선택적)
+  let safeExternalUrl: string | null = null
+  if (external_url) {
+    const cleaned = sanitizeUrl(String(external_url), 2000).trim()
+    if (!cleaned) {
+      return apiError('유효하지 않은 외부 URL입니다.', 400)
+    }
+    if (!/^https?:\/\//i.test(cleaned)) {
+      return apiError('외부 URL은 http(s):// 로 시작해야 합니다.', 400)
+    }
+    safeExternalUrl = cleaned
+  }
+
   // utm_content 중복 검사 (같은 클라이언트 내)
   const { data: existing } = await supabase
     .from('ad_creatives')
@@ -124,6 +142,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
       platform: platform ? (creativeToApiPlatform(platform) || sanitizeString(platform, 50)) : null,
       client_id: validClientId,
       landing_page_id: validLandingPageId,
+      external_url: safeExternalUrl,
       is_active: is_active !== false,
       file_name: file_name ? sanitizeString(String(file_name).replace(/[/\\:*?"<>|]/g, ''), 200) : null,
       file_type: file_type ? sanitizeString(file_type, 50) : null,
@@ -139,8 +158,10 @@ export const POST = withSuperAdmin(async (req: Request) => {
 
   // utm_links 자동 생성 (실패해도 메인 응답에 영향 없음)
   try {
-    if (validLandingPageId && data) {
-      const baseUrl = `${process.env.NEXTAUTH_URL || 'https://localhost:3000'}/lp?id=${validLandingPageId}`
+    const baseUrl = validLandingPageId
+      ? `${process.env.NEXTAUTH_URL || 'https://localhost:3000'}/lp?id=${validLandingPageId}`
+      : safeExternalUrl
+    if (baseUrl && data) {
       const generatedUrl = buildUtmUrl({
         baseUrl,
         source: data.utm_source || undefined,

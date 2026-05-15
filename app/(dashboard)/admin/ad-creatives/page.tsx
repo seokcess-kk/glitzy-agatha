@@ -58,6 +58,7 @@ interface AdCreative {
   platform: string | null
   client_id: number
   landing_page_id: number | null
+  external_url: string | null
   is_active: boolean
   file_name: string | null
   file_type: string | null
@@ -91,7 +92,7 @@ export default function AdCreativesPage() {
   const [editing, setEditing] = useState<AdCreative | null>(null)
   const [form, setForm] = useState({
     name: '', description: '', utm_content: '', utm_source: '', utm_medium: '', utm_campaign: '', utm_term: '',
-    platform: '', client_id: '', landing_page_id: '', is_active: true,
+    platform: '', client_id: '', landing_page_id: '', external_url: '', is_active: true,
     file_name: '' as string | null, file_type: '' as string | null,
   })
   const [saving, setSaving] = useState(false)
@@ -210,6 +211,16 @@ export default function AdCreativesPage() {
       toast.error('소재명, UTM Content, 클라이언트을 입력해주세요.')
       return
     }
+    const hasLanding = form.landing_page_id && form.landing_page_id !== 'none'
+    const hasExternal = form.external_url.trim().length > 0
+    if (hasLanding && hasExternal) {
+      toast.error('연결 랜딩 페이지 또는 외부 URL 중 하나만 입력해주세요.')
+      return
+    }
+    if (hasExternal && !/^https?:\/\//i.test(form.external_url.trim())) {
+      toast.error('외부 URL은 http(s):// 로 시작해야 합니다.')
+      return
+    }
     setSaving(true)
     try {
       const url = editing ? `/api/admin/ad-creatives/${editing.id}` : '/api/admin/ad-creatives'
@@ -221,7 +232,8 @@ export default function AdCreativesPage() {
         body: JSON.stringify({
           ...form,
           client_id: form.client_id && form.client_id !== 'none' ? Number(form.client_id) : null,
-          landing_page_id: form.landing_page_id && form.landing_page_id !== 'none' ? Number(form.landing_page_id) : null,
+          landing_page_id: hasLanding ? Number(form.landing_page_id) : null,
+          external_url: hasExternal ? form.external_url.trim() : null,
           platform: form.platform && form.platform !== 'none' ? form.platform : null,
         }),
       })
@@ -244,7 +256,7 @@ export default function AdCreativesPage() {
     if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl)
     setForm({
       name: '', description: '', utm_content: '', utm_source: '', utm_medium: '', utm_campaign: '', utm_term: '',
-      platform: '', client_id: '', landing_page_id: '', is_active: true, file_name: null, file_type: null,
+      platform: '', client_id: '', landing_page_id: '', external_url: '', is_active: true, file_name: null, file_type: null,
     })
     setEditing(null)
     setPreviewUrl(null)
@@ -264,6 +276,7 @@ export default function AdCreativesPage() {
       platform: creativePlatform,
       client_id: String(creative.client_id),
       landing_page_id: creative.landing_page_id ? String(creative.landing_page_id) : '',
+      external_url: creative.external_url || '',
       is_active: creative.is_active,
       file_name: creative.file_name,
       file_type: creative.file_type,
@@ -322,10 +335,13 @@ export default function AdCreativesPage() {
     : landingPages
 
   const getCreativeUtmUrl = (creative: AdCreative): string | null => {
-    if (!creative.landing_page_id) return null
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const baseUrl = creative.landing_page_id
+      ? `${origin}/lp?id=${creative.landing_page_id}`
+      : creative.external_url
+    if (!baseUrl) return null
     return buildUtmUrl({
-      baseUrl: `${origin}/lp?id=${creative.landing_page_id}`,
+      baseUrl,
       source: creative.utm_source || undefined,
       medium: creative.utm_medium || undefined,
       campaign: creative.utm_campaign || undefined,
@@ -538,25 +554,47 @@ export default function AdCreativesPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">연결 랜딩 페이지</Label>
-              <Select
-                value={form.landing_page_id}
-                onValueChange={v => setForm(f => ({ ...f, landing_page_id: v }))}
-                disabled={!form.client_id}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={form.client_id ? "랜딩 페이지 선택" : "클라이언트을 먼저 선택하세요"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">미지정</SelectItem>
-                  {filteredLandingPages.map(lp => (
-                    <SelectItem key={lp.id} value={String(lp.id)}>
-                      {lp.name} ({lp.file_name})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="border-t border-border dark:border-white/10 pt-4 mt-4 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                연결 URL <span className="text-muted-foreground/70">— 랜딩 페이지 선택 또는 외부 URL 직접 입력 중 하나</span>
+              </p>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">연결 랜딩 페이지</Label>
+                <Select
+                  value={form.landing_page_id}
+                  onValueChange={v => setForm(f => ({ ...f, landing_page_id: v }))}
+                  disabled={!form.client_id || form.external_url.trim().length > 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      form.external_url.trim().length > 0
+                        ? '외부 URL 사용 중'
+                        : (form.client_id ? '랜딩 페이지 선택' : '클라이언트을 먼저 선택하세요')
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">미지정</SelectItem>
+                    {filteredLandingPages.map(lp => (
+                      <SelectItem key={lp.id} value={String(lp.id)}>
+                        {lp.name} ({lp.file_name})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">외부 URL</Label>
+                <Input
+                  type="url"
+                  value={form.external_url}
+                  onChange={e => setForm(f => ({ ...f, external_url: e.target.value }))}
+                  placeholder="https://example.com/promo"
+                  disabled={Boolean(form.landing_page_id && form.landing_page_id !== 'none')}
+                />
+                <p className="text-xs text-muted-foreground/70">
+                  외부 사이트, 모바일 앱 딥링크 등 자체 랜딩 페이지 외의 도착지를 직접 지정합니다.
+                </p>
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">설명 (메모)</Label>
@@ -743,12 +781,22 @@ export default function AdCreativesPage() {
                                   <span className="text-foreground/80">{creative.utm_term || '-'}</span>
                                 </div>
                               </div>
-                              <div className="text-xs mt-2">
-                                <span className="text-muted-foreground">랜딩페이지: </span>
+                              <div className="text-xs mt-2 break-all">
                                 {creative.landing_page ? (
-                                  <span className="text-foreground/80">{creative.landing_page.name}</span>
+                                  <>
+                                    <span className="text-muted-foreground">랜딩페이지: </span>
+                                    <span className="text-foreground/80">{creative.landing_page.name}</span>
+                                  </>
+                                ) : creative.external_url ? (
+                                  <>
+                                    <span className="text-muted-foreground">외부 URL: </span>
+                                    <span className="text-foreground/80">{creative.external_url}</span>
+                                  </>
                                 ) : (
-                                  <span className="text-muted-foreground/60">미연결</span>
+                                  <>
+                                    <span className="text-muted-foreground">도착지: </span>
+                                    <span className="text-muted-foreground/60">미연결</span>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -797,8 +845,8 @@ export default function AdCreativesPage() {
                                 </>
                               ) : (
                                 <div className="bg-card rounded-lg p-3 text-center">
-                                  <p className="text-xs text-muted-foreground/60">랜딩 페이지 미연결</p>
-                                  <p className="text-[10px] text-muted-foreground/60 mt-1">소재에 랜딩 페이지를 연결하면 UTM URL이 자동 생성됩니다.</p>
+                                  <p className="text-xs text-muted-foreground/60">도착지 미연결</p>
+                                  <p className="text-[10px] text-muted-foreground/60 mt-1">랜딩 페이지를 연결하거나 외부 URL을 입력하면 UTM URL이 자동 생성됩니다.</p>
                                 </div>
                               )}
                             </div>

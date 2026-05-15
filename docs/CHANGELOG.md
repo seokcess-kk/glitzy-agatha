@@ -2,6 +2,15 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 광고 소재에 외부 URL 도착지 + creatives Storage 버킷 (2026-05-15)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-15 | feat: `ad_creatives.external_url TEXT` 컬럼 추가 (`20260515_ad_creatives_external_url.sql`). 랜딩페이지(`landing_page_id`) 대신 외부 URL을 도착지로 지정 가능. 양자택일 — 둘 다 입력 시 API/UI에서 400 |
+| 2026-05-15 | feat: `app/api/admin/ad-creatives/route.ts`, `[id]/route.ts` — `external_url` 입력 받음. `sanitizeUrl()` + `http(s)://` 강제. utm_links 자동 생성 시 `landing_page_id` 우선, 없으면 `external_url`을 base로 |
+| 2026-05-15 | feat: `app/(dashboard)/admin/ad-creatives/page.tsx` — 등록/수정 다이얼로그에 "외부 URL" 입력 추가. 한 쪽 입력 시 다른 쪽 disabled로 양자택일 강제. 펼침 패널/UTM URL 미리보기/QR 모두 external_url 지원 |
+| 2026-05-15 | fix: Supabase Storage `creatives` 버킷 부재로 "업로드 URL 생성 실패: The related resource does not exist" 에러 발생. service_role로 버킷 생성 (`public=true, fileSizeLimit=50MB`, 이미지/MP4/WebM MIME 화이트리스트). 운영 스크립트 `scripts/ensure-creatives-bucket.ts` |
+
 ## Meta ad-level 매체 전환 매핑 + 소재별 성과 인입 합산 (2026-05-15)
 
 | 날짜 | 내용 |

@@ -197,6 +197,32 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
       nextUrl = json.paging?.next || null
     }
 
+    // ─── 임시 진단 로그 — ad-level actions 응답 구조 추적. 진단 후 제거 ─────
+    //   캠페인 레벨에는 lead 잡히는데 ad 레벨 conversions 가 모두 0인 원인 파악.
+    //   첫 3개 row 의 actions 배열 통째로 + 등장하는 action_type 분포 노출.
+    const actionTypeFreq = new Map<string, number>()
+    for (const ad of allAds) {
+      if (Array.isArray(ad.actions)) {
+        for (const a of ad.actions) {
+          actionTypeFreq.set(a.action_type, (actionTypeFreq.get(a.action_type) || 0) + 1)
+        }
+      }
+    }
+    logger.info('[debug:meta-ad-actions]', {
+      clientId: options?.clientId,
+      dateStr,
+      totalAds: allAds.length,
+      adsWithActions: allAds.filter(a => Array.isArray(a.actions) && a.actions.length > 0).length,
+      actionTypeFreq: Object.fromEntries(actionTypeFreq),
+      sampleAds: allAds.slice(0, 3).map(a => ({
+        ad_id: a.ad_id,
+        ad_name: a.ad_name?.slice(0, 30),
+        clicks: a.clicks,
+        actions: a.actions,
+      })),
+    })
+    // ───────────────────────────────────────────────────────────────────
+
     if (allAds.length === 0) {
       return { platform: 'meta_ads', count: 0 }
     }

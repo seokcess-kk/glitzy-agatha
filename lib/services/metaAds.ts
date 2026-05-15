@@ -146,6 +146,7 @@ interface MetaAdInsight {
   spend: string
   clicks: string
   impressions: string
+  actions?: Array<{ action_type: string; value: string }>
 }
 
 /**
@@ -167,12 +168,12 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
   const supabase = serverSupabase()
 
   try {
-    // 1. Ad 레벨 인사이트 조회 (페이지네이션)
+    // 1. Ad 레벨 인사이트 조회 (페이지네이션) — actions 추가로 lead 전환 합산
     const allAds: MetaAdInsight[] = []
     let nextUrl: string | null = `https://graph.facebook.com/v19.0/${accountId}/insights?` +
       new URLSearchParams({
         level: 'ad',
-        fields: 'ad_id,ad_name,campaign_id,campaign_name,spend,clicks,impressions',
+        fields: 'ad_id,ad_name,campaign_id,campaign_name,spend,clicks,impressions,actions',
         time_range: JSON.stringify({ since: dateStr, until: dateStr }),
         time_increment: '1',
         limit: '500',
@@ -256,6 +257,7 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
       spend_amount: parseFloat(a.spend || '0'),
       clicks: parseInt(a.clicks || '0'),
       impressions: parseInt(a.impressions || '0'),
+      conversions: extractLeadConversions(a.actions),
       stat_date: dateStr,
       client_id: options?.clientId || null,
     }))

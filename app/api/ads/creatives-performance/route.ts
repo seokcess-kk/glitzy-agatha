@@ -17,6 +17,7 @@ interface AdStatsRow {
   spend_amount: number
   clicks: number
   impressions: number
+  conversions: number | null
 }
 
 // inflow_url에서 utm_id (Meta campaign_id) 추출
@@ -93,7 +94,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     // 4) ad_stats — campaign_id별 광고 지표 + utm_content별 직접 매칭 + ad_id별 (TikTok/Google)
     let adStatsQuery = supabase
       .from('ad_stats')
-      .select('ad_id, ad_name, platform, campaign_id, utm_content, spend_amount, clicks, impressions')
+      .select('ad_id, ad_name, platform, campaign_id, utm_content, spend_amount, clicks, impressions, conversions')
 
     const filteredAdStats = applyClientFilter(adStatsQuery, { clientId, assignedClientIds })
     if (filteredAdStats) adStatsQuery = filteredAdStats
@@ -203,18 +204,33 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }
 
     // ad_stats: 1차 utm_content 직접 매칭, 2차 campaign_id별 집계
-    //   directUtmStats 에 campaignIds 도 저장해 캠페인 선택 → 소재 필터 매칭에 활용
-    const directUtmStats = new Map<string, { spend: number; clicks: number; impressions: number; campaignIds: Set<string> }>()
+    //   directUtmStats 에 campaignIds + conversions + platform 도 저장해
+    //   - 캠페인 선택 → 소재 필터 매칭
+    //   - combined 모드(Meta) 의 ad 단위 매체 전환수를 utm_content 인입에 합산
+    interface DirectUtmStat {
+      spend: number
+      clicks: number
+      impressions: number
+      conversions: number
+      platform: string | null
+      campaignIds: Set<string>
+    }
+    const directUtmStats = new Map<string, DirectUtmStat>()
     const campaignStats = new Map<string, { spend: number; clicks: number; impressions: number }>()
 
     for (const row of adStatsData) {
       // 1차: utm_content가 있으면 직접 매칭
       if (row.utm_content) {
         const key = (row.utm_content as string).toLowerCase()
-        const existing = directUtmStats.get(key) || { spend: 0, clicks: 0, impressions: 0, campaignIds: new Set<string>() }
+        const existing = directUtmStats.get(key) || {
+          spend: 0, clicks: 0, impressions: 0, conversions: 0,
+          platform: row.platform || null, campaignIds: new Set<string>(),
+        }
         existing.spend += Number(row.spend_amount) || 0
         existing.clicks += row.clicks || 0
         existing.impressions += row.impressions || 0
+        existing.conversions += Number(row.conversions || 0)
+        if (!existing.platform && row.platform) existing.platform = row.platform
         if (row.campaign_id) existing.campaignIds.add(row.campaign_id)
         directUtmStats.set(key, existing)
       }
@@ -285,8 +301,23 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       const leadData = contentLeadMap.get(utmContent)
       const paymentData = contentPaymentMap.get(utmContent)
       const adMetrics = getAdMetrics(utmContent)
+      const direct = directUtmStats.get(utmContent)
 
-      const leadCount = leadData?.leadIds.size || 0
+      const actualLeads = leadData?.leadIds.size || 0
+      // 매체 전환 합산 — utm_content 의 ad_stats.platform 의 inflowSource 가
+      //   lead_webhook  : conversions 무시 (actualLeads 만)
+      //   media_conv... : conversions 사용 (actualLeads 무시 — Naver SA 등)
+      //   combined      : actualLeads + conversions (Meta)
+      const platform = direct?.platform ?? null
+      const inflowSource = isApiPlatform(platform ?? '')
+        ? PLATFORM_INFLOW_DEFAULTS[platform as ApiPlatform]
+        : 'lead_webhook'
+      const mediaConv = direct?.conversions || 0
+      const leadCount =
+        inflowSource === 'media_conversion' ? mediaConv
+        : inflowSource === 'combined' ? actualLeads + mediaConv
+        : actualLeads
+
       const contactCount = paymentData?.payingContacts.size || 0
       const revenue = paymentData?.revenue || 0
       const conversionRate = leadCount > 0 ? Math.round((contactCount / leadCount) * 1000) / 10 : 0
@@ -329,7 +360,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }
 
     // utm_content 없는 ad_stats (TikTok/Google 등) → ad_id 기준으로 별도 표시
-    const adIdStats = new Map<string, { adName: string; platform: string; spend: number; clicks: number; impressions: number; campaignId: string | null }>()
+    const adIdStats = new Map<string, { adName: string; platform: string; spend: number; clicks: number; impressions: number; conversions: number; campaignId: string | null }>()
     for (const row of adStatsData) {
       if (row.utm_content) continue // utm_content 있는 건 위에서 이미 처리
       if (!row.ad_id) continue
@@ -338,6 +369,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
         existing.spend += Number(row.spend_amount) || 0
         existing.clicks += row.clicks || 0
         existing.impressions += row.impressions || 0
+        existing.conversions += Number(row.conversions || 0)
       } else {
         adIdStats.set(row.ad_id, {
           adName: row.ad_name || row.ad_id,
@@ -345,6 +377,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
           spend: Number(row.spend_amount) || 0,
           clicks: row.clicks || 0,
           impressions: row.impressions || 0,
+          conversions: Number(row.conversions || 0),
           campaignId: row.campaign_id || null,
         })
       }
@@ -352,6 +385,11 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
     for (const [adId, stats] of adIdStats) {
       if (stats.spend === 0 && stats.clicks === 0 && stats.impressions === 0) continue
+      // lead_webhook 매체는 ad_id 단위 leads 매칭 불가 → 0. media_conversion/combined 는 conversions 사용
+      const inflowSource = isApiPlatform(stats.platform)
+        ? PLATFORM_INFLOW_DEFAULTS[stats.platform as ApiPlatform]
+        : 'lead_webhook'
+      const leadCount = inflowSource === 'lead_webhook' ? 0 : stats.conversions
       allCreatives.push({
         utm_content: adId,
         name: stats.adName,
@@ -361,8 +399,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
         impressions: stats.impressions,
         cpc: stats.clicks > 0 ? Math.round(stats.spend / stats.clicks) : 0,
         ctr: stats.impressions > 0 ? Math.round((stats.clicks / stats.impressions) * 10000) / 100 : 0,
-        cpl: 0,
-        leads: 0,
+        cpl: leadCount > 0 ? Math.round(stats.spend / leadCount) : 0,
+        leads: leadCount,
         contacts: 0,
         revenue: 0,
         conversionRate: 0,

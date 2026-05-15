@@ -2,6 +2,22 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## Meta ad-level 매체 전환 매핑 + 소재별 성과 인입 합산 (2026-05-15)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-15 | feat: `supabase/migrations/20260515_ad_stats_conversions.sql` — `ad_stats` 에 `conversions INTEGER DEFAULT 0` 컬럼 추가. 캠페인 단위 `ad_campaign_stats.conversions` 만으로는 어느 소재(utm_content)에서 전환났는지 알 수 없는 한계를 ad-level 으로 확장 |
+| 2026-05-15 | feat: `lib/services/metaAds.ts` `fetchMetaAdStats` — Insights API fields 에 `actions` 추가, `extractLeadConversions()` 로 lead 류 액션 합산해 `ad_stats.conversions` 저장 |
+| 2026-05-15 | feat: `/api/ads/creatives-performance` — utm_content 매칭 시 `ad_stats.conversions` 합산. inflowSource 가 `combined`(Meta) 면 `actualLeads + conversions`, `media_conversion` 이면 conversions, `lead_webhook` 이면 actualLeads 만. ad_id 단위 표시(utm_content 없는 TikTok/Google) 도 동일 분기 적용 |
+| 2026-05-15 | fix: `/api/dashboard/kpi` mediaConversionsTotal 합산 분기를 `!== 'media_conversion'` → `=== 'lead_webhook'` 로 변경. combined 모드(Meta) 가 KPI 카드 인입에 반영되지 않던 버그 해소 (대시보드/광고 페이지 상단 KPI 두 곳에 영향) |
+
+## ERP 거래처 이름 동기화를 '이름 갱신만' 모드로 제한 (2026-05-15)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-15 | fix: `POST /api/admin/erp-clients/sync` 가 매핑 안 된 ERP 거래처도 자동 INSERT 하던 동작 제거. 이미 `erp_client_id`로 매핑된 `clients` 행의 `name`만 ERP 기준으로 갱신. 신규 매핑은 webhook(`/api/webhook/erp-client`) 또는 사용자 등록 흐름으로만 |
+| 2026-05-15 | refactor: 응답 형태 변경 — `{ created, updated, skipped, total }` → `{ matched, updated, skipped, mappingMissing, unmapped }`. UI 호출자 없음(검색 결과 0건) |
+
 ## Inflow `combined` 모드 도입 + Meta conversions 매핑 (2026-05-15)
 
 | 날짜 | 내용 |

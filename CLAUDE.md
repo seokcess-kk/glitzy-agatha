@@ -21,7 +21,7 @@ npm run test         # Jest 단위 테스트
 
 | 디렉토리 | 용도 | 하위 규칙 |
 |---------|------|----------|
-| `app/(dashboard)/` | 인증된 대시보드 페이지 (admin, ads, campaigns, customers, erp-documents, lead-form, monitoring, utm) | |
+| `app/(dashboard)/` | 인증된 대시보드 페이지 (admin, ads, customers, erp-documents, lead-form, monitoring, utm) | |
 | `app/api/` | REST API 라우트 | `app/api/CLAUDE.md` |
 | `app/login/`, `app/signup/`, `app/lp/`, `app/privacy/`, `app/terms/` | 공개 페이지 | |
 | `components/` | UI 컴포넌트 (ads, admin, charts, common, customers, dashboard, erp-documents, ui) | `components/CLAUDE.md` |

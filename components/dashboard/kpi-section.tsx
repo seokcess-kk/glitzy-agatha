@@ -76,7 +76,7 @@ export function KpiSection({ data, loading, onNavigate }: KpiSectionProps) {
         : undefined,
       subtitle: inflowSubtitle,
       subtitleColor: inflowSubtitleColor,
-      // 매체 전환만 있는 케이스(실제 리드 없음)는 고객관리 비어 보임 → 광고 페이지로 안내
+      // 매체 전환만 있는 케이스(실제 리드 없음)는 리드·고객 비어 보임 → 광고 페이지로 안내
       path: actualLeads === 0 && mediaConversions > 0 ? '/ads' : '/customers',
     },
     {

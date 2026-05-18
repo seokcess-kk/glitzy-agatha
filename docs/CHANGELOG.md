@@ -2,6 +2,16 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 메뉴 구조 재정의 — /campaigns 폐기 + 라벨 정리 (2026-05-18)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-18 | refactor: `app/(dashboard)/campaigns/` 및 `app/api/campaigns/` 삭제. `/ads?tab=campaigns` 의 캠페인 분석 탭과 데이터·컬럼 중복(지출/노출/클릭/인입/CPL) 이라 별도 메뉴 정당성 없음. 캠페인 단위 리드 처리 기능은 `/customers > 리드 탭` 의 campaign 필터로 대체 |
+| 2026-05-18 | feat: 사이드바 메뉴 재구성 — '캠페인'(`/campaigns`) → '캠페인 분석'(`/ads?tab=campaigns` deep link), '고객관리'(`/customers`) → '리드·고객'. menuKey 는 호환을 위해 'campaigns'/'leads' 유지 (기존 user_menu_permissions / system_settings.hidden_menus 데이터 호환) |
+| 2026-05-18 | feat: `components/Sidebar.tsx` `isActive` 로직을 querystring 매칭 지원하도록 확장. href 에 `?tab=...` 등이 있으면 pathname + 모든 query 일치 시에만 활성. 같은 pathname 의 deep link 형제가 활성이면 base 항목은 비활성 (`/ads?tab=campaigns` 활성 시 `/ads` 비활성) |
+| 2026-05-18 | refactor: `Sidebar` 를 Suspense boundary 로 감싸 `useSearchParams()` prerender 안전 보장 |
+| 2026-05-18 | chore: `app/(dashboard)/customers/{page,layout}.tsx`, `app/(dashboard)/admin/{users,settings}/page.tsx` 라벨 일괄 '고객관리' → '리드·고객', '캠페인' → '캠페인 분석' |
+
 ## 광고 소재에 외부 URL 도착지 + creatives Storage 버킷 (2026-05-15)
 
 | 날짜 | 내용 |

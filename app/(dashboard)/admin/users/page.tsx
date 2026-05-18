@@ -48,9 +48,9 @@ const ROLE_LABELS: Record<string, string> = {
 
 const MENU_OPTIONS = [
   { key: 'dashboard', label: '대시보드' },
-  { key: 'campaigns', label: '캠페인' },
-  { key: 'leads', label: '고객관리' },
   { key: 'ads', label: '광고 성과' },
+  { key: 'campaigns', label: '캠페인 분석' },
+  { key: 'leads', label: '리드·고객' },
   { key: 'monitoring', label: '순위 모니터링' },
 ]
 

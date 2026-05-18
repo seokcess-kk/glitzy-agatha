@@ -21,7 +21,7 @@ function CustomersContent() {
   return (
     <>
       <PageHeader
-        title="고객관리"
+        title="리드·고객"
         description="리드 전환 추적 및 고객 DB를 관리합니다."
         icon={Users}
       />

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { startOfDay, startOfMonth } from 'date-fns'
 import { DateRange } from 'react-day-picker'
 import { RefreshCw, Play, History } from 'lucide-react'
@@ -20,12 +21,23 @@ const TABS = [
   { key: 'campaigns', label: '캠페인 분석' },
 ]
 
+// useSearchParams 사용 컴포넌트는 prerender 시 Suspense boundary 필요. 외부 default export 가 감싸준다.
 export default function AdsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdsPageInner />
+    </Suspense>
+  )
+}
+
+function AdsPageInner() {
   const { data: session } = useSession()
   const user = session?.user
   const canSync = user?.role !== 'client_staff'
   const isSuperAdmin = user?.role === 'superadmin'
 
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { selectedClientId, clients } = useClient()
   const selectedClient = clients.find(c => c.id === selectedClientId)
   const [activeTab, setActiveTab] = useState('overview')
@@ -46,22 +58,24 @@ export default function AdsPage() {
     ? Math.max(1, Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / 86400000) + 1)
     : 30
 
-  // Restore tab from URL on mount (avoids hydration mismatch)
+  // URL → state 동기화. 사이드바 deep link(/ads?tab=campaigns) 클릭이 mount 가 아니라
+  // 같은 페이지의 query 변경만 일으키는 경우에도 탭이 따라가도록 searchParams 의존성으로 처리.
   useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get('tab')
-    if (tab === 'campaigns') setActiveTab(tab)
-  }, [])
+    const tab = searchParams?.get('tab') ?? 'overview'
+    setActiveTab(tab === 'campaigns' ? 'campaigns' : 'overview')
+  }, [searchParams])
 
-  // Sync tab selection to URL
+  // state → URL 동기화. router.replace 로 변경해야 useSearchParams 갱신이 일어나 isActive 표시가 맞아진다.
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
-    const url = new URL(window.location.href)
+    const params = new URLSearchParams(searchParams?.toString() ?? '')
     if (tab === 'overview') {
-      url.searchParams.delete('tab')
+      params.delete('tab')
     } else {
-      url.searchParams.set('tab', tab)
+      params.set('tab', tab)
     }
-    window.history.replaceState({}, '', url.toString())
+    const qs = params.toString()
+    router.replace(`/ads${qs ? `?${qs}` : ''}`, { scroll: false })
   }
 
   const handleRefresh = useCallback(() => {

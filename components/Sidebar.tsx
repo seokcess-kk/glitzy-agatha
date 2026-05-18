@@ -1,9 +1,9 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import {
   LayoutDashboard, Users, BarChart3, LogOut, Activity, Calendar, Film, Link2, Scan, Newspaper,
   ChevronUp, User, ClipboardList, LucideIcon, Building2, UserCog, FileText, Image as ImageIcon,
@@ -75,12 +75,13 @@ const generalMenuGroups: MenuGroup[] = [
   {
     items: [
       { href: '/ads', label: '광고 성과', icon: BarChart3, menuKey: 'ads' },
+      // /ads 의 캠페인 분석 탭 deep link. menuKey 는 기존 권한 호환을 위해 'campaigns' 유지.
+      { href: '/ads?tab=campaigns', label: '캠페인 분석', icon: Megaphone, menuKey: 'campaigns' },
     ]
   },
   {
     items: [
-      { href: '/campaigns', label: '캠페인', icon: Megaphone, menuKey: 'campaigns' },
-      { href: '/customers', label: '고객관리', icon: Users, menuKey: 'leads' },
+      { href: '/customers', label: '리드·고객', icon: Users, menuKey: 'leads' },
     ]
   },
   {
@@ -109,14 +110,26 @@ const adminMenuItems: MenuItem[] = [
 import PasswordChangeDialog from '@/components/PasswordChangeDialog'
 import ThemeToggle from '@/components/ThemeToggle'
 
-export default function Sidebar({ onClose, collapsed: controlledCollapsed, pinned: controlledPinned, onTogglePin, onDropdownOpenChange }: {
+interface SidebarProps {
   onClose?: () => void
   collapsed?: boolean
   pinned?: boolean
   onTogglePin?: () => void
   onDropdownOpenChange?: (open: boolean) => void
-}) {
+}
+
+// useSearchParams 사용 컴포넌트는 prerender 시 Suspense boundary 필요. 외부 default export 가 감싸준다.
+export default function Sidebar(props: SidebarProps) {
+  return (
+    <Suspense fallback={<aside className={`${props.collapsed ? 'w-16' : 'w-60'} h-screen border-r border-border bg-background shrink-0`} />}>
+      <SidebarInner {...props} />
+    </Suspense>
+  )
+}
+
+function SidebarInner({ onClose, collapsed: controlledCollapsed, pinned: controlledPinned, onTogglePin, onDropdownOpenChange }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { data: session } = useSession()
   const user = session?.user
   const userRole = user?.role || 'client_staff'
@@ -189,11 +202,35 @@ export default function Sidebar({ onClose, collapsed: controlledCollapsed, pinne
     return menuPermissions.includes(item.menuKey)
   }
 
+  // querystring 매칭 헬퍼 — href 의 모든 ?key=value 가 현재 searchParams 와 일치하는지
+  const matchesQuery = (hrefQuery: string) => {
+    const required = new URLSearchParams(hrefQuery)
+    for (const [k, v] of required) {
+      if (searchParams?.get(k) !== v) return false
+    }
+    return true
+  }
+
   const isActive = (href: string, allItems: MenuItem[] = []) => {
+    const [hrefPath, hrefQuery] = href.split('?')
+
+    // Deep link 항목 (querystring 포함): pathname + 모든 query 매칭
+    if (hrefQuery) {
+      return pathname === hrefPath && matchesQuery(hrefQuery)
+    }
+
+    // 일반 항목: pathname 기반. 단, 같은 pathname 의 deep link 형제가 활성화면 비활성.
+    const deepLinkSiblingActive = allItems.some(other => {
+      if (other.href === href) return false
+      const [otherPath, otherQuery] = other.href.split('?')
+      return otherQuery && otherPath === href && matchesQuery(otherQuery)
+    })
+    if (deepLinkSiblingActive) return false
+
     const exactMatch = pathname === href
     const prefixMatch = href !== '/' && pathname.startsWith(href + '/')
     const overridden = !exactMatch && prefixMatch && allItems.some(
-      other => other.href !== href && pathname.startsWith(other.href) && other.href.startsWith(href + '/')
+      other => other.href !== href && pathname.startsWith(other.href.split('?')[0]) && other.href.split('?')[0].startsWith(href + '/')
     )
     return exactMatch || (prefixMatch && !overridden)
   }

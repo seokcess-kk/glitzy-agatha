@@ -79,12 +79,12 @@ test.describe('대시보드 - Client Admin', () => {
 test.describe('대시보드 네비게이션', () => {
   test.use({ userRole: 'superadmin' })
 
-  test('리드 페이지로 이동', async ({ authenticatedPage }) => {
+  test('리드·고객 페이지로 이동', async ({ authenticatedPage }) => {
     const dashboard = new DashboardPage(authenticatedPage)
     await dashboard.goto()
 
-    await dashboard.navigateTo('리드')
-    await expect(authenticatedPage).toHaveURL(/\/leads/)
+    await dashboard.navigateTo('리드·고객')
+    await expect(authenticatedPage).toHaveURL(/\/customers/)
   })
 
   test('UTM 페이지로 이동', async ({ authenticatedPage }) => {

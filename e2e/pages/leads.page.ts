@@ -30,7 +30,7 @@ export class LeadsPage {
   }
 
   async goto() {
-    await this.page.goto('/leads')
+    await this.page.goto('/customers')
     await this.page.waitForLoadState('networkidle')
   }
 

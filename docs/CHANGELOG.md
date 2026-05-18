@@ -2,6 +2,14 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 메뉴 구조 재정의 후속 — 인입 배지 / 사이드바 들여쓰기 / e2e 정리 (2026-05-18)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-18 | feat: `components/ads/campaign-ranking-table.tsx` 인입 컬럼에 inflowSource 배지(`매`/`복합`) + 분해 tooltip 추가. 매체 전환 기반(네이버 SA 등) / combined(Meta) / lead_webhook 을 시각적으로 구분. `dashboard/channel-table` 과 동일 패턴으로 일관성 확보 |
+| 2026-05-18 | feat: 사이드바 `MenuItem.subItem` 플래그 추가. '캠페인 분석' 항목에 적용 — 펼친 상태에서 들여쓰기(pl-9) + 작은 아이콘(14px) + text-xs 보조 색상으로 광고 성과의 하위 뷰임을 시각화. 축소 상태는 기존 동일 |
+| 2026-05-18 | chore: e2e 잔재 정리 — `e2e/pages/leads.page.ts`, `e2e/tests/{auth,dashboard,leads}.spec.ts` 의 `/leads` 경로를 `/customers` 로 일괄 치환. `dashboard.navigateTo('리드')` → `'리드·고객'` 라벨 동기화 |
+
 ## 메뉴 구조 재정의 — /campaigns 폐기 + 라벨 정리 (2026-05-18)
 
 | 날짜 | 내용 |

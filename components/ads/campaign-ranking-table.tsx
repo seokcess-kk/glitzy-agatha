@@ -15,7 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { BarChart2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
-import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform, type ApiPlatform } from '@/lib/platform'
+import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform, type ApiPlatform, type InflowSource } from '@/lib/platform'
 
 function fmtShort(iso: string) {
   const d = new Date(iso)
@@ -40,9 +40,11 @@ interface CampaignRow {
   clicks: number
   impressions: number
   mediaConversions: number // 매체 보고 전환수 (media_conversion 모드 매체만)
+  actualLeads: number      // 자체 폼/웹훅 리드 (lead_webhook + combined 모드)
+  inflowSource: InflowSource
   cpc: number
   ctr: number
-  leads: number // 인입(inflow) 카운트 — lead_webhook=리드, media_conversion=전환
+  leads: number // 인입(inflow) 카운트 — lead_webhook=리드, media_conversion=전환, combined=합산
   cpl: number
 }
 
@@ -145,6 +147,8 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
           clicks: record.clicks || 0,
           impressions: record.impressions || 0,
           mediaConversions: convAdd,
+          actualLeads: 0,
+          inflowSource: 'lead_webhook',
           cpc: 0,
           ctr: 0,
           leads: 0,
@@ -158,7 +162,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
     //   media_conversion: leads = mediaConversions
     //   combined:         leads = actualLeads + mediaConversions
     return Array.from(map.values()).map(row => {
-      const inflowSource = isApiPlatform(row.platform ?? '')
+      const inflowSource: InflowSource = isApiPlatform(row.platform ?? '')
         ? PLATFORM_INFLOW_DEFAULTS[row.platform as ApiPlatform]
         : 'lead_webhook'
       const actualLeads = row.campaign_id ? (campaignLeadCounts[row.campaign_id] || 0) : 0
@@ -168,6 +172,8 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
         : actualLeads
       return {
         ...row,
+        actualLeads,
+        inflowSource,
         cpc: row.clicks > 0 ? row.spend / row.clicks : 0,
         ctr: row.impressions > 0 ? (row.clicks / row.impressions) * 100 : 0,
         leads,
@@ -340,8 +346,27 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
                         {row.ctr > 0 ? `${row.ctr.toFixed(2)}%` : '-'}
                       </TableCell>
-                      <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.leads > 0 ? row.leads : '-'}
+                      <TableCell
+                        className="py-2.5 text-right tabular-nums text-sm text-foreground/80"
+                        title={
+                          row.leads === 0
+                            ? '인입 없음'
+                            : row.inflowSource === 'media_conversion'
+                            ? `매체 전환 기반 (검색광고/디스플레이)\n매체 전환수: ${row.mediaConversions.toLocaleString()}`
+                            : row.inflowSource === 'combined'
+                            ? `리드 + 매체 전환 합산\n리드: ${row.actualLeads.toLocaleString()} · 매체 전환: ${row.mediaConversions.toLocaleString()}`
+                            : `리드 폼/웹훅 기반\n실제 리드: ${row.actualLeads.toLocaleString()}`
+                        }
+                      >
+                        <span className="inline-flex items-center justify-end gap-1">
+                          {row.leads > 0 ? row.leads.toLocaleString() : '-'}
+                          {row.leads > 0 && row.inflowSource === 'media_conversion' && (
+                            <span className="text-[10px] text-muted-foreground font-normal bg-muted/50 px-1 rounded">매</span>
+                          )}
+                          {row.leads > 0 && row.inflowSource === 'combined' && (
+                            <span className="text-[10px] text-muted-foreground font-normal bg-muted/50 px-1 rounded">복합</span>
+                          )}
+                        </span>
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
                         {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}

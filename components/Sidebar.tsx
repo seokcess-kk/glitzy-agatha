@@ -47,6 +47,8 @@ interface MenuItem {
   minRole?: number
   menuKey?: string
   hidden?: boolean
+  /** 상위 항목의 하위 뷰처럼 표시할 때 true (들여쓰기 + 보조 스타일). 예: /ads?tab=campaigns deep link */
+  subItem?: boolean
 }
 
 interface MenuGroup {
@@ -76,7 +78,7 @@ const generalMenuGroups: MenuGroup[] = [
     items: [
       { href: '/ads', label: '광고 성과', icon: BarChart3, menuKey: 'ads' },
       // /ads 의 캠페인 분석 탭 deep link. menuKey 는 기존 권한 호환을 위해 'campaigns' 유지.
-      { href: '/ads?tab=campaigns', label: '캠페인 분석', icon: Megaphone, menuKey: 'campaigns' },
+      { href: '/ads?tab=campaigns', label: '캠페인 분석', icon: Megaphone, menuKey: 'campaigns', subItem: true },
     ]
   },
   {
@@ -235,16 +237,21 @@ function SidebarInner({ onClose, collapsed: controlledCollapsed, pinned: control
     return exactMatch || (prefixMatch && !overridden)
   }
 
-  const navLinkClass = (active: boolean) =>
-    `relative flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
-      active
-        ? 'text-brand-600 bg-brand-600/5'
-        : 'text-slate-400 hover:text-brand-500 hover:bg-slate-50 dark:hover:bg-slate-800'
-    } ${collapsed ? 'justify-center' : ''}`
+  // subItem: 펼친 상태에서만 들여쓰기 + 보조 (text-xs, 약한 색). 축소 상태는 아이콘 가운데 정렬 유지.
+  const navLinkClass = (active: boolean, subItem = false) => {
+    const sizing = subItem && !collapsed ? 'text-xs py-2 pl-9' : 'text-sm py-2.5 px-3'
+    const colorBase = subItem && !active
+      ? 'text-slate-500 hover:text-brand-500 hover:bg-slate-50 dark:text-slate-500 dark:hover:bg-slate-800'
+      : 'text-slate-400 hover:text-brand-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+    return `relative flex items-center gap-3 font-medium transition-colors duration-200 ${sizing} ${
+      active ? 'text-brand-600 bg-brand-600/5' : colorBase
+    } ${collapsed ? 'justify-center px-3' : ''}`
+  }
 
   const renderNavItem = (item: MenuItem, allItems: MenuItem[] = []) => {
     const active = isActive(item.href, allItems)
     const Icon = item.icon
+    const subItem = item.subItem === true
 
     if (collapsed) {
       return (
@@ -253,7 +260,7 @@ function SidebarInner({ onClose, collapsed: controlledCollapsed, pinned: control
             <Link
               href={item.href}
               onClick={onClose}
-              className={navLinkClass(active)}
+              className={navLinkClass(active, subItem)}
             >
               {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-brand-600 rounded-r" />}
               <Icon size={17} />
@@ -271,10 +278,10 @@ function SidebarInner({ onClose, collapsed: controlledCollapsed, pinned: control
         key={item.href}
         href={item.href}
         onClick={onClose}
-        className={navLinkClass(active)}
+        className={navLinkClass(active, subItem)}
       >
         {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-brand-600 rounded-r" />}
-        <Icon size={17} />
+        <Icon size={subItem ? 14 : 17} />
         {item.label}
       </Link>
     )

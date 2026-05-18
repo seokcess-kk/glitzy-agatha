@@ -111,7 +111,7 @@ test.describe('리드 상세', () => {
         .catch(() => false)
 
       // URL 변경 또는 모달 표시 확인
-      const urlChanged = authenticatedPage.url().includes('/leads/')
+      const urlChanged = authenticatedPage.url().includes('/customers')
 
       expect(hasDetail || urlChanged).toBeTruthy()
     }
@@ -123,7 +123,7 @@ test.describe('리드 - 멀티테넌트', () => {
     test.use({ userRole: 'superadmin' })
 
     test('다른 클라이언트 리드 조회 가능 (client_id 파라미터)', async ({ authenticatedPage }) => {
-      await authenticatedPage.goto('/leads?client_id=1')
+      await authenticatedPage.goto('/customers?client_id=1')
       await authenticatedPage.waitForLoadState('networkidle')
 
       const leadsPage = new LeadsPage(authenticatedPage)

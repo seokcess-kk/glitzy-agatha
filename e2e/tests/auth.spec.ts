@@ -50,7 +50,7 @@ test.describe('인증', () => {
 
   test('미인증 사용자가 보호된 페이지 접근 시 로그인 페이지로 리다이렉트', async ({ page }) => {
     // 직접 보호된 페이지로 이동 시도
-    await page.goto('/leads')
+    await page.goto('/customers')
 
     // 로그인 페이지로 리다이렉트 확인
     await expect(page).toHaveURL(/\/login/)

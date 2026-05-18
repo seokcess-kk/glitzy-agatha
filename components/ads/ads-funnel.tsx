@@ -82,7 +82,9 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
 
       const json: FunnelResponse = await res.json()
       const stages = json?.funnel?.stages ?? []
-      setLeadCount(stages.find(s => s.stage === 'Lead')?.count ?? 0)
+      // API는 'New'(유입) → 'InProgress'(진행) → 'Converted'(전환) 단계로 반환
+      // 광고 퍼널의 "인입"은 유효 리드 전체 = New 단계 count
+      setLeadCount(stages.find(s => s.stage === 'New')?.count ?? 0)
     } catch {
       // silently fail
     } finally {

@@ -16,7 +16,10 @@ interface KpiComparison {
 
 interface KpiData {
   totalSpend: number
-  totalLeads: number
+  totalLeads: number // 호환 키 — inflowCountTotal 동일값
+  inflowCountTotal?: number // 명시 키 (신규)
+  actualLeads?: number
+  mediaConversionsTotal?: number
   cpl: number
   roas: number
   cac: number
@@ -63,7 +66,8 @@ export default function AdsKpiCards({ startDate, endDate }: Props) {
   }, [fetchData])
 
   const totalSpend = data?.totalSpend ?? 0
-  const totalLeads = data?.totalLeads ?? 0
+  // 인입 = 폼/웹훅 리드 + 매체 전환(검색광고 등). totalLeads 는 호환을 위해 inflowCountTotal 동일값.
+  const totalLeads = data?.inflowCountTotal ?? data?.totalLeads ?? 0
   const cpl = data?.cpl ?? 0
   const cpc = data?.cpc ?? 0
   const ctr = data?.ctr ?? 0

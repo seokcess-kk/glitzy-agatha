@@ -18,18 +18,9 @@ interface AdStatsRecord {
   spend: number
 }
 
-interface FunnelStage {
-  stage: string
-  count: number
-}
-
-interface FunnelData {
-  stages: FunnelStage[]
-}
-
-interface FunnelResponse {
-  type: string
-  funnel: FunnelData
+interface KpiResponse {
+  totalLeads?: number       // 호환 키 — inflowCountTotal 값과 동일
+  inflowCountTotal?: number // 명시 키 (신규)
 }
 
 interface Props {
@@ -41,13 +32,13 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
   const { selectedClientId } = useClient()
 
   const [adsLoading, setAdsLoading] = useState(true)
-  const [funnelLoading, setFunnelLoading] = useState(true)
+  const [inflowLoading, setInflowLoading] = useState(true)
   const [impressions, setImpressions] = useState(0)
   const [clicks, setClicks] = useState(0)
   const [leadCount, setLeadCount] = useState(0)
   const [hasData, setHasData] = useState(false)
 
-  const loading = adsLoading || funnelLoading
+  const loading = adsLoading || inflowLoading
 
   const fetchAdsStats = useCallback(async () => {
     setAdsLoading(true)
@@ -71,31 +62,30 @@ export default function AdsFunnel({ startDate, endDate }: Props) {
     }
   }, [startDate, endDate, selectedClientId])
 
-  const fetchFunnelData = useCallback(async () => {
-    setFunnelLoading(true)
+  const fetchInflowCount = useCallback(async () => {
+    setInflowLoading(true)
     try {
-      const qs = new URLSearchParams({ groupBy: 'total', startDate, endDate })
+      const qs = new URLSearchParams({ startDate, endDate })
       if (selectedClientId) qs.set('client_id', String(selectedClientId))
 
-      const res = await fetch(`/api/dashboard/funnel?${qs}`)
+      // 광고 페이지 KPI 카드와 동일한 API 사용 — leads + 매체 전환(mediaConversions) 합산값.
+      // /api/dashboard/funnel 은 leads 테이블만 보므로 자체 랜딩 없는 매체(예: 네이버 SA)에서 0 으로 표시되는 문제를 회피.
+      const res = await fetch(`/api/dashboard/kpi?${qs}`)
       if (!res.ok) return
 
-      const json: FunnelResponse = await res.json()
-      const stages = json?.funnel?.stages ?? []
-      // API는 'New'(유입) → 'InProgress'(진행) → 'Converted'(전환) 단계로 반환
-      // 광고 퍼널의 "인입"은 유효 리드 전체 = New 단계 count
-      setLeadCount(stages.find(s => s.stage === 'New')?.count ?? 0)
+      const json: KpiResponse = await res.json()
+      setLeadCount(json?.inflowCountTotal ?? json?.totalLeads ?? 0)
     } catch {
       // silently fail
     } finally {
-      setFunnelLoading(false)
+      setInflowLoading(false)
     }
   }, [startDate, endDate, selectedClientId])
 
   useEffect(() => {
     fetchAdsStats()
-    fetchFunnelData()
-  }, [fetchAdsStats, fetchFunnelData])
+    fetchInflowCount()
+  }, [fetchAdsStats, fetchInflowCount])
 
   useEffect(() => {
     if (!loading) {

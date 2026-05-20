@@ -6,6 +6,7 @@ import { createLogger } from '@/lib/logger'
 import { apiToCreativePlatform, getSourceLabel, PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
 import { resolveInflowSourceForChannel, computeInflowCount } from '@/lib/inflow'
 import { isDemoViewer, getDemoChannel } from '@/lib/demo-data'
+import { fetchManualInflows, indexManualInflows, getManualBoostForChannel } from '@/lib/manual-inflow'
 
 const logger = createLogger('AdsPlatformSummary')
 
@@ -76,11 +77,26 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (tsStart) conversionsQuery = conversionsQuery.gte('status_changed_at', tsStart)
     if (tsEnd) conversionsQuery = conversionsQuery.lt('status_changed_at', tsEnd)
 
-    const [adStatsRes, leadsRes, conversionsRes] = await Promise.all([
+    // manual_inflows 보정값 인덱스 — 채널 단위 합산
+    const manualClientIds: number[] | null = clientId
+      ? [clientId]
+      : assignedClientIds !== null
+      ? assignedClientIds
+      : null
+    const manualStart = dateStart ?? getKstDateString(new Date(0))
+    const manualEnd = dateEnd ?? getKstDateString()
+
+    const [adStatsRes, leadsRes, conversionsRes, manualInflowRows] = await Promise.all([
       adStatsQuery,
       leadsQuery,
       conversionsQuery,
+      fetchManualInflows(supabase, {
+        clientIds: manualClientIds,
+        startDate: manualStart,
+        endDate: manualEnd,
+      }),
     ])
+    const manualInflowIndex = indexManualInflows(manualInflowRows)
 
     if (adStatsRes.error) {
       logger.error('광고 통계 조회 실패', adStatsRes.error, { clientId })
@@ -158,10 +174,11 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       payingContactsByChannel[channel].add(conv.contact_id)
     }
 
-    // 모든 채널 목록 (광고 채널 + 리드 채널 합집합)
+    // 모든 채널 목록 (광고 채널 + 리드 채널 + 수동 보정 채널 합집합)
     const allChannels = new Set([
       ...Object.keys(adByChannel),
       ...Object.keys(leadsByChannel),
+      ...Array.from(manualInflowIndex.byChannel.keys()),
     ])
 
     // 결과 조합 및 파생 지표 계산 — 인입 모델 적용
@@ -172,7 +189,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
         const { spend, clicks, impressions, mediaConversions } = adData
         const actualLeads = leadsByChannel[channel] || 0
         const inflowSource = resolveInflowSourceForChannel(channel)
-        const inflowCount = computeInflowCount(actualLeads, mediaConversions, inflowSource)
+        const manualBoost = getManualBoostForChannel(manualInflowIndex, channel)
+        const inflowCount = computeInflowCount(actualLeads, mediaConversions, inflowSource, manualBoost)
         const revenue = revenueByChannel[channel] || 0
         const payingContacts = payingContactsByChannel[channel]?.size || 0
 

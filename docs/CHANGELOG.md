@@ -2,6 +2,18 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 수동 인입 보정 (manual_inflows) — ADN 등 매체 전환 누락 보정 (2026-05-20)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-20 | feat: `supabase/migrations/20260520_manual_inflows.sql` — `manual_inflows` 테이블 신설 (`client_id`, `platform`, `stat_date`, `count`, `reason`, `created_by/updated_by`). `(client_id, platform, stat_date)` UNIQUE. ADN 등 매체 트래킹이 실제 인입을 일부 누락하는 케이스에 일자 단위 보정값 기록 |
+| 2026-05-20 | feat: `lib/manual-inflow.ts` (신규) — `fetchManualInflows()` / `indexManualInflows()` / `getManualBoostForChannel()` / `getManualBoostForChannelDate()`. `platform → channel` 매핑 후 채널/일자 키로 O(1) 조회. `clientIds === null` 은 superadmin 전체 조회, `[]` 는 빈 결과 |
+| 2026-05-20 | feat: `lib/inflow.ts` `computeInflowCount()` 에 4번째 인자 `manualBoost` 추가. `inflow_source` 와 무관하게 결과에 합산 (lead_webhook/media_conversion/combined 모두 동일 처리) |
+| 2026-05-20 | feat: `app/api/manual-inflows/route.ts` (신규) — `withClientAdmin` 가드. GET(월 단위 조회) / PUT(upsert) / DELETE. `activity_logs` 기록. agency_staff 차단 |
+| 2026-05-20 | feat: `components/ads/ManualInflowDialog.tsx` (신규) — 월 단위 캘린더 그리드 다이얼로그. 일자 셀 클릭 → 보정값/사유 편집. 빈 셀 vs 보정된 셀 시각적 구분 (`+N` 표시 + brand-50 배경) |
+| 2026-05-20 | feat: `app/(dashboard)/ads/page.tsx` 헤더에 "수동 인입 보정" 버튼 추가 (`canEditManualInflow = superadmin \| client_admin`). ADN 매체 기본값으로 다이얼로그 노출 |
+| 2026-05-20 | feat: 7개 인입 집계 API 라우트에서 `manual_inflows` 합산 — `dashboard/{kpi,channel,trend}`, `ads/{platform-summary,efficiency-trend,day-analysis}`, `cron/send-reports`. 채널 단위/일자 단위/전체합 중 라우트 컨텍스트에 맞게 선택. `dashboard/campaign` 은 캠페인 행 정밀도 유지 정책상 제외 |
+
 ## 금액 표시 원 단위(정수) 통일 + 공통 포맷 헬퍼 도입 (2026-05-20)
 
 | 날짜 | 내용 |

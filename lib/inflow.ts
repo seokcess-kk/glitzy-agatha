@@ -39,15 +39,22 @@ export function resolveInflowSource(
  *                       동시 운영하는 케이스(예: Meta) 용. 동일 사용자가 두
  *                       경로로 동시 보고될 시 이중 카운트 위험 — 캠페인
  *                       단위 트래킹 분리(랜딩에는 픽셀 lead 미설치 등)로 회피.
+ *
+ * manualBoost: manual_inflows 테이블의 일자별 보정값. inflow_source 와 무관하게
+ *   결과에 무조건 합산된다. 매체(특히 ADN)가 매체 전환을 누락하는 케이스에
+ *   대비한 수동 보정. 기본 0.
  */
 export function computeInflowCount(
   actualLeads: number,
   mediaConversions: number,
   inflowSource: InflowSource,
+  manualBoost: number = 0,
 ): number {
-  if (inflowSource === 'lead_webhook') return actualLeads
-  if (inflowSource === 'media_conversion') return mediaConversions
-  return actualLeads + mediaConversions
+  let base: number
+  if (inflowSource === 'lead_webhook') base = actualLeads
+  else if (inflowSource === 'media_conversion') base = mediaConversions
+  else base = actualLeads + mediaConversions
+  return base + manualBoost
 }
 
 /**

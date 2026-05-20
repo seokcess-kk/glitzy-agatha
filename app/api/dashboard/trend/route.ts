@@ -3,6 +3,7 @@ import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSucces
 import { getKstDateString } from '@/lib/date'
 import { isDemoViewer, getDemoTrend } from '@/lib/demo-data'
 import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
+import { fetchManualInflows } from '@/lib/manual-inflow'
 
 const DAYS = 28 // 최근 4주
 
@@ -65,9 +66,21 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   if (adFiltered) adQuery = adFiltered
   if (leadFiltered) leadQuery = leadFiltered
 
-  const [adRes, leadRes] = await Promise.all([
+  // manual_inflows 보정값 — 일자별 합산 (채널 분리 없음 → 일자 total)
+  const manualClientIds: number[] | null = clientId
+    ? [clientId]
+    : assignedClientIds !== null
+    ? assignedClientIds
+    : null
+
+  const [adRes, leadRes, manualInflowRows] = await Promise.all([
     adFiltered ? adQuery : Promise.resolve({ data: [] as { stat_date: string; platform: string; spend_amount: number; conversions: number | null }[], error: null }),
     leadFiltered ? leadQuery : Promise.resolve({ data: [] as { created_at: string }[], error: null }),
+    fetchManualInflows(supabase, {
+      clientIds: manualClientIds,
+      startDate,
+      endDate,
+    }),
   ])
 
   if (adRes.error) return apiError(adRes.error.message, 500)
@@ -98,9 +111,16 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (entry) entry.actualLeads += 1
   }
 
-  // 인입 카운트 = actualLeads + mediaConversions. 기존 응답 키 `leads` 는 호환 위해 inflowCount 동일값
+  // 수동 보정값(manual_inflows) — 일자별 합산 (채널 무관, 모든 채널 합쳐서 더함)
+  const manualBoostByDate = new Map<string, number>()
+  for (const row of manualInflowRows) {
+    manualBoostByDate.set(row.stat_date, (manualBoostByDate.get(row.stat_date) || 0) + row.count)
+  }
+
+  // 인입 카운트 = actualLeads + mediaConversions + manualBoost. 기존 응답 키 `leads` 는 호환 위해 inflowCount 동일값
   for (const entry of dayMap.values()) {
-    entry.inflowCount = entry.actualLeads + entry.mediaConversions
+    const manualBoost = manualBoostByDate.get(entry.date) || 0
+    entry.inflowCount = entry.actualLeads + entry.mediaConversions + manualBoost
     entry.leads = entry.inflowCount
   }
 

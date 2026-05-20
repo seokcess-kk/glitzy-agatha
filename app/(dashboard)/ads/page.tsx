@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { startOfDay, startOfMonth } from 'date-fns'
 import { DateRange } from 'react-day-picker'
-import { RefreshCw, Play, History } from 'lucide-react'
+import { RefreshCw, Play, History, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { useClient } from '@/components/ClientContext'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,7 @@ import { getKstDateString } from '@/lib/date'
 import AdsOverviewTab from '@/components/ads/ads-overview-tab'
 import AdsCampaignTab from '@/components/ads/ads-campaign-tab'
 import BackfillDialog from '@/components/ads/backfill-dialog'
+import ManualInflowDialog from '@/components/ads/ManualInflowDialog'
 
 const TABS = [
   { key: 'overview', label: '성과 개요' },
@@ -48,6 +49,8 @@ function AdsPageInner() {
   const [syncing, setSyncing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [backfillOpen, setBackfillOpen] = useState(false)
+  const [manualInflowOpen, setManualInflowOpen] = useState(false)
+  const canEditManualInflow = user?.role === 'superadmin' || user?.role === 'client_admin'
 
   // KST 기준 YYYY-MM-DD 문자열 (ad_campaign_stats.stat_date와 동일 형식)
   const startDate = dateRange.from ? getKstDateString(dateRange.from) : getKstDateString(startOfMonth(new Date()))
@@ -145,6 +148,16 @@ function AdsPageInner() {
                   <History size={14} /> 과거 데이터 백필
                 </Button>
               )}
+              {canEditManualInflow && selectedClientId && (
+                <Button
+                  variant="outline"
+                  onClick={() => setManualInflowOpen(true)}
+                  disabled={syncing}
+                  title="ADN 등 매체 전환 누락 일자에 보정 인입 수 입력"
+                >
+                  <Pencil size={14} /> 수동 인입 보정
+                </Button>
+              )}
               {canSync && (
                 <Button
                   onClick={handleSync}
@@ -166,6 +179,17 @@ function AdsPageInner() {
           clientId={selectedClientId}
           clientName={selectedClient?.name}
           onComplete={handleRefresh}
+        />
+      )}
+
+      {canEditManualInflow && selectedClientId && (
+        <ManualInflowDialog
+          open={manualInflowOpen}
+          onOpenChange={setManualInflowOpen}
+          clientId={selectedClientId}
+          clientName={selectedClient?.name}
+          platform="adn_ads"
+          onSaved={handleRefresh}
         />
       )}
 

@@ -5,6 +5,7 @@ import { sourceToChannel } from '@/lib/platform'
 import { resolveInflowSourceForChannel, computeInflowCount } from '@/lib/inflow'
 import { getKstDateString } from '@/lib/date'
 import { isDemoViewer, getDemoChannel } from '@/lib/demo-data'
+import { fetchManualInflows, indexManualInflows, getManualBoostForChannel } from '@/lib/manual-inflow'
 
 /**
  * 채널별 KPI 분석 API
@@ -56,10 +57,25 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   if (startKst) adStatsQuery = adStatsQuery.gte('stat_date', startKst)
   if (endKst) adStatsQuery = adStatsQuery.lte('stat_date', endKst)
 
-  const [leadsRes, adStatsRes] = await Promise.all([
+  // manual_inflows 보정값 인덱스 — 채널 단위 합산
+  const manualClientIds: number[] | null = clientId
+    ? [clientId]
+    : assignedClientIds !== null
+    ? assignedClientIds
+    : null
+  const manualStart = startKst ?? getKstDateString(new Date(0))
+  const manualEnd = endKst ?? getKstDateString()
+
+  const [leadsRes, adStatsRes, manualInflowRows] = await Promise.all([
     leadsQuery,
     adStatsQuery,
+    fetchManualInflows(supabase, {
+      clientIds: manualClientIds,
+      startDate: manualStart,
+      endDate: manualEnd,
+    }),
   ])
+  const manualInflowIndex = indexManualInflows(manualInflowRows)
 
   // 채널별 리드 집계 — 플랫폼 단위 통합 (Meta, Google 등)
   const leadsByChannel: Record<string, Set<number>> = {}
@@ -122,6 +138,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   const allChannels = Array.from(new Set([
     ...Object.keys(leadsByChannel),
     ...Object.keys(spendByChannel),
+    ...Array.from(manualInflowIndex.byChannel.keys()),
   ]))
 
   const result = allChannels
@@ -135,7 +152,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
 
       // 채널별 inflow source — 검색광고(Naver 등) 매체 전환 기반, 나머지 폼/웹훅 기반
       const inflowSource = resolveInflowSourceForChannel(ch)
-      const inflowCount = computeInflowCount(actualLeads, mediaConversions, inflowSource)
+      const manualBoost = getManualBoostForChannel(manualInflowIndex, ch)
+      const inflowCount = computeInflowCount(actualLeads, mediaConversions, inflowSource, manualBoost)
 
       const stats = statusByChannel[ch] || { total: 0, converted: 0, lost: 0, hold: 0, noResponse: 0, invalid: 0 }
       // 유효 리드 = 전체 - 무효

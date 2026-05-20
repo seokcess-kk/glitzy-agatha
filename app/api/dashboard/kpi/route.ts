@@ -5,6 +5,7 @@ import { getKstDateString, getKstDayStartISO } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { isDemoViewer, getDemoKpi } from '@/lib/demo-data'
 import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
+import { fetchManualInflows, indexManualInflows } from '@/lib/manual-inflow'
 
 const logger = createLogger('DashboardKpi')
 
@@ -32,6 +33,20 @@ async function fetchMetrics(
   const statStart = getKstDateString(new Date(start))
   // end는 다음날 자정이므로 하루 빼서 종료일 추출
   const statEnd = getKstDateString(new Date(new Date(end).getTime() - 86400000))
+
+  // manual_inflows 보정값 인덱스 — 전체 인입 합에 한 번에 합산
+  // clientId 우선, assignedClientIds 다음, 둘 다 null이면 superadmin 전체 조회
+  const manualClientIds: number[] | null = clientId
+    ? [clientId]
+    : assignedClientIds !== null
+    ? assignedClientIds
+    : null
+  const manualInflowRows = await fetchManualInflows(supabase, {
+    clientIds: manualClientIds,
+    startDate: statStart,
+    endDate: statEnd,
+  })
+  const manualInflowIndex = indexManualInflows(manualInflowRows)
 
   // 범위 패턴: [start, end) — fetchTodaySummary와 동일한 gte/lt 패턴
   //   ad_campaign_stats 에 platform/conversions 추가 select — 매체 전환 기반 인입 계산
@@ -73,8 +88,8 @@ async function fetchMetrics(
     return sum + Number(r.conversions || 0)
   }, 0)
 
-  // 글로벌 인입 = 폼/웹훅 리드 + 매체 전환 채널 conversions 합산
-  const inflowCountTotal = totalLeads + mediaConversionsTotal
+  // 글로벌 인입 = 폼/웹훅 리드 + 매체 전환 채널 conversions 합산 + 수동 보정값(manual_inflows)
+  const inflowCountTotal = totalLeads + mediaConversionsTotal + manualInflowIndex.total
   const totalRevenue = conversionsRes.data?.reduce((s, r) => s + Number(r.conversion_value), 0) || 0
   const bookedCount = bookedRes.count || 0
   const consultCount = consultRes.count || 0

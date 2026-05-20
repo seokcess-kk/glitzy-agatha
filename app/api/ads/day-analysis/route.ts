@@ -4,6 +4,7 @@ import { isDemoViewer, getDemoDayAnalysis } from '@/lib/demo-data'
 import { getKstDateString, toUtcDate } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
+import { fetchManualInflows } from '@/lib/manual-inflow'
 
 const logger = createLogger('AdsDayAnalysis')
 
@@ -63,7 +64,24 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (dateStart) adStatsQuery = adStatsQuery.gte('stat_date', dateStart)
     if (dateEnd) adStatsQuery = adStatsQuery.lte('stat_date', dateEnd)
 
-    const [leadsRes, adStatsRes] = await Promise.all([leadsQuery, adStatsQuery])
+    // manual_inflows 보정값 — 일자별로 가져와 요일별 누적
+    const manualClientIds: number[] | null = clientId
+      ? [clientId]
+      : assignedClientIds !== null
+      ? assignedClientIds
+      : null
+    const manualStart = dateStart ?? getKstDateString(new Date(0))
+    const manualEnd = dateEnd ?? getKstDateString()
+
+    const [leadsRes, adStatsRes, manualInflowRows] = await Promise.all([
+      leadsQuery,
+      adStatsQuery,
+      fetchManualInflows(supabase, {
+        clientIds: manualClientIds,
+        startDate: manualStart,
+        endDate: manualEnd,
+      }),
+    ])
 
     if (leadsRes.error) {
       logger.error('리드 조회 실패', leadsRes.error, { clientId })
@@ -103,10 +121,19 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       }
     }
 
+    // 수동 보정값(manual_inflows) 요일별 누적 — stat_date 의 KST 요일 기준
+    const manualBoostByDay: number[] = Array(7).fill(0)
+    for (const row of manualInflowRows) {
+      const d = new Date(row.stat_date + 'T00:00:00+09:00')
+      const dayOfWeek = d.getUTCDay()
+      manualBoostByDay[dayOfWeek] += Number(row.count) || 0
+    }
+
     const byDay = Array.from({ length: 7 }, (_, day) => {
       const actualLeads = leadsByDay[day]
       const mediaConversions = mediaConvByDay[day]
-      const inflowCount = actualLeads + mediaConversions
+      const manualBoost = manualBoostByDay[day]
+      const inflowCount = actualLeads + mediaConversions + manualBoost
       const spend = spendByDay[day]
       return {
         day,

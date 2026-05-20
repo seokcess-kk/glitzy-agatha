@@ -3,6 +3,7 @@ import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSucces
 import { isDemoViewer, getDemoEfficiencyTrend } from '@/lib/demo-data'
 import { getKstDateString } from '@/lib/date'
 import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
+import { fetchManualInflows } from '@/lib/manual-inflow'
 
 const DEFAULT_DAYS = 28
 
@@ -71,13 +72,25 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
   if (adFiltered) adQuery = adFiltered
   if (leadFiltered) leadQuery = leadFiltered
 
-  const [adRes, leadRes] = await Promise.all([
+  // manual_inflows 보정값 — 일자별 합산 (채널 분리 없음 → 일자 total)
+  const manualClientIds: number[] | null = clientId
+    ? [clientId]
+    : assignedClientIds !== null
+    ? assignedClientIds
+    : null
+
+  const [adRes, leadRes, manualInflowRows] = await Promise.all([
     adFiltered
       ? adQuery
       : Promise.resolve({ data: [] as { stat_date: string; platform: string; spend_amount: number; clicks: number; impressions: number; conversions: number | null }[], error: null }),
     leadFiltered
       ? leadQuery
       : Promise.resolve({ data: [] as { created_at: string }[], error: null }),
+    fetchManualInflows(supabase, {
+      clientIds: manualClientIds,
+      startDate,
+      endDate,
+    }),
   ])
 
   if (adRes.error) return apiError(adRes.error.message, 500)
@@ -109,9 +122,16 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     if (entry) entry.actualLeads += 1
   }
 
-  // 인입 + 파생 지표 계산
+  // 수동 보정값(manual_inflows) — 일자별 합산 (채널 무관, 모든 채널 합쳐서 더함)
+  const manualBoostByDate = new Map<string, number>()
+  for (const row of manualInflowRows) {
+    manualBoostByDate.set(row.stat_date, (manualBoostByDate.get(row.stat_date) || 0) + row.count)
+  }
+
+  // 인입 + 파생 지표 계산 (manualBoost 합산)
   for (const entry of dayMap.values()) {
-    entry.inflowCount = entry.actualLeads + entry.mediaConversions
+    const manualBoost = manualBoostByDate.get(entry.date) || 0
+    entry.inflowCount = entry.actualLeads + entry.mediaConversions + manualBoost
     entry.leads = entry.inflowCount // 호환
     entry.cpl = entry.inflowCount > 0 ? Math.round(entry.spend / entry.inflowCount) : 0
     entry.cpc = entry.clicks > 0 ? Math.round(entry.spend / entry.clicks) : 0

@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from '@/lib/api-middleware'
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
 import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
+import { fetchManualInflows, indexManualInflows } from '@/lib/manual-inflow'
 
 const logger = createLogger('CronSendReports')
 
@@ -114,13 +115,27 @@ export async function GET(req: Request) {
           return sum + Number(r.conversions || 0)
         }, 0)
 
-        // 인입 = 폼/웹훅 리드 + 매체 전환 (네이버 SA 등 자체 랜딩 없는 매체)
-        const totalInflow = actualLeads + mediaConversions
+        // 수동 보정값(manual_inflows) — 이번 달 전체 채널 합
+        const manualInflowRows = await fetchManualInflows(supabase, {
+          clientIds: [clientId],
+          startDate: monthStart,
+          endDate: kstToday,
+        })
+        const manualBoost = indexManualInflows(manualInflowRows).total
+
+        // 인입 = 폼/웹훅 리드 + 매체 전환 + 수동 보정값
+        const totalInflow = actualLeads + mediaConversions + manualBoost
         const cpl = totalInflow > 0 ? Math.round(totalSpend / totalInflow) : 0
 
-        // 리포트 메시지 생성 — 인입 기준. 매체 전환이 있으면 분해 표시
-        const inflowLine = mediaConversions > 0
-          ? `인입: ${totalInflow}건 (리드 ${actualLeads} · 매체 ${mediaConversions})`
+        // 리포트 메시지 생성 — 인입 기준. 매체 전환/수동 보정이 있으면 분해 표시
+        const breakdownParts: string[] = []
+        if (mediaConversions > 0 || manualBoost > 0) {
+          breakdownParts.push(`리드 ${actualLeads}`)
+          if (mediaConversions > 0) breakdownParts.push(`매체 ${mediaConversions}`)
+          if (manualBoost > 0) breakdownParts.push(`보정 ${manualBoost}`)
+        }
+        const inflowLine = breakdownParts.length > 0
+          ? `인입: ${totalInflow}건 (${breakdownParts.join(' · ')})`
           : `인입: ${totalInflow}건`
         const reportText = [
           `[Agatha] ${client.name} 마케팅 리포트`,

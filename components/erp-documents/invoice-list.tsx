@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/sheet'
 import { EmptyState } from '@/components/common'
 import { formatDate } from '@/lib/date'
+import { formatCurrency } from '@/lib/format'
 import type {
   ERPInvoice,
   ERPInvoiceType,
@@ -38,10 +39,6 @@ const TYPE_LABELS: Record<ERPInvoiceType, string> = {
 const STATUS_MAP: Record<ERPInvoiceStatus, { variant: 'success' | 'destructive'; label: string }> = {
   issued: { variant: 'success', label: '발행됨' },
   cancelled: { variant: 'destructive', label: '취소됨' },
-}
-
-function formatAmount(amount: number): string {
-  return amount.toLocaleString('ko-KR') + '원'
 }
 
 interface InvoiceListProps {
@@ -159,7 +156,7 @@ export default function InvoiceList({ clientId }: InvoiceListProps) {
                     <Badge variant={status.variant}>{status.label}</Badge>
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatAmount(invoice.total_amount)}
+                    {formatCurrency(invoice.total_amount)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(invoice.issue_date)}
@@ -240,15 +237,15 @@ export default function InvoiceList({ clientId }: InvoiceListProps) {
                 </div>
                 <div>
                   <p className="text-muted-foreground">공급가</p>
-                  <p className="text-foreground">{formatAmount(detail.supply_amount)}</p>
+                  <p className="text-foreground">{formatCurrency(detail.supply_amount)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">세액</p>
-                  <p className="text-foreground">{formatAmount(detail.tax_amount)}</p>
+                  <p className="text-foreground">{formatCurrency(detail.tax_amount)}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-muted-foreground">합계</p>
-                  <p className="font-semibold text-foreground">{formatAmount(detail.total_amount)}</p>
+                  <p className="font-semibold text-foreground">{formatCurrency(detail.total_amount)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">작성일</p>

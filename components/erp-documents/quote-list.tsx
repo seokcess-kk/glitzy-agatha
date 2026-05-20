@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { EmptyState } from '@/components/common'
 import { formatDate } from '@/lib/date'
+import { formatCurrency } from '@/lib/format'
 import type {
   ERPQuote,
   ERPQuoteDetail,
@@ -46,10 +47,6 @@ const STATUS_MAP: Record<ERPQuoteStatus, { variant: 'warning' | 'success' | 'inf
   approved: { variant: 'success', label: '승인됨' },
   converted: { variant: 'info', label: '전환됨' },
   rejected: { variant: 'destructive', label: '반려됨' },
-}
-
-function formatAmount(amount: number): string {
-  return amount.toLocaleString('ko-KR') + '원'
 }
 
 interface QuoteListProps {
@@ -211,7 +208,7 @@ export default function QuoteList({ clientId }: QuoteListProps) {
                     <Badge variant={status.variant}>{status.label}</Badge>
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatAmount(quote.total_amount)}
+                    {formatCurrency(quote.total_amount)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {quote.valid_until ? formatDate(quote.valid_until) : '-'}
@@ -299,15 +296,15 @@ export default function QuoteList({ clientId }: QuoteListProps) {
                   )}
                   <div>
                     <p className="text-muted-foreground">공급가</p>
-                    <p className="text-foreground">{formatAmount(detail.supply_amount)}</p>
+                    <p className="text-foreground">{formatCurrency(detail.supply_amount)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">세액</p>
-                    <p className="text-foreground">{formatAmount(detail.tax_amount)}</p>
+                    <p className="text-foreground">{formatCurrency(detail.tax_amount)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">합계</p>
-                    <p className="font-semibold text-foreground">{formatAmount(detail.total_amount)}</p>
+                    <p className="font-semibold text-foreground">{formatCurrency(detail.total_amount)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">유효기간</p>
@@ -357,10 +354,10 @@ export default function QuoteList({ clientId }: QuoteListProps) {
                                 {item.quantity} {item.unit}
                               </TableCell>
                               <TableCell className="text-right text-muted-foreground">
-                                {formatAmount(item.unit_price)}
+                                {formatCurrency(item.unit_price)}
                               </TableCell>
                               <TableCell className="text-right font-medium">
-                                {formatAmount(item.amount)}
+                                {formatCurrency(item.amount)}
                               </TableCell>
                             </TableRow>
                           ))}

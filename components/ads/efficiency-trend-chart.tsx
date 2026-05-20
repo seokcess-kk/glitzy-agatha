@@ -19,6 +19,7 @@ import {
 import { TrendingUp } from 'lucide-react'
 import { ChartTooltipProps } from '@/types/recharts'
 import { CHART_SEMANTIC } from '@/lib/chart-colors'
+import { formatCurrencyCompact } from '@/lib/format'
 
 interface EfficiencyDataItem {
   date: string
@@ -113,7 +114,7 @@ function EfficiencyChart({
         {/* Left Y-axis: ₩ amount */}
         <YAxis
           yAxisId="krw"
-          tickFormatter={(v: number) => `₩${(v / 1000).toFixed(0)}k`}
+          tickFormatter={(v: number) => formatCurrencyCompact(v)}
           tick={{ fill: 'hsl(var(--muted-foreground))', fontSize }}
           axisLine={false}
           tickLine={false}

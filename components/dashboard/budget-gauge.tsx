@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common'
 import { Wallet } from 'lucide-react'
+import { formatCurrencyCompact } from '@/lib/format'
 
 export interface BudgetData {
   monthlyBudget: number
@@ -15,13 +16,6 @@ export interface BudgetData {
 interface BudgetGaugeProps {
   data: BudgetData | null
   loading?: boolean
-}
-
-function formatCurrency(value: number): string {
-  if (value >= 10000) {
-    return `${(value / 10000).toFixed(0)}만`
-  }
-  return value.toLocaleString()
 }
 
 function getBurnColor(rate: number): string {
@@ -70,7 +64,7 @@ export function BudgetGauge({ data, loading }: BudgetGaugeProps) {
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">현재 지출 / 월 예산</span>
             <span className="text-sm font-medium tabular-nums text-foreground">
-              {formatCurrency(data.spentAmount)} / {formatCurrency(data.monthlyBudget)}
+              {formatCurrencyCompact(data.spentAmount)} / {formatCurrencyCompact(data.monthlyBudget)}
             </span>
           </div>
 
@@ -82,7 +76,7 @@ export function BudgetGauge({ data, loading }: BudgetGaugeProps) {
                 ? 'text-rose-600 dark:text-rose-400'
                 : 'text-foreground'
             }`}>
-              {formatCurrency(data.projectedSpend)}
+              {formatCurrencyCompact(data.projectedSpend)}
             </span>
           </div>
         </div>

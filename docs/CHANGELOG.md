@@ -2,6 +2,14 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 금액 표시 원 단위(정수) 통일 + 공통 포맷 헬퍼 도입 (2026-05-20)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-20 | feat: `lib/format.ts` 신설 — `formatCurrency()`(`1,234,567원` 풀 표기) / `formatCurrencyCompact()`(`1억 2,346만원` 콤팩트) / `formatNumber()`(카운트용 콤마). 내부 `Math.round` + NaN/null 안전 처리. 모든 금액은 정수 원으로 표시 (소수점 금지). 비율(ROAS/CTR/CVR%)은 컴포넌트에서 그대로 `toFixed(1/2)` 유지 |
+| 2026-05-20 | refactor: 자체 정의된 통화 포맷 함수 4곳 제거 → 표준 헬퍼로 통합. `components/erp-documents/quote-list.tsx` / `invoice-list.tsx` 의 `formatAmount` → `formatCurrency`. `components/dashboard/budget-gauge.tsx` 콤팩트 `formatCurrency` → `formatCurrencyCompact`. `lib/ads-anomaly.ts` `formatKrw` → `formatCurrencyCompact({withUnit:false})` |
+| 2026-05-20 | refactor: `components/dashboard/spend-lead-trend.tsx` / `efficiency-trend-chart.tsx` 차트 Y축 라벨, `day-of-week-analysis.tsx` CPL 라벨에서 통화 표시를 `formatCurrencyCompact` 로 전환 (정수 콤팩트) |
+
 ## Google Ads 동기화 확장 — campaign_type / 매체 전환 / ad 레벨 (2026-05-20)
 
 | 날짜 | 내용 |

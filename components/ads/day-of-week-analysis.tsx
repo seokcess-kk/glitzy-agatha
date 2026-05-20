@@ -18,6 +18,7 @@ import {
 import { CalendarDays } from 'lucide-react'
 import { ChartTooltipProps, ChartLabelProps } from '@/types/recharts'
 import { BAR_COLORS } from '@/lib/chart-colors'
+import { formatCurrency, formatCurrencyCompact } from '@/lib/format'
 
 function fmtShort(iso: string) {
   const d = new Date(iso)
@@ -67,8 +68,8 @@ function CplLabel(props: ChartLabelProps) {
   const cpl = Number(props?.payload?.cpl) || 0
   if (!cpl || cpl === 0) return null
   const displayVal = cpl >= 10000
-    ? `₩${(cpl / 10000).toFixed(0)}만`
-    : `₩${Math.round(cpl).toLocaleString()}`
+    ? formatCurrencyCompact(cpl)
+    : formatCurrency(cpl)
   return (
     <text
       x={x + width / 2}

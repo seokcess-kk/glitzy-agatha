@@ -6,6 +6,7 @@
 
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
+import { formatCurrencyCompact } from '@/lib/format'
 
 const logger = createLogger('AdsAnomaly')
 
@@ -27,14 +28,6 @@ interface DailyStat {
   spend_amount: number
   clicks: number
   impressions: number
-}
-
-/** 숫자를 한국식 금액으로 포맷 (서버 locale 의존 없음) */
-function formatKrw(amount: number): string {
-  const rounded = Math.round(amount)
-  if (rounded >= 100_000_000) return `${Math.round(rounded / 100_000_000)}억`
-  if (rounded >= 10_000) return `${Math.round(rounded / 10_000).toLocaleString('en-US')}만`
-  return `${rounded.toLocaleString('en-US')}`
 }
 
 const CONCURRENCY_LIMIT = 5
@@ -124,7 +117,7 @@ export async function detectAdsAnomalies(
         metric: '일 지출',
         threshold: 200,
         actual: ratio,
-        message: `[${platform}] ${campaignName}: 일 지출 ${ratio}% (평균 ${formatKrw(avgSpend)}원 → ${formatKrw(latest.spend_amount)}원)`,
+        message: `[${platform}] ${campaignName}: 일 지출 ${ratio}% (평균 ${formatCurrencyCompact(avgSpend, { withUnit: false })}원 → ${formatCurrencyCompact(latest.spend_amount, { withUnit: false })}원)`,
       })
     }
 

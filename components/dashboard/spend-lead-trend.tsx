@@ -10,8 +10,9 @@ import {
 import { TrendingUp } from 'lucide-react'
 import { ChartTooltipProps } from '@/types/recharts'
 import { CHART_SEMANTIC } from '@/lib/chart-colors'
+import { formatCurrencyCompact } from '@/lib/format'
 
-const fmtKrw = (v: number) => `₩${(v / 10000).toFixed(0)}만`
+const fmtKrw = (v: number) => formatCurrencyCompact(v)
 
 interface TrendDataItem {
   date: string

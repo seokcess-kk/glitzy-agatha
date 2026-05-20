@@ -2,6 +2,14 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## Google Ads MCC 경유 호출 지원 — login_customer_id 옵션 (2026-05-20)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-20 | feat: `lib/platform.ts` `API_PLATFORM_FIELDS.google_ads`에 `login_customer_id`(MCC, 선택) 필드 추가. `API_REQUIRED_FIELDS`에는 추가하지 않아 단독 광고 계정 케이스는 빈 값 허용 |
+| 2026-05-20 | feat: `lib/services/googleAds.ts` `GoogleAdsOptions.loginCustomerId` 옵션 추가 + 환경변수 폴백(`GOOGLE_ADS_LOGIN_CUSTOMER_ID`). `customer_id`/`login_customer_id` 모두 하이픈 자동 제거. MCC(관리자) 계정 아래의 자식 광고 계정을 호출할 때 발생하는 `User doesn't have permission to access customer` 에러 해결 |
+| 2026-05-20 | feat: `lib/services/adSyncManager.ts` 클라이언트별 google_ads 동기화 시 `decrypted.login_customer_id`를 `fetchGoogleAds`에 전달 |
+
 ## API 설정 다이얼로그 부분 업데이트 지원 + 에러 표시 안전망 (2026-05-20)
 
 | 날짜 | 내용 |

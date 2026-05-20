@@ -13,6 +13,7 @@ export interface GoogleAdsOptions {
   developerToken?: string
   customerId?: string
   refreshToken?: string
+  loginCustomerId?: string
 }
 
 export async function fetchGoogleAds(date = new Date(), options?: GoogleAdsOptions) {
@@ -28,11 +29,16 @@ export async function fetchGoogleAds(date = new Date(), options?: GoogleAdsOptio
   const developerToken = options?.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN
   const customerId = options?.customerId || process.env.GOOGLE_ADS_CUSTOMER_ID
   const refreshToken = options?.refreshToken || process.env.GOOGLE_ADS_REFRESH_TOKEN
+  const loginCustomerId = options?.loginCustomerId || process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID
 
   if (!oauthClientId || !oauthClientSecret || !developerToken || !customerId || !refreshToken) {
     logger.warn('Missing Google Ads credentials', { clientId: options?.clientId })
     return { platform: 'google_ads', count: 0, error: 'Missing credentials' }
   }
+
+  // Customer ID 하이픈 제거 (사용자가 '123-456-7890' 형식으로 입력해도 동작하도록)
+  const normalizedCustomerId = customerId.replace(/-/g, '')
+  const normalizedLoginCustomerId = loginCustomerId?.replace(/-/g, '')
 
   const supabase = serverSupabase()
 
@@ -44,8 +50,9 @@ export async function fetchGoogleAds(date = new Date(), options?: GoogleAdsOptio
     })
 
     const customer = client.Customer({
-      customer_id: customerId,
+      customer_id: normalizedCustomerId,
       refresh_token: refreshToken,
+      ...(normalizedLoginCustomerId ? { login_customer_id: normalizedLoginCustomerId } : {}),
     })
 
     const campaigns = await customer.query(`

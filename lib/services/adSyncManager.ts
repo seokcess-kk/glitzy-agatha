@@ -95,6 +95,7 @@ async function syncPlatform(
           developerToken: decrypted.developer_token as string,
           customerId: decrypted.customer_id as string,
           refreshToken: decrypted.refresh_token as string,
+          loginCustomerId: decrypted.login_customer_id as string | undefined,
         })
         return {
           clientId,

@@ -52,6 +52,7 @@ export const API_PLATFORM_FIELDS: Record<ApiPlatform, { key: string; label: stri
     { key: 'developer_token', label: 'Developer Token', placeholder: 'Developer Token을 입력하세요' },
     { key: 'customer_id', label: 'Customer ID', placeholder: '123-456-7890' },
     { key: 'refresh_token', label: 'Refresh Token', placeholder: 'Refresh Token을 입력하세요' },
+    { key: 'login_customer_id', label: 'Login Customer ID (MCC, 선택)', placeholder: 'MCC 경유 시 관리자 계정 ID' },
   ],
   tiktok_ads: [
     { key: 'advertiser_id', label: 'Advertiser ID', placeholder: 'Advertiser ID를 입력하세요' },

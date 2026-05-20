@@ -2,6 +2,14 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## Google Ads 동기화 확장 — campaign_type / 매체 전환 / ad 레벨 (2026-05-20)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-20 | feat: `lib/services/googleAds.ts` 캠페인 쿼리에 `campaign.advertising_channel_type` + `metrics.conversions` + `metrics.conversions_value` 추가. `ad_campaign_stats.campaign_type` / `conversions` / `revenue` 채움. Google enum (`SEARCH`/`DISPLAY`/`VIDEO`/`MULTI_CHANNEL`/`PERFORMANCE_MAX`/`DEMAND_GEN`) → 우리쪽 캠페인 타입 (`search`/`gdn`/`youtube`/`app`/`pmax`/`demand_gen`) 매핑. 디맨드젠 캠페인이 식별되지 않던 문제 해결 |
+| 2026-05-20 | feat: `lib/services/googleAds.ts` `fetchGoogleAdStats()` 신설 — `ad_group_ad` 리소스 쿼리, `ad.final_urls` 에서 utm_content 추출 후 `ad_stats` 테이블 upsert. Meta/TikTok 와 동일한 패턴. Performance Max 는 asset_group 기반이라 ad 레벨 데이터가 빠질 수 있음(제약 사항) |
+| 2026-05-20 | feat: `lib/services/adSyncManager.ts` google_ads 케이스에서 `fetchGoogleAds` + `fetchGoogleAdStats` 를 Promise.all 로 동시 호출 후 count 합산. Meta/TikTok/Naver 와 동일한 흐름 |
+
 ## Google Ads MCC 경유 호출 지원 — login_customer_id 옵션 (2026-05-20)
 
 | 날짜 | 내용 |

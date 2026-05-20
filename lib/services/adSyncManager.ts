@@ -8,7 +8,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { decryptApiConfig } from '@/lib/crypto'
 import { createLogger } from '@/lib/logger'
 import { fetchMetaAds, fetchMetaAdStats } from '@/lib/services/metaAds'
-import { fetchGoogleAds } from '@/lib/services/googleAds'
+import { fetchGoogleAds, fetchGoogleAdStats } from '@/lib/services/googleAds'
 import { fetchTikTokAds, fetchTikTokAdStats } from '@/lib/services/tiktokAds'
 import { fetchNaverAds, fetchNaverAdStats } from '@/lib/services/naverAds'
 import { fetchAdnAds } from '@/lib/services/adnAds'
@@ -88,7 +88,7 @@ async function syncPlatform(
         }
       }
       case 'google_ads': {
-        const result = await fetchGoogleAds(date, {
+        const googleOpts = {
           clientId,
           oauthClientId: decrypted.client_id as string,
           oauthClientSecret: decrypted.client_secret as string,
@@ -96,7 +96,16 @@ async function syncPlatform(
           customerId: decrypted.customer_id as string,
           refreshToken: decrypted.refresh_token as string,
           loginCustomerId: decrypted.login_customer_id as string | undefined,
-        })
+        }
+        const [campaignResult, adResult] = await Promise.all([
+          fetchGoogleAds(date, googleOpts),
+          fetchGoogleAdStats(date, googleOpts),
+        ])
+        const result = {
+          platform: campaignResult.platform,
+          count: campaignResult.count + adResult.count,
+          error: campaignResult.error || adResult.error || undefined,
+        }
         return {
           clientId,
           clientName,
@@ -250,7 +259,11 @@ export async function syncAllClients(date: Date = new Date()): Promise<SyncResul
         count: c.count + a.count,
         error: c.error || a.error || undefined,
       })),
-      fetchGoogleAds(date),
+      Promise.all([fetchGoogleAds(date), fetchGoogleAdStats(date)]).then(([c, a]) => ({
+        platform: c.platform,
+        count: c.count + a.count,
+        error: c.error || a.error || undefined,
+      })),
       Promise.all([fetchTikTokAds(date), fetchTikTokAdStats(date)]).then(([c, a]) => ({
         platform: c.platform,
         count: c.count + a.count,
@@ -485,7 +498,11 @@ export async function syncClient(
         count: c.count + a.count,
         error: c.error || a.error || undefined,
       })),
-      fetchGoogleAds(date),
+      Promise.all([fetchGoogleAds(date), fetchGoogleAdStats(date)]).then(([c, a]) => ({
+        platform: c.platform,
+        count: c.count + a.count,
+        error: c.error || a.error || undefined,
+      })),
       Promise.all([fetchTikTokAds(date), fetchTikTokAdStats(date)]).then(([c, a]) => ({
         platform: c.platform,
         count: c.count + a.count,

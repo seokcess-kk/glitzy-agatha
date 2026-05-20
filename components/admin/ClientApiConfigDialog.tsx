@@ -58,6 +58,23 @@ function isMaskedValue(value: string): boolean {
   return value.startsWith('****')
 }
 
+/** 서버 응답의 에러 필드가 객체로 내려오는 경우에도 사람이 읽을 수 있는 문자열로 변환 */
+function toErrorMessage(value: unknown, fallback: string): string {
+  if (typeof value === 'string' && value.trim()) return value
+  if (value instanceof Error) return value.message
+  if (value && typeof value === 'object') {
+    const v = value as Record<string, unknown>
+    if (typeof v.message === 'string') return v.message
+    if (typeof v.error === 'string') return v.error
+    try {
+      return JSON.stringify(value).slice(0, 300)
+    } catch {
+      return fallback
+    }
+  }
+  return fallback
+}
+
 export default function ClientApiConfigDialog({ clientId, clientName, open, onClose, onUpdated }: Props) {
   const initConfigs = () => Object.fromEntries(API_CONFIG_PLATFORMS.map(p => [p, { ...EMPTY_CONFIG }])) as Record<Platform, PlatformConfig>
   const initFormValues = () => Object.fromEntries(API_CONFIG_PLATFORMS.map(p => [p, {}])) as Record<Platform, Record<string, string>>
@@ -160,15 +177,14 @@ export default function ClientApiConfigDialog({ clientId, clientName, open, onCl
         body: JSON.stringify({ platform, config: finalConfig, is_active: configs[platform].is_active }),
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || '저장 실패')
+        const err = await res.json().catch(() => ({}))
+        throw new Error(toErrorMessage(err?.error ?? err, '저장 실패'))
       }
       toast.success(`${PLATFORM_LABELS[platform]} API 설정이 저장되었습니다.`)
       await fetchConfigs()
       onUpdated?.()
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : '저장 실패'
-      toast.error(message)
+      toast.error(toErrorMessage(e, '저장 실패'))
     } finally {
       setSaving(null)
     }
@@ -195,7 +211,7 @@ export default function ClientApiConfigDialog({ clientId, clientName, open, onCl
           [platform]: {
             loading: false,
             success: true,
-            message: result.accountName || '연결됨',
+            message: toErrorMessage(result.accountName, '연결됨'),
           },
         }))
         // Refresh to get updated last_tested_at
@@ -207,7 +223,7 @@ export default function ClientApiConfigDialog({ clientId, clientName, open, onCl
           [platform]: {
             loading: false,
             success: false,
-            message: result.error || '연결 실패',
+            message: toErrorMessage(result.error, '연결 실패'),
           },
         }))
       }
@@ -234,15 +250,14 @@ export default function ClientApiConfigDialog({ clientId, clientName, open, onCl
         body: JSON.stringify({ platform }),
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || '삭제 실패')
+        const err = await res.json().catch(() => ({}))
+        throw new Error(toErrorMessage(err?.error ?? err, '삭제 실패'))
       }
       toast.success(`${PLATFORM_LABELS[platform]} API 설정이 삭제되었습니다.`)
       await fetchConfigs()
       onUpdated?.()
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : '삭제 실패'
-      toast.error(message)
+      toast.error(toErrorMessage(e, '삭제 실패'))
     } finally {
       setDeleting(null)
     }

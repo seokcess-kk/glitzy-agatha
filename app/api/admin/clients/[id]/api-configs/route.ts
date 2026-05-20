@@ -121,22 +121,52 @@ export const POST = withSuperAdmin(async (req: Request) => {
     return apiError('config 객체가 필요합니다.')
   }
 
-  // platform별 필수 필드 검증
-  const requiredFields = API_REQUIRED_FIELDS[platform]
   const configObj = config as Record<string, unknown>
-  const missingFields = requiredFields.filter(f => !configObj[f] || (typeof configObj[f] === 'string' && configObj[f].toString().trim() === ''))
+  const supabase = serverSupabase()
+
+  // 기존 설정을 조회해 부분 업데이트를 지원한다.
+  // 클라이언트는 마스킹된 민감 필드(예: '****abcd')를 요청에서 제외하므로,
+  // 누락된 필드는 기존 DB 값을 그대로 유지하도록 머지한다.
+  let existingConfig: Record<string, unknown> = {}
+  {
+    const { data: existingRow, error: fetchError } = await supabase
+      .from('client_api_configs')
+      .select('config')
+      .eq('client_id', clientId)
+      .eq('platform', platform)
+      .maybeSingle()
+
+    if (fetchError) {
+      logger.error('기존 설정 조회 실패', fetchError, { clientId, platform })
+      return apiError('서버 오류가 발생했습니다.', 500)
+    }
+
+    if (existingRow?.config) {
+      const raw = existingRow.config
+      const decrypted = typeof raw === 'object' && raw !== null
+        ? (raw as Record<string, unknown>)
+        : decryptApiConfig(raw as string)
+      if (decrypted) existingConfig = decrypted
+    }
+  }
+
+  // 머지: 새 값이 있는 필드는 새 값으로 덮어쓰고, 없는 필드는 기존 값 유지
+  const mergedConfig: Record<string, unknown> = { ...existingConfig, ...configObj }
+
+  // platform별 필수 필드 검증 (머지 후 기준)
+  const requiredFields = API_REQUIRED_FIELDS[platform]
+  const missingFields = requiredFields.filter(f => !mergedConfig[f] || (typeof mergedConfig[f] === 'string' && mergedConfig[f].toString().trim() === ''))
   if (missingFields.length > 0) {
     return apiError(`필수 필드가 누락되었습니다: ${missingFields.join(', ')}`)
   }
 
   // 값 길이 검증 (API 토큰은 특수문자 포함 가능하므로 XSS sanitize 제외)
-  const lengthError = validateConfigValues(configObj)
+  const lengthError = validateConfigValues(mergedConfig)
   if (lengthError) return apiError(lengthError)
 
   // JSONB 컬럼에 저장: 암호화 키 있으면 암호화 문자열, 없으면 객체 직접 저장
   const encryptionKey = process.env.API_ENCRYPTION_KEY
-  const configValue = encryptionKey ? encryptApiConfig(configObj) : configObj
-  const supabase = serverSupabase()
+  const configValue = encryptionKey ? encryptApiConfig(mergedConfig) : mergedConfig
 
   try {
     const { error } = await supabase

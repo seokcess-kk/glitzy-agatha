@@ -56,6 +56,37 @@ async function testMetaAds(config: Record<string, unknown>): Promise<TestResult>
 }
 
 /**
+ * google-ads-api / 기타 라이브러리에서 던진 에러 객체를 사람이 읽을 수 있는 문자열로 변환.
+ * google-ads-api는 { errors: [{ message, errorCode }], requestId } 형태를 던지므로
+ * String(err) 시 "[object Object]"가 되는 문제를 방지.
+ */
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object') {
+    const e = error as Record<string, unknown>
+    // google-ads-api: { errors: [{ message, errorCode }] }
+    const errors = e.errors as Array<{ message?: string; errorCode?: unknown }> | undefined
+    if (Array.isArray(errors) && errors.length > 0) {
+      const first = errors[0]
+      const code = first.errorCode ? ` (${JSON.stringify(first.errorCode)})` : ''
+      if (first.message) return `${first.message}${code}`
+    }
+    // google-ads-api: failure 객체에서 추출
+    const failure = e.failure as { errors?: Array<{ message?: string }> } | undefined
+    if (failure?.errors?.[0]?.message) return failure.errors[0].message
+    // 일반 객체
+    if (typeof e.message === 'string') return e.message
+    try {
+      return JSON.stringify(error).slice(0, 500)
+    } catch {
+      return '알 수 없는 오류 (직렬화 실패)'
+    }
+  }
+  return String(error)
+}
+
+/**
  * Google Ads 연결 테스트
  * customer.query('SELECT customer.descriptive_name FROM customer LIMIT 1')
  */
@@ -65,6 +96,7 @@ async function testGoogleAds(config: Record<string, unknown>): Promise<TestResul
   const developerToken = config.developer_token as string | undefined
   const customerId = config.customer_id as string | undefined
   const refreshToken = config.refresh_token as string | undefined
+  const loginCustomerId = config.login_customer_id as string | undefined
 
   if (!clientId || !clientSecret || !developerToken || !customerId || !refreshToken) {
     return {
@@ -74,23 +106,40 @@ async function testGoogleAds(config: Record<string, unknown>): Promise<TestResul
     }
   }
 
-  const client = new GoogleAdsApi({
-    client_id: clientId,
-    client_secret: clientSecret,
-    developer_token: developerToken,
-  })
+  // Customer ID 정규화 (하이픈 제거)
+  const normalizedCustomerId = customerId.replace(/-/g, '')
+  const normalizedLoginCustomerId = loginCustomerId?.replace(/-/g, '')
 
-  const customer = client.Customer({
-    customer_id: customerId,
-    refresh_token: refreshToken,
-  })
+  try {
+    const client = new GoogleAdsApi({
+      client_id: clientId,
+      client_secret: clientSecret,
+      developer_token: developerToken,
+    })
 
-  const rows = await customer.query(
-    'SELECT customer.descriptive_name FROM customer LIMIT 1'
-  )
+    const customer = client.Customer({
+      customer_id: normalizedCustomerId,
+      refresh_token: refreshToken,
+      ...(normalizedLoginCustomerId ? { login_customer_id: normalizedLoginCustomerId } : {}),
+    })
 
-  const name = rows[0]?.customer?.descriptive_name || 'Unknown'
-  return { success: true, accountName: name, platform: 'google_ads' }
+    const rows = await customer.query(
+      'SELECT customer.descriptive_name FROM customer LIMIT 1'
+    )
+
+    const name = rows[0]?.customer?.descriptive_name || 'Unknown'
+    return { success: true, accountName: name, platform: 'google_ads' }
+  } catch (error) {
+    logger.error('Google Ads 연결 테스트 실패 상세', error, {
+      customerId: normalizedCustomerId,
+      hasLoginCustomerId: !!normalizedLoginCustomerId,
+    })
+    return {
+      success: false,
+      error: extractErrorMessage(error),
+      platform: 'google_ads',
+    }
+  }
 }
 
 /**
@@ -325,7 +374,7 @@ export const POST = withSuperAdmin(async (req: Request) => {
         return apiError('지원하지 않는 플랫폼입니다.')
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+    const message = extractErrorMessage(error)
     logger.error('연결 테스트 예외', error, { clientId, platform })
     result = { success: false, error: message, platform }
   }

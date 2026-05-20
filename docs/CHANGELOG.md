@@ -2,6 +2,14 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## API 설정 다이얼로그 부분 업데이트 지원 + 에러 표시 안전망 (2026-05-20)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-05-20 | fix: `app/api/admin/clients/[id]/api-configs/route.ts` POST 핸들러에 기존 config 머지 로직 추가. 마스킹된 민감 필드(`****`)는 요청에서 빠지지만 DB의 기존 값으로 채워 필수 필드 검증을 통과시킴 → 부분 업데이트 가능. 이전엔 한 필드만 수정하려 해도 5개 모두 재입력 강제됐음 |
+| 2026-05-20 | fix: `app/api/admin/clients/[id]/api-configs/test/route.ts` `extractErrorMessage()` 헬퍼 추가. `google-ads-api`가 던지는 `{ errors: [{ message, errorCode }] }` 형태 에러를 사람이 읽을 수 있는 문자열로 변환 (`[object Object]` 표시 방지). 추가로 `customer_id` 하이픈 자동 제거 및 `login_customer_id`(MCC 경유) 옵션 지원 |
+| 2026-05-20 | fix: `components/admin/ClientApiConfigDialog.tsx` `toErrorMessage()` 헬퍼로 응답 객체의 error 필드가 객체로 내려와도 문자열로 안전 변환. handleSave/handleTest/handleDelete 3곳 모두 적용 |
+
 ## 메뉴 구조 재정의 후속 — 인입 배지 / 사이드바 들여쓰기 / e2e 정리 (2026-05-18)
 
 | 날짜 | 내용 |

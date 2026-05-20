@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table'
 import { BarChart2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react'
 import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform, type ApiPlatform, type InflowSource } from '@/lib/platform'
+import { formatCurrency } from '@/lib/format'
 
 function fmtShort(iso: string) {
   const d = new Date(iso)
@@ -322,7 +323,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                         )}
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        ₩{row.spend.toLocaleString()}
+                        ₩{formatCurrency(row.spend, { withUnit: false })}
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
                         {row.impressions.toLocaleString()}
@@ -340,7 +341,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                               : 'text-foreground/80'
                             : 'text-muted-foreground'
                         }>
-                          {row.cpc > 0 ? `₩${Math.round(row.cpc).toLocaleString()}` : '-'}
+                          {row.cpc > 0 ? `₩${formatCurrency(row.cpc, { withUnit: false })}` : '-'}
                         </span>
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
@@ -369,7 +370,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                         </span>
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
+                        {row.cpl > 0 ? `₩${formatCurrency(row.cpl, { withUnit: false })}` : '-'}
                       </TableCell>
                     </TableRow>
                   ))

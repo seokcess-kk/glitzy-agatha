@@ -53,10 +53,10 @@ function DayTooltip({ active, payload, label }: ChartTooltipProps) {
         인입 수: <span className="text-foreground font-medium">{d.leads}건</span>
       </p>
       <p className="text-muted-foreground">
-        광고비: <span className="text-foreground font-medium">₩{d.spend.toLocaleString()}</span>
+        광고비: <span className="text-foreground font-medium">₩{formatCurrency(d.spend, { withUnit: false })}</span>
       </p>
       <p className="text-muted-foreground">
-        CPL: <span className="text-foreground font-medium">₩{Math.round(d.cpl).toLocaleString()}</span>
+        CPL: <span className="text-foreground font-medium">₩{formatCurrency(d.cpl, { withUnit: false })}</span>
       </p>
     </div>
   )

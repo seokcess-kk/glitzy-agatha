@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { FileText } from 'lucide-react'
+import { formatCurrency } from '@/lib/format'
 
 function fmtShort(iso: string) {
   const d = new Date(iso)
@@ -127,7 +128,7 @@ export default function LandingPagePerformance({ startDate, endDate }: Props) {
                     </span>
                   </TableCell>
                   <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                    {row.revenue > 0 ? `₩${row.revenue.toLocaleString()}` : '-'}
+                    {row.revenue > 0 ? `₩${formatCurrency(row.revenue, { withUnit: false })}` : '-'}
                   </TableCell>
                 </TableRow>
               ))}

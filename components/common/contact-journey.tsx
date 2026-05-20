@@ -11,6 +11,7 @@ import {
 import { ChannelBadge } from './channel-badge'
 import { StatusBadge } from './status-badge'
 import { getUtmMediumLabel } from '@/lib/utm'
+import { formatCurrency } from '@/lib/format'
 
 // 여정 이벤트 타입
 type JourneyEventType = 'inflow' | 'booking' | 'consultation' | 'payment'
@@ -166,7 +167,7 @@ function EventDetail({ event }: { event: JourneyEvent }) {
           )}
           {event.data.payment_amount != null && (
             <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-              ₩{event.data.payment_amount.toLocaleString()}
+              ₩{formatCurrency(event.data.payment_amount, { withUnit: false })}
             </p>
           )}
         </div>

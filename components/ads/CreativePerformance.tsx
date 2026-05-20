@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { ImageOff, Film, Image, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { normalizeChannel } from '@/lib/channel'
+import { formatCurrency } from '@/lib/format'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 
@@ -257,7 +258,7 @@ export default function CreativePerformance({ startDate, endDate, campaignFilter
                     {row.platform ? <ChannelBadge channel={row.platform} /> : <span className="text-muted-foreground text-xs">-</span>}
                   </TableCell>
                   <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
-                    {row.spend > 0 ? `₩${row.spend.toLocaleString()}` : '-'}
+                    {row.spend > 0 ? `₩${formatCurrency(row.spend, { withUnit: false })}` : '-'}
                   </TableCell>
                   <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
                     {row.impressions > 0 ? row.impressions.toLocaleString() : '-'}
@@ -266,7 +267,7 @@ export default function CreativePerformance({ startDate, endDate, campaignFilter
                     {row.clicks > 0 ? row.clicks.toLocaleString() : '-'}
                   </TableCell>
                   <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
-                    {row.cpc > 0 ? `₩${row.cpc.toLocaleString()}` : '-'}
+                    {row.cpc > 0 ? `₩${formatCurrency(row.cpc, { withUnit: false })}` : '-'}
                   </TableCell>
                   <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
                     {row.ctr > 0 ? `${row.ctr.toFixed(2)}%` : '-'}
@@ -275,7 +276,7 @@ export default function CreativePerformance({ startDate, endDate, campaignFilter
                     {row.leads > 0 ? row.leads : '-'}
                   </TableCell>
                   <TableCell className="text-right tabular-nums py-3 text-sm text-foreground/80">
-                    {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
+                    {row.cpl > 0 ? `₩${formatCurrency(row.cpl, { withUnit: false })}` : '-'}
                   </TableCell>
                 </TableRow>
               ))}

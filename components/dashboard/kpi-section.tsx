@@ -1,6 +1,7 @@
 'use client'
 
 import { StatsCard } from '@/components/common'
+import { formatCurrency } from '@/lib/format'
 
 interface KpiData {
   totalLeads?: number
@@ -61,7 +62,7 @@ export function KpiSection({ data, loading, onNavigate }: KpiSectionProps) {
   const cards: KpiCard[] = data ? [
     {
       label: '광고비',
-      value: `₩${totalSpend.toLocaleString()}`,
+      value: `₩${formatCurrency(totalSpend, { withUnit: false })}`,
       trend: data.comparison?.totalSpend !== undefined && data.comparison.totalSpend !== 0
         ? { value: Math.abs(data.comparison.totalSpend), isPositive: data.comparison.totalSpend < 0 }
         : undefined,
@@ -81,7 +82,7 @@ export function KpiSection({ data, loading, onNavigate }: KpiSectionProps) {
     },
     {
       label: 'CPL',
-      value: cpl > 0 ? `₩${cpl.toLocaleString()}` : '-',
+      value: cpl > 0 ? `₩${formatCurrency(cpl, { withUnit: false })}` : '-',
       trend: data.comparison?.cpl !== undefined && data.comparison.cpl !== 0
         ? { value: Math.abs(data.comparison.cpl), isPositive: data.comparison.cpl < 0 }
         : undefined,
@@ -90,7 +91,7 @@ export function KpiSection({ data, loading, onNavigate }: KpiSectionProps) {
     },
     {
       label: '매출',
-      value: `₩${(data.totalRevenue ?? 0).toLocaleString()}`,
+      value: `₩${formatCurrency(data.totalRevenue ?? 0, { withUnit: false })}`,
       trend: data.comparison?.totalRevenue !== undefined && data.comparison.totalRevenue !== 0
         ? { value: Math.abs(data.comparison.totalRevenue), isPositive: data.comparison.totalRevenue > 0 }
         : undefined,

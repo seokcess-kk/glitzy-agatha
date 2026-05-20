@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useClient } from '@/components/ClientContext'
 import { StatsCard } from '@/components/common'
+import { formatCurrency } from '@/lib/format'
 
 interface KpiComparison {
   cpl: number
@@ -89,7 +90,7 @@ export default function AdsKpiCards({ startDate, endDate }: Props) {
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
       <StatsCard
         label="총 광고비"
-        value={loading ? '' : `₩${totalSpend.toLocaleString()}`}
+        value={loading ? '' : `₩${formatCurrency(totalSpend, { withUnit: false })}`}
         loading={loading}
         trend={normalTrend(comparison?.totalSpend)}
       />
@@ -101,13 +102,13 @@ export default function AdsKpiCards({ startDate, endDate }: Props) {
       />
       <StatsCard
         label="CPL"
-        value={loading ? '' : `₩${cpl.toLocaleString()}`}
+        value={loading ? '' : `₩${formatCurrency(cpl, { withUnit: false })}`}
         loading={loading}
         trend={invertedTrend(comparison?.cpl)}
       />
       <StatsCard
         label="CPC"
-        value={loading ? '' : `₩${cpc.toLocaleString()}`}
+        value={loading ? '' : `₩${formatCurrency(cpc, { withUnit: false })}`}
         loading={loading}
         trend={invertedTrend(comparison?.cpc)}
       />

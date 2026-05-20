@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { BarChart2, ChevronDown, ChevronRight, Lightbulb } from 'lucide-react'
+import { formatCurrency } from '@/lib/format'
 
 /** ISO 날짜 → "M/D" 형식 (KST) */
 function fmtShort(iso: string) {
@@ -161,7 +162,7 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
                           </div>
                         </TableCell>
                         <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                          ₩{row.spend.toLocaleString()}
+                          ₩{formatCurrency(row.spend, { withUnit: false })}
                         </TableCell>
                         <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
                           {row.impressions > 0 ? row.impressions.toLocaleString() : '-'}
@@ -173,14 +174,14 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
                           {row.leads.toLocaleString()}
                         </TableCell>
                         <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                          {row.cpc > 0 ? `₩${row.cpc.toLocaleString()}` : '-'}
+                          {row.cpc > 0 ? `₩${formatCurrency(row.cpc, { withUnit: false })}` : '-'}
                         </TableCell>
                         <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
                           {row.ctr > 0 ? `${row.ctr.toFixed(2)}%` : '-'}
                         </TableCell>
                         <TableCell className="py-2.5 text-right tabular-nums text-sm font-medium">
                           <span className={isLowestCpl ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground/80'}>
-                            {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
+                            {row.cpl > 0 ? `₩${formatCurrency(row.cpl, { withUnit: false })}` : '-'}
                           </span>
                         </TableCell>
                       </TableRow>
@@ -195,7 +196,7 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
                             <span className="text-xs text-muted-foreground">{src.label}</span>
                           </TableCell>
                           <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
-                            {src.spend > 0 ? `₩${src.spend.toLocaleString()}` : '-'}
+                            {src.spend > 0 ? `₩${formatCurrency(src.spend, { withUnit: false })}` : '-'}
                           </TableCell>
                           <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
                             {src.impressions > 0 ? src.impressions.toLocaleString() : '-'}
@@ -207,13 +208,13 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
                             {src.leads > 0 ? src.leads.toLocaleString() : '-'}
                           </TableCell>
                           <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
-                            {src.cpc > 0 ? `₩${src.cpc.toLocaleString()}` : '-'}
+                            {src.cpc > 0 ? `₩${formatCurrency(src.cpc, { withUnit: false })}` : '-'}
                           </TableCell>
                           <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
                             {src.ctr > 0 ? `${src.ctr.toFixed(2)}%` : '-'}
                           </TableCell>
                           <TableCell className="py-2 text-right tabular-nums text-xs text-muted-foreground">
-                            {src.cpl > 0 ? `₩${src.cpl.toLocaleString()}` : '-'}
+                            {src.cpl > 0 ? `₩${formatCurrency(src.cpl, { withUnit: false })}` : '-'}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -230,7 +231,7 @@ export default function PlatformComparisonTable({ startDate, endDate }: Props) {
               <span>
                 <span className="font-medium text-foreground/80">{bestCplChannel.channel}</span>이(가) CPL{' '}
                 <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                  ₩{bestCplChannel.cpl.toLocaleString()}
+                  ₩{formatCurrency(bestCplChannel.cpl, { withUnit: false })}
                 </span>
                 로 가장 효율적입니다.
               </span>

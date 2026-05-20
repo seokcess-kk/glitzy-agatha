@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState, ChannelBadge } from '@/components/common'
 import { BarChart3, ArrowRight, ArrowUpDown } from 'lucide-react'
 import { CHART_SEMANTIC } from '@/lib/chart-colors'
+import { formatCurrency } from '@/lib/format'
 import Link from 'next/link'
 
 interface ChannelData {
@@ -119,7 +120,7 @@ export function ChannelTable({ data, loading }: ChannelTableProps) {
                     <ChannelBadge channel={row.channel} />
                   </td>
                   <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
-                    {row.spend > 0 ? `₩${row.spend.toLocaleString()}` : '-'}
+                    {row.spend > 0 ? `₩${formatCurrency(row.spend, { withUnit: false })}` : '-'}
                   </td>
                   <td
                     className="text-right py-2.5 px-2 tabular-nums font-medium text-foreground"
@@ -142,7 +143,7 @@ export function ChannelTable({ data, loading }: ChannelTableProps) {
                     </span>
                   </td>
                   <td className="text-right py-2.5 px-2 tabular-nums text-foreground/80">
-                    {row.cpl > 0 ? `₩${row.cpl.toLocaleString()}` : '-'}
+                    {row.cpl > 0 ? `₩${formatCurrency(row.cpl, { withUnit: false })}` : '-'}
                   </td>
                   <td className="text-right py-2.5 px-2 min-w-[120px]">
                     {row.roas > 0 ? (

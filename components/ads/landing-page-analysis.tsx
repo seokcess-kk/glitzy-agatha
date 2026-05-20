@@ -28,6 +28,7 @@ import { ChartTooltipProps } from '@/types/recharts'
 import { BAR_COLORS } from '@/lib/chart-colors'
 import LandingPageTrendChart from './landing-page-trend-chart'
 import LandingPageChannelBreakdown from './landing-page-channel-breakdown'
+import { formatCurrency } from '@/lib/format'
 
 interface LandingPageRow {
   landingPageId: number
@@ -341,7 +342,7 @@ export default function LandingPageAnalysis({ startDate, endDate, mode = 'delive
                         </span>
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
-                        {row.revenue > 0 ? `₩${row.revenue.toLocaleString()}` : '-'}
+                        {row.revenue > 0 ? `₩${formatCurrency(row.revenue, { withUnit: false })}` : '-'}
                       </TableCell>
                     </>
                   )}

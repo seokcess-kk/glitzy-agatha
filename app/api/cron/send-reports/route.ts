@@ -4,6 +4,7 @@ import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
 import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
 import { fetchManualInflows, indexManualInflows } from '@/lib/manual-inflow'
+import { formatCurrency } from '@/lib/format'
 
 const logger = createLogger('CronSendReports')
 
@@ -142,8 +143,8 @@ export async function GET(req: Request) {
           `기간: ${monthStart} ~ ${kstToday}`,
           inflowLine,
           `전환: ${convertedLeads}건`,
-          `광고비: ${totalSpend.toLocaleString()}원`,
-          `CPL: ${cpl.toLocaleString()}원`,
+          `광고비: ${formatCurrency(totalSpend)}`,
+          `CPL: ${formatCurrency(cpl)}`,
         ].join('\n')
 
         // SMS 발송 (스텁 — 실제 발송은 sendSmsWithLog 사용)

@@ -37,6 +37,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { ConfirmDialog, EmptyState, PageHeader } from '@/components/common'
+import { formatCurrency } from '@/lib/format'
 
 interface LandingPage {
   id: number
@@ -477,7 +478,7 @@ export default function LandingPagesPage() {
                   </TableCell>
                   <TableCell>
                     {stats[lp.id]?.revenue ? (
-                      <span className="text-emerald-400 font-semibold text-sm">₩{stats[lp.id].revenue.toLocaleString()}</span>
+                      <span className="text-emerald-400 font-semibold text-sm">₩{formatCurrency(stats[lp.id].revenue, { withUnit: false })}</span>
                     ) : (
                       <span className="text-muted-foreground/60 text-xs">-</span>
                     )}

@@ -103,7 +103,7 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
     setLoading(true)
     try {
       const { start, end } = getMonthRange(year, month0)
-      const params = new URLSearchParams({ platform, start, end })
+      const params = new URLSearchParams({ platform, start, end, client_id: String(clientId) })
       const res = await fetch(`/api/manual-inflows?${params.toString()}`)
       if (!res.ok) throw new Error('조회 실패')
       const data = await res.json()
@@ -115,7 +115,7 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
     } finally {
       setLoading(false)
     }
-  }, [year, month0, platform])
+  }, [year, month0, platform, clientId])
 
   useEffect(() => {
     if (open) {
@@ -159,7 +159,7 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
 
     setSaving(true)
     try {
-      const res = await fetch('/api/manual-inflows', {
+      const res = await fetch(`/api/manual-inflows?client_id=${clientId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -194,7 +194,7 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
 
     setDeleting(true)
     try {
-      const res = await fetch('/api/manual-inflows', {
+      const res = await fetch(`/api/manual-inflows?client_id=${clientId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform, stat_date: selectedDate }),

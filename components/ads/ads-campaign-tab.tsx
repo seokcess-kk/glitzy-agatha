@@ -22,19 +22,18 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
 
   const fetchPlatforms = useCallback(async () => {
     try {
-      // startDate/endDate 직접 전달 — 선택 기간 내 사용된 매체 목록 조회
-      const qs = new URLSearchParams({ startDate, endDate })
+      // client_api_configs 의 활성 매체만 노출 (과거 데이터만 남은 매체 제외)
+      const qs = new URLSearchParams()
       if (selectedClientId) qs.set('client_id', String(selectedClientId))
-      const res = await fetch(`/api/ads/stats?${qs}`)
+      const res = await fetch(`/api/ads/configured-platforms?${qs.toString()}`)
       if (!res.ok) return
       const json = await res.json()
-      const data = Array.isArray(json) ? json : (Array.isArray(json?.stats) ? json.stats : [])
-      const unique = [...new Set(data.map((s: { platform?: string }) => s.platform).filter(Boolean))] as string[]
-      setPlatforms(['all', ...unique])
+      const list: string[] = Array.isArray(json?.platforms) ? json.platforms : []
+      setPlatforms(['all', ...list])
     } catch {
       // silently fail — keep default ['all']
     }
-  }, [startDate, endDate, selectedClientId])
+  }, [selectedClientId])
 
   useEffect(() => {
     fetchPlatforms()

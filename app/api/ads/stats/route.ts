@@ -3,6 +3,7 @@ import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { isDemoViewer, getDemoAdsPerformance } from '@/lib/demo-data'
+import { fetchManualInflows } from '@/lib/manual-inflow'
 
 const logger = createLogger('AdsStats')
 
@@ -58,7 +59,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     const { data, error } = await query
     if (error) {
       logger.error('ad_campaign_stats 조회 실패', error, { clientId })
-      return apiSuccess({ stats: [], campaignLeadCounts: {} })
+      return apiSuccess({ stats: [], campaignLeadCounts: {}, manualInflowsByPlatform: {} })
     }
 
     // 2) campaign_id별 리드 수 산출
@@ -84,9 +85,29 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       }
     }
 
-    return apiSuccess({ stats: data, campaignLeadCounts })
+    // 3) manual_inflows — platform 별 합계 (캠페인 합과 채널 KPI 불일치 방지)
+    //    manual_inflows 는 (client_id, platform, stat_date) 단위라 특정 캠페인에 귀속 불가.
+    //    프론트에서 "(수동 보정)" 가상 행으로 표시.
+    const manualClientIds = clientId
+      ? [clientId]
+      : assignedClientIds !== null
+      ? assignedClientIds
+      : null
+    const manualEnd = until ?? getKstDateString()
+    const manualInflowRows = await fetchManualInflows(supabase, {
+      clientIds: manualClientIds,
+      startDate: since,
+      endDate: manualEnd,
+      platforms: platform ? [platform] : undefined,
+    })
+    const manualInflowsByPlatform: Record<string, number> = {}
+    for (const r of manualInflowRows) {
+      manualInflowsByPlatform[r.platform] = (manualInflowsByPlatform[r.platform] || 0) + r.count
+    }
+
+    return apiSuccess({ stats: data, campaignLeadCounts, manualInflowsByPlatform })
   } catch (err) {
     logger.error('ads/stats 조회 실패', err, { clientId })
-    return apiSuccess({ stats: [], campaignLeadCounts: {} })
+    return apiSuccess({ stats: [], campaignLeadCounts: {}, manualInflowsByPlatform: {} })
   }
 })

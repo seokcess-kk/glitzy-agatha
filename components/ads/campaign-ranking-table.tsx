@@ -79,6 +79,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
   const { selectedClientId } = useClient()
   const [rawData, setRawData] = useState<AdStatRecord[]>([])
   const [campaignLeadCounts, setCampaignLeadCounts] = useState<Record<string, number>>({})
+  const [manualInflowsByPlatform, setManualInflowsByPlatform] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sortField, setSortField] = useState<SortField>('spend')
@@ -97,20 +98,24 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
       if (!res.ok) {
         setRawData([])
         setCampaignLeadCounts({})
+        setManualInflowsByPlatform({})
         return
       }
       const json = await res.json()
-      // 새 응답 구조: { stats, campaignLeadCounts } 또는 기존 배열
+      // 새 응답 구조: { stats, campaignLeadCounts, manualInflowsByPlatform } 또는 기존 배열
       if (json.stats) {
         setRawData(Array.isArray(json.stats) ? json.stats : [])
         setCampaignLeadCounts(json.campaignLeadCounts || {})
+        setManualInflowsByPlatform(json.manualInflowsByPlatform || {})
       } else {
         setRawData(Array.isArray(json) ? json : [])
         setCampaignLeadCounts({})
+        setManualInflowsByPlatform({})
       }
     } catch {
       setRawData([])
       setCampaignLeadCounts({})
+      setManualInflowsByPlatform({})
     } finally {
       setLoading(false)
     }
@@ -215,6 +220,30 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
   const displayed = expanded ? sorted : sorted.slice(0, PAGE_SIZE)
   const hasMore = sorted.length > PAGE_SIZE
 
+  // "(수동 보정)" 가상 행 — 정렬/페이지네이션과 무관, 검색 중에는 숨김.
+  //   manual_inflows 는 (client_id, platform, stat_date) 단위라 특정 캠페인에 귀속 불가.
+  //   채널 KPI 합계 = 캠페인 인입 합 + 수동 보정 으로 일관성 확보.
+  const manualRows = useMemo<CampaignRow[]>(() => {
+    if (search.trim()) return []
+    return Object.entries(manualInflowsByPlatform)
+      .filter(([plat, count]) => count > 0 && (!platformFilter || platformFilter === plat))
+      .map(([plat, count]) => ({
+        campaign_name: '(수동 보정)',
+        campaign_id: null,
+        platform: plat,
+        spend: 0,
+        clicks: 0,
+        impressions: 0,
+        mediaConversions: count,
+        actualLeads: 0,
+        inflowSource: 'media_conversion' as InflowSource,
+        cpc: 0,
+        ctr: 0,
+        leads: count,
+        cpl: 0,
+      }))
+  }, [manualInflowsByPlatform, platformFilter, search])
+
   const handleSort = (field: SortField) => {
     if (field === sortField) {
       setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'))
@@ -250,7 +279,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
             <Skeleton key={i} className="h-10 rounded-xl" />
           ))}
         </div>
-      ) : aggregated.length === 0 ? (
+      ) : aggregated.length === 0 && manualRows.length === 0 ? (
         <EmptyState
           icon={BarChart2}
           title="캠페인 데이터가 없습니다"
@@ -290,7 +319,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {displayed.length === 0 ? (
+                {displayed.length === 0 && manualRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-8 text-sm text-muted-foreground">
                       검색 결과가 없습니다
@@ -375,6 +404,44 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                     </TableRow>
                   ))
                 )}
+                {/* 수동 보정 가상 행 — 정렬/페이지네이션 무관, 항상 하단 노출 */}
+                {manualRows.map(row => (
+                  <TableRow
+                    key={`manual-${row.platform}`}
+                    className="border-b border-border/50 dark:border-white/[0.03] bg-amber-50/40 dark:bg-amber-950/10"
+                  >
+                    <TableCell className="py-2.5 max-w-[200px]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full inline-block bg-amber-400" title="수동 보정 인입" />
+                        <span className="text-sm text-foreground/80 italic">
+                          {row.campaign_name}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-2.5">
+                      {row.platform ? (
+                        <ChannelBadge channel={row.platform} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
+                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
+                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
+                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
+                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
+                    <TableCell
+                      className="py-2.5 text-right tabular-nums text-sm text-foreground/90"
+                      title={`수동 보정 인입: ${row.leads.toLocaleString()}건\n(매체×일자 단위라 특정 캠페인에 귀속되지 않음)`}
+                    >
+                      <span className="inline-flex items-center justify-end gap-1">
+                        {row.leads.toLocaleString()}
+                        <span className="text-[10px] text-amber-700 dark:text-amber-300 font-normal bg-amber-100 dark:bg-amber-900/40 px-1 rounded">수동</span>
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>

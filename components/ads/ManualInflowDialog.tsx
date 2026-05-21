@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { getKstDateString } from '@/lib/date'
 import type { ApiPlatform } from '@/lib/platform'
@@ -86,6 +85,7 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [countInput, setCountInput] = useState<string>('')
   const [reasonInput, setReasonInput] = useState<string>('')
+  const [showReason, setShowReason] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -131,11 +131,14 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
     if (!selectedDate) {
       setCountInput('')
       setReasonInput('')
+      setShowReason(false)
       return
     }
     const existing = rowsByDate.get(selectedDate)
     setCountInput(existing ? String(existing.count) : '')
     setReasonInput(existing?.reason || '')
+    // 기존 사유가 있으면 자동으로 펼침, 없으면 접힘
+    setShowReason(!!existing?.reason)
   }, [selectedDate, rowsByDate])
 
   const goPrevMonth = () => {
@@ -218,36 +221,38 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>수동 인입 보정 — {clientName ? `${clientName} (${platformLabel})` : platformLabel}</DialogTitle>
+          <DialogTitle className="text-base">
+            수동 인입 보정 — {clientName ? `${clientName} (${platformLabel})` : platformLabel}
+          </DialogTitle>
           <DialogDescription className="text-xs">
-            매체 전환이 누락된 일자에 실제 인입 수를 직접 보정합니다. 입력값은 인입 KPI/추세에 자동으로 합산됩니다.
+            누락 일자에 실제 인입수를 보정합니다. 입력값은 KPI/추세에 자동 합산됩니다.
           </DialogDescription>
         </DialogHeader>
 
         {/* 월 네비게이션 */}
-        <div className="flex items-center justify-between pt-2">
-          <Button variant="ghost" size="sm" onClick={goPrevMonth} disabled={loading} aria-label="이전 달">
-            <ChevronLeft size={16} />
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={goPrevMonth} disabled={loading} aria-label="이전 달">
+            <ChevronLeft size={14} />
           </Button>
           <span className="text-sm font-medium tabular-nums">{monthLabel}</span>
-          <Button variant="ghost" size="sm" onClick={goNextMonth} disabled={loading} aria-label="다음 달">
-            <ChevronRight size={16} />
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={goNextMonth} disabled={loading} aria-label="다음 달">
+            <ChevronRight size={14} />
           </Button>
         </div>
 
         {/* 요일 헤더 */}
-        <div className="grid grid-cols-7 gap-1 text-xs text-muted-foreground pt-2">
+        <div className="grid grid-cols-7 gap-1 text-[11px] text-muted-foreground">
           {WEEKDAYS.map((w, i) => (
-            <div key={w} className={`text-center py-1 ${i === 0 ? 'text-rose-500' : i === 6 ? 'text-blue-500' : ''}`}>{w}</div>
+            <div key={w} className={`text-center ${i === 0 ? 'text-rose-500' : i === 6 ? 'text-blue-500' : ''}`}>{w}</div>
           ))}
         </div>
 
         {/* 캘린더 그리드 */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 size={20} className="animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-center py-10">
+            <Loader2 size={18} className="animate-spin text-muted-foreground" />
           </div>
         ) : (
           <div className="grid grid-cols-7 gap-1">
@@ -262,7 +267,7 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
                   onClick={() => cell.inMonth && setSelectedDate(cell.date)}
                   disabled={!cell.inMonth}
                   className={[
-                    'aspect-square rounded-md border text-xs flex flex-col items-center justify-center gap-0.5 transition-colors',
+                    'h-9 rounded-md border text-[11px] leading-tight flex flex-col items-center justify-center transition-colors',
                     cell.inMonth ? 'cursor-pointer' : 'opacity-30 cursor-default',
                     isSelected
                       ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
@@ -273,7 +278,7 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
                 >
                   <span className="text-foreground">{cell.day}</span>
                   {hasValue && (
-                    <span className="font-medium text-brand-700 dark:text-brand-300 tabular-nums">
+                    <span className="text-[10px] font-medium text-brand-700 dark:text-brand-300 tabular-nums">
                       +{row.count}
                     </span>
                   )}
@@ -283,59 +288,62 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
           </div>
         )}
 
-        {/* 편집 영역 */}
+        {/* 편집 영역 — 한 줄 인라인 */}
         {selectedDate && (
-          <div className="space-y-3 pt-3 border-t">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs text-muted-foreground">선택된 일자</Label>
-              <span className="text-sm font-medium tabular-nums">{selectedDate}</span>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="manual-inflow-count" className="text-xs text-muted-foreground">보정 인입 수</Label>
+          <div className="space-y-2 pt-3 border-t">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium tabular-nums text-muted-foreground shrink-0">{selectedDate}</span>
               <Input
-                id="manual-inflow-count"
                 type="number"
                 min={0}
                 step={1}
                 value={countInput}
                 onChange={(e) => setCountInput(e.target.value)}
                 placeholder="0"
-                className="tabular-nums"
+                className="tabular-nums h-8 w-20"
+                aria-label="보정 인입 수"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="manual-inflow-reason" className="text-xs text-muted-foreground">사유 (선택)</Label>
-              <Textarea
-                id="manual-inflow-reason"
-                value={reasonInput}
-                onChange={(e) => setReasonInput(e.target.value)}
-                placeholder="예: 매체 트래킹 누락, 실제 전화 문의 N건 확인"
-                rows={2}
-                maxLength={500}
-              />
-            </div>
-            <div className="flex items-center gap-2">
               <Button
                 onClick={handleSave}
                 size="sm"
-                className="bg-brand-600 hover:bg-brand-700"
+                className="bg-brand-600 hover:bg-brand-700 h-8"
                 disabled={saving || deleting}
               >
-                {saving ? '저장 중...' : '저장'}
+                {saving ? '저장 중' : '저장'}
               </Button>
               {rowsByDate.has(selectedDate) && (
                 <Button
                   onClick={handleDelete}
                   variant="ghost"
                   size="sm"
-                  className="text-red-500 hover:text-red-400 hover:bg-red-500/10 ml-auto"
+                  className="text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0 ml-auto"
                   disabled={saving || deleting}
+                  aria-label="삭제"
                 >
-                  <Trash2 size={14} className="mr-1" />
-                  삭제
+                  <Trash2 size={14} />
                 </Button>
               )}
             </div>
+
+            {/* 사유 — 기본 접힘 */}
+            {showReason ? (
+              <Textarea
+                value={reasonInput}
+                onChange={(e) => setReasonInput(e.target.value)}
+                placeholder="예: 매체 트래킹 누락, 실제 전화 문의 N건 확인"
+                rows={2}
+                maxLength={500}
+                className="text-xs"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowReason(true)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                + 사유 추가
+              </button>
+            )}
           </div>
         )}
       </DialogContent>

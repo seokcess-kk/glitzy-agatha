@@ -42,10 +42,11 @@ interface CampaignRow {
   impressions: number
   mediaConversions: number // 매체 보고 전환수 (media_conversion 모드 매체만)
   actualLeads: number      // 자체 폼/웹훅 리드 (lead_webhook + combined 모드)
+  manualBoost: number      // 수동 보정 인입수 (해당 캠페인 귀속)
   inflowSource: InflowSource
   cpc: number
   ctr: number
-  leads: number // 인입(inflow) 카운트 — lead_webhook=리드, media_conversion=전환, combined=합산
+  leads: number // 인입(inflow) 카운트 — 매체 전환/리드 + manualBoost
   cpl: number
 }
 
@@ -79,7 +80,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
   const { selectedClientId } = useClient()
   const [rawData, setRawData] = useState<AdStatRecord[]>([])
   const [campaignLeadCounts, setCampaignLeadCounts] = useState<Record<string, number>>({})
-  const [manualInflowsByPlatform, setManualInflowsByPlatform] = useState<Record<string, number>>({})
+  const [manualInflowsByCampaign, setManualInflowsByCampaign] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sortField, setSortField] = useState<SortField>('spend')
@@ -98,24 +99,24 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
       if (!res.ok) {
         setRawData([])
         setCampaignLeadCounts({})
-        setManualInflowsByPlatform({})
+        setManualInflowsByCampaign({})
         return
       }
       const json = await res.json()
-      // 새 응답 구조: { stats, campaignLeadCounts, manualInflowsByPlatform } 또는 기존 배열
+      // 새 응답 구조: { stats, campaignLeadCounts, manualInflowsByCampaign } 또는 기존 배열
       if (json.stats) {
         setRawData(Array.isArray(json.stats) ? json.stats : [])
         setCampaignLeadCounts(json.campaignLeadCounts || {})
-        setManualInflowsByPlatform(json.manualInflowsByPlatform || {})
+        setManualInflowsByCampaign(json.manualInflowsByCampaign || {})
       } else {
         setRawData(Array.isArray(json) ? json : [])
         setCampaignLeadCounts({})
-        setManualInflowsByPlatform({})
+        setManualInflowsByCampaign({})
       }
     } catch {
       setRawData([])
       setCampaignLeadCounts({})
-      setManualInflowsByPlatform({})
+      setManualInflowsByCampaign({})
     } finally {
       setLoading(false)
     }
@@ -154,6 +155,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
           impressions: record.impressions || 0,
           mediaConversions: convAdd,
           actualLeads: 0,
+          manualBoost: 0,
           inflowSource: 'lead_webhook',
           cpc: 0,
           ctr: 0,
@@ -164,21 +166,24 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
     }
 
     // Compute derived metrics + 인입(inflow) 카운트.
-    //   lead_webhook:     leads = campaignLeadCounts[campaign_id]
-    //   media_conversion: leads = mediaConversions
-    //   combined:         leads = actualLeads + mediaConversions
+    //   lead_webhook:     leads = campaignLeadCounts[campaign_id] + manualBoost
+    //   media_conversion: leads = mediaConversions + manualBoost
+    //   combined:         leads = actualLeads + mediaConversions + manualBoost
     return Array.from(map.values()).map(row => {
       const inflowSource: InflowSource = isApiPlatform(row.platform ?? '')
         ? PLATFORM_INFLOW_DEFAULTS[row.platform as ApiPlatform]
         : 'lead_webhook'
       const actualLeads = row.campaign_id ? (campaignLeadCounts[row.campaign_id] || 0) : 0
-      const leads =
+      const manualBoost = row.campaign_id ? (manualInflowsByCampaign[row.campaign_id] || 0) : 0
+      const baseLeads =
         inflowSource === 'media_conversion' ? row.mediaConversions
         : inflowSource === 'combined' ? actualLeads + row.mediaConversions
         : actualLeads
+      const leads = baseLeads + manualBoost
       return {
         ...row,
         actualLeads,
+        manualBoost,
         inflowSource,
         cpc: row.clicks > 0 ? row.spend / row.clicks : 0,
         ctr: row.impressions > 0 ? (row.clicks / row.impressions) * 100 : 0,
@@ -186,7 +191,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
         cpl: leads > 0 ? Math.round(row.spend / leads) : 0,
       }
     })
-  }, [rawData, campaignLeadCounts])
+  }, [rawData, campaignLeadCounts, manualInflowsByCampaign])
 
   const avgCpc = useMemo(() => {
     const withClicks = aggregated.filter(r => r.clicks > 0)
@@ -219,30 +224,6 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
 
   const displayed = expanded ? sorted : sorted.slice(0, PAGE_SIZE)
   const hasMore = sorted.length > PAGE_SIZE
-
-  // "(수동 보정)" 가상 행 — 정렬/페이지네이션과 무관, 검색 중에는 숨김.
-  //   manual_inflows 는 (client_id, platform, stat_date) 단위라 특정 캠페인에 귀속 불가.
-  //   채널 KPI 합계 = 캠페인 인입 합 + 수동 보정 으로 일관성 확보.
-  const manualRows = useMemo<CampaignRow[]>(() => {
-    if (search.trim()) return []
-    return Object.entries(manualInflowsByPlatform)
-      .filter(([plat, count]) => count > 0 && (!platformFilter || platformFilter === plat))
-      .map(([plat, count]) => ({
-        campaign_name: '(수동 보정)',
-        campaign_id: null,
-        platform: plat,
-        spend: 0,
-        clicks: 0,
-        impressions: 0,
-        mediaConversions: count,
-        actualLeads: 0,
-        inflowSource: 'media_conversion' as InflowSource,
-        cpc: 0,
-        ctr: 0,
-        leads: count,
-        cpl: 0,
-      }))
-  }, [manualInflowsByPlatform, platformFilter, search])
 
   const handleSort = (field: SortField) => {
     if (field === sortField) {
@@ -279,7 +260,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
             <Skeleton key={i} className="h-10 rounded-xl" />
           ))}
         </div>
-      ) : aggregated.length === 0 && manualRows.length === 0 ? (
+      ) : aggregated.length === 0 ? (
         <EmptyState
           icon={BarChart2}
           title="캠페인 데이터가 없습니다"
@@ -319,7 +300,7 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {displayed.length === 0 && manualRows.length === 0 ? (
+                {displayed.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-8 text-sm text-muted-foreground">
                       검색 결과가 없습니다
@@ -378,15 +359,18 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                       </TableCell>
                       <TableCell
                         className="py-2.5 text-right tabular-nums text-sm text-foreground/80"
-                        title={
-                          row.leads === 0
-                            ? '인입 없음'
-                            : row.inflowSource === 'media_conversion'
-                            ? `매체 전환 기반 (검색광고/디스플레이)\n매체 전환수: ${row.mediaConversions.toLocaleString()}`
-                            : row.inflowSource === 'combined'
-                            ? `리드 + 매체 전환 합산\n리드: ${row.actualLeads.toLocaleString()} · 매체 전환: ${row.mediaConversions.toLocaleString()}`
-                            : `리드 폼/웹훅 기반\n실제 리드: ${row.actualLeads.toLocaleString()}`
-                        }
+                        title={(() => {
+                          if (row.leads === 0) return '인입 없음'
+                          const base =
+                            row.inflowSource === 'media_conversion'
+                              ? `매체 전환 기반\n매체 전환수: ${row.mediaConversions.toLocaleString()}`
+                              : row.inflowSource === 'combined'
+                              ? `리드 + 매체 전환 합산\n리드: ${row.actualLeads.toLocaleString()} · 매체 전환: ${row.mediaConversions.toLocaleString()}`
+                              : `리드 폼/웹훅 기반\n실제 리드: ${row.actualLeads.toLocaleString()}`
+                          return row.manualBoost > 0
+                            ? `${base}\n수동 보정: +${row.manualBoost.toLocaleString()}`
+                            : base
+                        })()}
                       >
                         <span className="inline-flex items-center justify-end gap-1">
                           {row.leads > 0 ? row.leads.toLocaleString() : '-'}
@@ -396,6 +380,11 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                           {row.leads > 0 && row.inflowSource === 'combined' && (
                             <span className="text-[10px] text-muted-foreground font-normal bg-muted/50 px-1 rounded">복합</span>
                           )}
+                          {row.manualBoost > 0 && (
+                            <span className="text-[10px] text-amber-700 dark:text-amber-300 font-normal bg-amber-100 dark:bg-amber-900/40 px-1 rounded">
+                              +{row.manualBoost}
+                            </span>
+                          )}
                         </span>
                       </TableCell>
                       <TableCell className="py-2.5 text-right tabular-nums text-sm text-foreground/80">
@@ -404,44 +393,6 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
                     </TableRow>
                   ))
                 )}
-                {/* 수동 보정 가상 행 — 정렬/페이지네이션 무관, 항상 하단 노출 */}
-                {manualRows.map(row => (
-                  <TableRow
-                    key={`manual-${row.platform}`}
-                    className="border-b border-border/50 dark:border-white/[0.03] bg-amber-50/40 dark:bg-amber-950/10"
-                  >
-                    <TableCell className="py-2.5 max-w-[200px]">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full inline-block bg-amber-400" title="수동 보정 인입" />
-                        <span className="text-sm text-foreground/80 italic">
-                          {row.campaign_name}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-2.5">
-                      {row.platform ? (
-                        <ChannelBadge channel={row.platform} />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
-                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
-                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
-                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
-                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
-                    <TableCell
-                      className="py-2.5 text-right tabular-nums text-sm text-foreground/90"
-                      title={`수동 보정 인입: ${row.leads.toLocaleString()}건\n(매체×일자 단위라 특정 캠페인에 귀속되지 않음)`}
-                    >
-                      <span className="inline-flex items-center justify-end gap-1">
-                        {row.leads.toLocaleString()}
-                        <span className="text-[10px] text-amber-700 dark:text-amber-300 font-normal bg-amber-100 dark:bg-amber-900/40 px-1 rounded">수동</span>
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-2.5 text-right text-sm text-muted-foreground">-</TableCell>
-                  </TableRow>
-                ))}
               </TableBody>
             </Table>
           </div>

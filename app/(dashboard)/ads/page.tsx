@@ -50,7 +50,10 @@ function AdsPageInner() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [backfillOpen, setBackfillOpen] = useState(false)
   const [manualInflowOpen, setManualInflowOpen] = useState(false)
-  const canEditManualInflow = user?.role === 'superadmin' || user?.role === 'client_admin'
+  const [configuredPlatforms, setConfiguredPlatforms] = useState<string[]>([])
+  const hasAdnAds = configuredPlatforms.includes('adn_ads')
+  const canEditManualInflow =
+    (user?.role === 'superadmin' || user?.role === 'client_admin') && hasAdnAds
 
   // KST 기준 YYYY-MM-DD 문자열 (ad_campaign_stats.stat_date와 동일 형식)
   const startDate = dateRange.from ? getKstDateString(dateRange.from) : getKstDateString(startOfMonth(new Date()))
@@ -67,6 +70,19 @@ function AdsPageInner() {
     const tab = searchParams?.get('tab') ?? 'overview'
     setActiveTab(tab === 'campaigns' ? 'campaigns' : 'overview')
   }, [searchParams])
+
+  // 현재 클라이언트의 활성 연동 매체 목록 로딩 (수동 인입 보정 가드용)
+  useEffect(() => {
+    if (!selectedClientId) {
+      setConfiguredPlatforms([])
+      return
+    }
+    const qs = new URLSearchParams({ client_id: String(selectedClientId) })
+    fetch(`/api/ads/configured-platforms?${qs}`)
+      .then(r => (r.ok ? r.json() : { platforms: [] }))
+      .then(d => setConfiguredPlatforms(Array.isArray(d?.platforms) ? d.platforms : []))
+      .catch(() => setConfiguredPlatforms([]))
+  }, [selectedClientId])
 
   // state → URL 동기화. router.replace 로 변경해야 useSearchParams 갱신이 일어나 isActive 표시가 맞아진다.
   const handleTabChange = (tab: string) => {
@@ -145,7 +161,7 @@ function AdsPageInner() {
                   disabled={syncing}
                   title="과거 광고 데이터 채우기 (최대 90일)"
                 >
-                  <History size={14} /> 과거 데이터 백필
+                  <History size={14} /> 데이터 백필
                 </Button>
               )}
               {canEditManualInflow && selectedClientId && (
@@ -155,7 +171,7 @@ function AdsPageInner() {
                   disabled={syncing}
                   title="ADN 등 매체 전환 누락 일자에 보정 인입 수 입력"
                 >
-                  <Pencil size={14} /> 수동 인입 보정
+                  <Pencil size={14} /> 인입 보정
                 </Button>
               )}
               {canSync && (

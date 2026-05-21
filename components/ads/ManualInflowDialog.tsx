@@ -22,6 +22,14 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { getKstDateString } from '@/lib/date'
 import type { ApiPlatform } from '@/lib/platform'
 import { API_PLATFORM_LABELS } from '@/lib/platform'
@@ -38,9 +46,16 @@ interface Props {
 interface ManualInflowRow {
   id: number
   stat_date: string
+  campaign_id: string
+  campaign_name: string | null
   count: number
   reason: string | null
   updated_at: string | null
+}
+
+interface CampaignOption {
+  id: string
+  name: string
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
@@ -82,6 +97,9 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
   const [month0, setMonth0] = useState(today.getMonth())  // 0-based
   const [rows, setRows] = useState<ManualInflowRow[]>([])
   const [loading, setLoading] = useState(false)
+  const [campaigns, setCampaigns] = useState<CampaignOption[]>([])
+  const [campaignsLoading, setCampaignsLoading] = useState(false)
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [countInput, setCountInput] = useState<string>('')
   const [reasonInput, setReasonInput] = useState<string>('')
@@ -90,6 +108,7 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
   const [deleting, setDeleting] = useState(false)
 
   const platformLabel = API_PLATFORM_LABELS[platform]
+  const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId)
 
   const rowsByDate = useMemo(() => {
     const map = new Map<string, ManualInflowRow>()
@@ -100,10 +119,20 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
   const monthLabel = `${year}년 ${month0 + 1}월`
 
   const fetchRows = useCallback(async () => {
+    if (!selectedCampaignId) {
+      setRows([])
+      return
+    }
     setLoading(true)
     try {
       const { start, end } = getMonthRange(year, month0)
-      const params = new URLSearchParams({ platform, start, end, client_id: String(clientId) })
+      const params = new URLSearchParams({
+        platform,
+        start,
+        end,
+        client_id: String(clientId),
+        campaign_id: selectedCampaignId,
+      })
       const res = await fetch(`/api/manual-inflows?${params.toString()}`)
       if (!res.ok) throw new Error('조회 실패')
       const data = await res.json()
@@ -115,7 +144,24 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
     } finally {
       setLoading(false)
     }
-  }, [year, month0, platform, clientId])
+  }, [year, month0, platform, clientId, selectedCampaignId])
+
+  // 캠페인 목록 로딩 — 다이얼로그 열릴 때 1회
+  useEffect(() => {
+    if (!open) return
+    setCampaignsLoading(true)
+    const qs = new URLSearchParams({ platform, client_id: String(clientId) })
+    fetch(`/api/ads/campaigns?${qs.toString()}`)
+      .then(r => (r.ok ? r.json() : { campaigns: [] }))
+      .then(d => {
+        const list: CampaignOption[] = Array.isArray(d?.campaigns) ? d.campaigns : []
+        setCampaigns(list)
+        // 캠페인이 1개뿐이면 자동 선택
+        if (list.length === 1) setSelectedCampaignId(list[0].id)
+      })
+      .catch(() => setCampaigns([]))
+      .finally(() => setCampaignsLoading(false))
+  }, [open, platform, clientId])
 
   useEffect(() => {
     if (open) {
@@ -125,6 +171,15 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
       setReasonInput('')
     }
   }, [open, fetchRows])
+
+  // 다이얼로그 닫힐 때 상태 초기화
+  useEffect(() => {
+    if (!open) {
+      setSelectedCampaignId(null)
+      setCampaigns([])
+      setRows([])
+    }
+  }, [open])
 
   // 선택된 일자가 바뀌면 폼을 기존 값으로 채움
   useEffect(() => {
@@ -153,6 +208,10 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
   }
 
   const handleSave = async () => {
+    if (!selectedCampaignId) {
+      toast.error('캠페인을 먼저 선택해주세요.')
+      return
+    }
     if (!selectedDate) return
     const count = Number(countInput)
     if (!Number.isFinite(count) || count < 0) {
@@ -167,6 +226,8 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           platform,
+          campaign_id: selectedCampaignId,
+          campaign_name: selectedCampaign?.name ?? null,
           stat_date: selectedDate,
           count: Math.floor(count),
           reason: reasonInput.trim() || null,
@@ -195,12 +256,17 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
     }
     if (!confirm(`${selectedDate} 보정값을 삭제하시겠습니까?`)) return
 
+    if (!selectedCampaignId) return
     setDeleting(true)
     try {
       const res = await fetch(`/api/manual-inflows?client_id=${clientId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform, stat_date: selectedDate }),
+        body: JSON.stringify({
+          platform,
+          campaign_id: selectedCampaignId,
+          stat_date: selectedDate,
+        }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -224,12 +290,41 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base">
-            수동 인입 보정 — {clientName ? `${clientName} (${platformLabel})` : platformLabel}
+            인입 보정 — {clientName ? `${clientName} (${platformLabel})` : platformLabel}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            누락 일자에 실제 인입수를 보정합니다. 입력값은 KPI/추세에 자동 합산됩니다.
+            캠페인을 선택한 뒤 누락 일자에 실제 인입수를 보정합니다. 보정값은 해당 캠페인 인입에 합산됩니다.
           </DialogDescription>
         </DialogHeader>
+
+        {/* 캠페인 셀렉터 */}
+        <div className="space-y-1.5 pt-1">
+          <Label className="text-xs text-muted-foreground">캠페인</Label>
+          <Select
+            value={selectedCampaignId ?? ''}
+            onValueChange={val => setSelectedCampaignId(val || null)}
+            disabled={campaignsLoading || campaigns.length === 0}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue
+                placeholder={
+                  campaignsLoading
+                    ? '캠페인 불러오는 중...'
+                    : campaigns.length === 0
+                      ? '연동된 캠페인이 없습니다'
+                      : '캠페인을 선택해주세요'
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {campaigns.map(c => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* 월 네비게이션 */}
         <div className="flex items-center justify-between">
@@ -250,7 +345,11 @@ export default function ManualInflowDialog({ open, onOpenChange, clientId, clien
         </div>
 
         {/* 캘린더 그리드 */}
-        {loading ? (
+        {!selectedCampaignId ? (
+          <div className="flex items-center justify-center py-10 text-xs text-muted-foreground">
+            캠페인을 선택하면 보정값을 입력할 수 있습니다.
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center py-10">
             <Loader2 size={18} className="animate-spin text-muted-foreground" />
           </div>

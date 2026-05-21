@@ -11,20 +11,21 @@ import { getKstDateString } from '@/lib/date'
 export interface ManualInflowRow {
   client_id: number
   platform: string
+  campaign_id: string
   stat_date: string  // YYYY-MM-DD (KST)
   count: number
 }
 
 /**
  * 채널명(예: 'ADN', 'Meta') 으로 lookup 할 수 있게 인덱싱한 보정값 맵.
- * 키: `${normalizedChannel}|${stat_date}` (정확 매칭)
- * 키: `${normalizedChannel}` (전체 기간 합)
  */
 export interface ManualInflowIndex {
   /** 채널별 × 일자별 합 */
   byChannelDate: Map<string, number>
   /** 채널별 전체 합 */
   byChannel: Map<string, number>
+  /** 캠페인 ID 별 전체 합 (캠페인 행 단위 합산용) */
+  byCampaign: Map<string, number>
   /** 전체 합 (모든 채널, 모든 일자) */
   total: number
 }
@@ -42,9 +43,10 @@ export async function fetchManualInflows(
     startDate: Date | string
     endDate: Date | string
     platforms?: string[]
+    campaignId?: string
   },
 ): Promise<ManualInflowRow[]> {
-  const { clientIds, startDate, endDate, platforms } = params
+  const { clientIds, startDate, endDate, platforms, campaignId } = params
   if (clientIds !== null && clientIds.length === 0) return []
 
   const startStr = typeof startDate === 'string' ? startDate : getKstDateString(startDate)
@@ -52,7 +54,7 @@ export async function fetchManualInflows(
 
   let query = supabase
     .from('manual_inflows')
-    .select('client_id, platform, stat_date, count')
+    .select('client_id, platform, campaign_id, stat_date, count')
     .gte('stat_date', startStr)
     .lte('stat_date', endStr)
 
@@ -62,6 +64,10 @@ export async function fetchManualInflows(
 
   if (platforms && platforms.length > 0) {
     query = query.in('platform', platforms)
+  }
+
+  if (campaignId) {
+    query = query.eq('campaign_id', campaignId)
   }
 
   const { data, error } = await query
@@ -90,6 +96,7 @@ const PLATFORM_TO_CHANNEL: Record<string, string> = {
 export function indexManualInflows(rows: ManualInflowRow[]): ManualInflowIndex {
   const byChannelDate = new Map<string, number>()
   const byChannel = new Map<string, number>()
+  const byCampaign = new Map<string, number>()
   let total = 0
 
   for (const r of rows) {
@@ -97,10 +104,13 @@ export function indexManualInflows(rows: ManualInflowRow[]): ManualInflowIndex {
     const dateKey = `${channel}|${r.stat_date}`
     byChannelDate.set(dateKey, (byChannelDate.get(dateKey) || 0) + r.count)
     byChannel.set(channel, (byChannel.get(channel) || 0) + r.count)
+    if (r.campaign_id) {
+      byCampaign.set(r.campaign_id, (byCampaign.get(r.campaign_id) || 0) + r.count)
+    }
     total += r.count
   }
 
-  return { byChannelDate, byChannel, total }
+  return { byChannelDate, byChannel, byCampaign, total }
 }
 
 /**

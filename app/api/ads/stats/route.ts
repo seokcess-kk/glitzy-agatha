@@ -59,7 +59,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     const { data, error } = await query
     if (error) {
       logger.error('ad_campaign_stats 조회 실패', error, { clientId })
-      return apiSuccess({ stats: [], campaignLeadCounts: {}, manualInflowsByPlatform: {} })
+      return apiSuccess({ stats: [], campaignLeadCounts: {}, manualInflowsByCampaign: {} })
     }
 
     // 2) campaign_id별 리드 수 산출
@@ -85,9 +85,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       }
     }
 
-    // 3) manual_inflows — platform 별 합계 (캠페인 합과 채널 KPI 불일치 방지)
-    //    manual_inflows 는 (client_id, platform, stat_date) 단위라 특정 캠페인에 귀속 불가.
-    //    프론트에서 "(수동 보정)" 가상 행으로 표시.
+    // 3) manual_inflows — 캠페인별 합계. 캠페인 행 인입 카운트에 직접 합산.
     const manualClientIds = clientId
       ? [clientId]
       : assignedClientIds !== null
@@ -100,14 +98,15 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       endDate: manualEnd,
       platforms: platform ? [platform] : undefined,
     })
-    const manualInflowsByPlatform: Record<string, number> = {}
+    const manualInflowsByCampaign: Record<string, number> = {}
     for (const r of manualInflowRows) {
-      manualInflowsByPlatform[r.platform] = (manualInflowsByPlatform[r.platform] || 0) + r.count
+      if (!r.campaign_id) continue
+      manualInflowsByCampaign[r.campaign_id] = (manualInflowsByCampaign[r.campaign_id] || 0) + r.count
     }
 
-    return apiSuccess({ stats: data, campaignLeadCounts, manualInflowsByPlatform })
+    return apiSuccess({ stats: data, campaignLeadCounts, manualInflowsByCampaign })
   } catch (err) {
     logger.error('ads/stats 조회 실패', err, { clientId })
-    return apiSuccess({ stats: [], campaignLeadCounts: {}, manualInflowsByPlatform: {} })
+    return apiSuccess({ stats: [], campaignLeadCounts: {}, manualInflowsByCampaign: {} })
   }
 })

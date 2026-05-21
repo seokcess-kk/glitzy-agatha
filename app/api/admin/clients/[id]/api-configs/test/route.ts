@@ -89,19 +89,35 @@ function extractErrorMessage(error: unknown): string {
 /**
  * Google Ads 연결 테스트
  * customer.query('SELECT customer.descriptive_name FROM customer LIMIT 1')
+ *
+ * 같은 MCC 다중 클라이언트 운영을 위해, 클라이언트별 config 에 없는 공통 필드는
+ * process.env.GOOGLE_ADS_* 로 fallback (lib/services/googleAds.ts:buildCustomer 와 동일).
  */
 async function testGoogleAds(config: Record<string, unknown>): Promise<TestResult> {
-  const clientId = config.client_id as string | undefined
-  const clientSecret = config.client_secret as string | undefined
-  const developerToken = config.developer_token as string | undefined
-  const customerId = config.customer_id as string | undefined
-  const refreshToken = config.refresh_token as string | undefined
-  const loginCustomerId = config.login_customer_id as string | undefined
+  const clientId =
+    (config.client_id as string | undefined) || process.env.GOOGLE_ADS_CLIENT_ID
+  const clientSecret =
+    (config.client_secret as string | undefined) || process.env.GOOGLE_ADS_CLIENT_SECRET
+  const developerToken =
+    (config.developer_token as string | undefined) || process.env.GOOGLE_ADS_DEVELOPER_TOKEN
+  const customerId =
+    (config.customer_id as string | undefined) || process.env.GOOGLE_ADS_CUSTOMER_ID
+  const refreshToken =
+    (config.refresh_token as string | undefined) || process.env.GOOGLE_ADS_REFRESH_TOKEN
+  const loginCustomerId =
+    (config.login_customer_id as string | undefined) || process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID
 
   if (!clientId || !clientSecret || !developerToken || !customerId || !refreshToken) {
+    const missing = [
+      !clientId && 'client_id',
+      !clientSecret && 'client_secret',
+      !developerToken && 'developer_token',
+      !customerId && 'customer_id',
+      !refreshToken && 'refresh_token',
+    ].filter(Boolean).join(', ')
     return {
       success: false,
-      error: 'client_id, client_secret, developer_token, customer_id, refresh_token이 모두 필요합니다.',
+      error: `필수 인증 정보가 비어있습니다 — ${missing}. 클라이언트 설정 또는 GOOGLE_ADS_* 환경변수를 확인하세요.`,
       platform: 'google_ads',
     }
   }

@@ -147,11 +147,11 @@ Content-Type: application/json
 ```
 
 **이벤트 유형:**
-| event | 시점 | Agatha/Samantha 동작 |
-|-------|------|---------------------|
-| `client.created` | 거래처 신규 생성 | 클라이언트 자동 생성 (erp_client_id 매핑) |
-| `client.updated` | 거래처 정보 수정 | 클라이언트명 동기화 (선택적) |
-| `client.deleted` | 거래처 삭제/비활성화 | 클라이언트 비활성화 (is_active=false) |
+| event | 시점 | Agatha 동작 |
+|-------|------|------------|
+| `client.created` | 거래처 신규 생성 | **무시** (200 응답). 자동 생성 비활성화 — admin 에서 명시적 매핑 |
+| `client.updated` | 거래처 정보 수정 | erp_client_id 로 매핑된 클라이언트의 name 동기화 |
+| `client.deleted` | 거래처 삭제/비활성화 | 매핑된 클라이언트 비활성화 (is_active=false) |
 
 **Webhook 발송 규칙:**
 - fire-and-forget (응답 대기 최대 5초, 실패해도 glitzy-web 동작에 영향 없음)
@@ -193,8 +193,8 @@ Authorization: Bearer {ERP_SERVICE_KEY}
 ```
 
 Agatha의 `/api/webhook/erp-client`와 동일한 로직:
-- `client.created` → clinics 테이블에 자동 생성 (erp_client_id 매핑)
-- `client.updated` → 클리닉명 동기화
+- `client.created` → **무시** (Agatha 정책상 자동 생성 비활성화 — Samantha 도 동일하게 구현 권장)
+- `client.updated` → 매핑된 clinic 의 클리닉명 동기화
 - `client.deleted` → 비활성화
 
 ### 3. erpClient.ts 수정

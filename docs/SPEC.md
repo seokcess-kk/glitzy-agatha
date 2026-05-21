@@ -577,7 +577,7 @@ New(유입) → In Progress(진행) → Converted(전환)
 
 **거래처 동기화:**
 - `erp_client_id` (TEXT/UUID): clients 테이블에 glitzy-web 거래처 ID 매핑
-- Webhook 수신 (`/api/webhook/erp-client`): glitzy-web에서 거래처 생성/수정 시 자동 동기화
+- Webhook 수신 (`/api/webhook/erp-client`): glitzy-web 거래처 변경 동기화. `client.created` 는 무시(자동 생성 비활성화), `client.updated` 는 매핑된 클라이언트명 동기화, `client.deleted` 는 비활성화
 - Pull 동기화 (`/api/admin/erp-clients`): Agatha에서 glitzy-web 거래처 목록 조회
 - 이름 일괄 갱신 (`/api/admin/erp-clients/sync`): 매핑된 클라이언트의 name만 ERP 기준으로 일괄 갱신 (신규 매핑은 자동 생성하지 않음)
 - 거래처 드롭다운 선택 + 자동채움 (클라이언트 관리 페이지)

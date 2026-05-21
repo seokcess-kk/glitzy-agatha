@@ -65,38 +65,13 @@ export async function POST(req: NextRequest) {
   try {
     switch (event) {
       case 'client.created': {
-        // 이미 같은 erp_client_id가 있는지 확인 (중복 방지)
-        const { data: existing } = await supabase
-          .from('clients')
-          .select('id')
-          .eq('erp_client_id', data.id)
-          .maybeSingle()
-
-        if (existing) {
-          logger.info('이미 매핑된 거래처, 무시', { erp_client_id: data.id, client_id: existing.id })
-          return apiSuccess({ message: '이미 매핑된 거래처입니다.' })
-        }
-
-        // 새 클라이언트 자동 생성
-        const slug = `erp-${data.id.slice(0, 8)}`
-        const displayName = data.branch_name
-          ? `${data.name} (${data.branch_name})`
-          : data.name
-        const { error: insertError } = await supabase
-          .from('clients')
-          .insert({
-            name: sanitizeString(displayName, 100),
-            slug,
-            erp_client_id: data.id,
-          })
-
-        if (insertError) {
-          logger.error('클라이언트 자동 생성 실패', insertError as unknown as Error, { erp_client_id: data.id })
-          return apiError('클라이언트 생성 실패', 500)
-        }
-
-        logger.info('Webhook으로 클라이언트 자동 생성', { erp_client_id: data.id, name: data.name })
-        return apiSuccess({ message: '처리 완료' })
+        // 자동 등록 비활성화 — agatha 클라이언트는 admin 에서 명시적으로 생성 후 ERP 매핑.
+        //   기존 자동 등록 시 잘못 꼬인 거래처가 그대로 agatha 에 들어와 운영 혼선이 있어 정책 변경.
+        logger.info('client.created 이벤트 무시 (자동 등록 비활성화)', {
+          erp_client_id: data.id,
+          name: data.name,
+        })
+        return apiSuccess({ message: '자동 등록이 비활성화되어 있습니다. admin 에서 매핑하세요.' })
       }
 
       case 'client.updated': {

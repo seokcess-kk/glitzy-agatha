@@ -21,15 +21,12 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
 
   const fetchPlatforms = useCallback(async () => {
-    // 클라이언트 미선택(superadmin 전체 보기) 시에는 매체 필터를 채우지 않는다.
-    //   "현재 보는 클라이언트" 컨텍스트가 없으면 활성 매체 의미가 없음.
-    if (!selectedClientId) {
-      setPlatforms(['all'])
-      return
-    }
     try {
-      // client_api_configs 의 활성 매체만 노출 (과거 데이터만 남은 매체 제외)
-      const qs = new URLSearchParams({ client_id: String(selectedClientId) })
+      // client_api_configs 의 활성 매체만 노출 (과거 데이터만 남은 매체 제외).
+      //   특정 클라이언트 선택 시 → 그 클라이언트 매체.
+      //   전체 클라이언트 보기 시 → 운영 중인 모든 활성 매체 합집합 (superadmin/agency_staff).
+      const qs = new URLSearchParams()
+      if (selectedClientId) qs.set('client_id', String(selectedClientId))
       const res = await fetch(`/api/ads/configured-platforms?${qs.toString()}`)
       if (!res.ok) return
       const json = await res.json()

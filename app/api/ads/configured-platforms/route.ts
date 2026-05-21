@@ -13,12 +13,10 @@ import { createLogger } from '@/lib/logger'
 const logger = createLogger('ConfiguredPlatforms')
 
 export const GET = withClientFilter(async (_req: Request, { clientId, assignedClientIds }: ClientContext) => {
-  // superadmin 이 client_id 미지정으로 호출하는 경우는 의미 없음 (모든 클라이언트의 합집합).
-  //   ads 페이지의 매체 필터/가드 용도라 "현재 보고 있는 클라이언트" 컨텍스트 필수.
-  if (!clientId && assignedClientIds === null) {
-    return apiSuccess({ platforms: [] })
-  }
-
+  // 클라이언트 컨텍스트별 동작:
+  //   - 특정 client_id 지정: 해당 클라이언트의 활성 매체만
+  //   - superadmin & client_id 미지정 (전체 보기): 운영 중인 모든 활성 매체 합집합
+  //   - agency_staff: 배정된 클라이언트들의 활성 매체 합집합
   const supabase = serverSupabase()
 
   let query = supabase

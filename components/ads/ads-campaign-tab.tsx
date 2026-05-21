@@ -12,11 +12,13 @@ interface Props {
   startDate: string
   endDate: string
   days: string
+  /** 매체 필터 — ads/page 에서 lift up (인입 보정 버튼 노출 가드와 동기화) */
+  platformFilter: string
+  onPlatformFilterChange: (platform: string) => void
 }
 
-export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
+export default function AdsCampaignTab({ startDate, endDate, days, platformFilter, onPlatformFilterChange }: Props) {
   const { selectedClientId } = useClient()
-  const [platformFilter, setPlatformFilter] = useState('all')
   const [platforms, setPlatforms] = useState<string[]>(['all'])
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
 
@@ -43,9 +45,9 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
 
   useEffect(() => {
     if (platformFilter !== 'all' && !platforms.includes(platformFilter)) {
-      setPlatformFilter('all')
+      onPlatformFilterChange('all')
     }
-  }, [platforms, platformFilter])
+  }, [platforms, platformFilter, onPlatformFilterChange])
 
   // 매체 필터 변경 시 캠페인 선택 초기화
   useEffect(() => {
@@ -59,7 +61,7 @@ export default function AdsCampaignTab({ startDate, endDate, days }: Props) {
           <Button
             key={p}
             variant={platformFilter === p ? 'default' : 'ghost'}
-            onClick={() => setPlatformFilter(p)}
+            onClick={() => onPlatformFilterChange(p)}
             className={platformFilter === p ? 'bg-brand-600 border-brand-600' : ''}
           >
             {p === 'all' ? '전체 매체' : (API_PLATFORM_LABELS[p as keyof typeof API_PLATFORM_LABELS] || p)}

@@ -51,9 +51,19 @@ function AdsPageInner() {
   const [backfillOpen, setBackfillOpen] = useState(false)
   const [manualInflowOpen, setManualInflowOpen] = useState(false)
   const [configuredPlatforms, setConfiguredPlatforms] = useState<string[]>([])
+  // 캠페인 분석 탭의 매체 필터 — 인입 보정 가드와 동기화하기 위해 lift up
+  const [campaignPlatformFilter, setCampaignPlatformFilter] = useState('all')
   const hasAdnAds = configuredPlatforms.includes('adn_ads')
+  // 캠페인 분석 탭에서는 매체 필터가 ADN 또는 '전체 매체'일 때만 인입 보정 버튼 노출.
+  // 성과 개요 탭은 매체 필터가 없으니 항상 노출.
+  const matchesAdnForManualInflow =
+    activeTab !== 'campaigns' ||
+    campaignPlatformFilter === 'all' ||
+    campaignPlatformFilter === 'adn_ads'
   const canEditManualInflow =
-    (user?.role === 'superadmin' || user?.role === 'client_admin') && hasAdnAds
+    (user?.role === 'superadmin' || user?.role === 'client_admin') &&
+    hasAdnAds &&
+    matchesAdnForManualInflow
 
   // KST 기준 YYYY-MM-DD 문자열 (ad_campaign_stats.stat_date와 동일 형식)
   const startDate = dateRange.from ? getKstDateString(dateRange.from) : getKstDateString(startOfMonth(new Date()))
@@ -234,7 +244,14 @@ function AdsPageInner() {
         <AdsOverviewTab key={`overview-${startDate}-${endDate}-${refreshKey}`} startDate={startDate} endDate={endDate} />
       )}
       {activeTab === 'campaigns' && (
-        <AdsCampaignTab key={`campaigns-${startDate}-${endDate}-${refreshKey}`} startDate={startDate} endDate={endDate} days={String(daysDiff)} />
+        <AdsCampaignTab
+          key={`campaigns-${startDate}-${endDate}-${refreshKey}`}
+          startDate={startDate}
+          endDate={endDate}
+          days={String(daysDiff)}
+          platformFilter={campaignPlatformFilter}
+          onPlatformFilterChange={setCampaignPlatformFilter}
+        />
       )}
     </>
   )

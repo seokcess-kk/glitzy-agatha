@@ -47,12 +47,12 @@ export const API_PLATFORM_FIELDS: Record<ApiPlatform, { key: string; label: stri
     { key: 'access_token', label: '액세스 토큰', placeholder: '액세스 토큰을 입력하세요' },
   ],
   google_ads: [
-    { key: 'client_id', label: 'Client ID', placeholder: 'xxxxxx.apps.googleusercontent.com' },
-    { key: 'client_secret', label: 'Client Secret', placeholder: 'Client Secret을 입력하세요' },
-    { key: 'developer_token', label: 'Developer Token', placeholder: 'Developer Token을 입력하세요' },
-    { key: 'customer_id', label: 'Customer ID', placeholder: '123-456-7890' },
-    { key: 'refresh_token', label: 'Refresh Token', placeholder: 'Refresh Token을 입력하세요' },
-    { key: 'login_customer_id', label: 'Login Customer ID (MCC, 선택)', placeholder: 'MCC 경유 시 관리자 계정 ID' },
+    { key: 'customer_id', label: 'Customer ID (필수, 클라이언트별 광고 계정 ID)', placeholder: '123-456-7890' },
+    { key: 'client_id', label: 'Client ID (선택 · 비우면 ENV fallback)', placeholder: 'xxxxxx.apps.googleusercontent.com' },
+    { key: 'client_secret', label: 'Client Secret (선택 · 비우면 ENV fallback)', placeholder: 'Client Secret을 입력하세요' },
+    { key: 'developer_token', label: 'Developer Token (선택 · 비우면 ENV fallback)', placeholder: 'Developer Token을 입력하세요' },
+    { key: 'refresh_token', label: 'Refresh Token (선택 · 비우면 ENV fallback)', placeholder: 'Refresh Token을 입력하세요' },
+    { key: 'login_customer_id', label: 'Login Customer ID (MCC, 선택 · 비우면 ENV fallback)', placeholder: 'MCC 경유 시 관리자 계정 ID' },
   ],
   tiktok_ads: [
     { key: 'advertiser_id', label: 'Advertiser ID', placeholder: 'Advertiser ID를 입력하세요' },
@@ -79,7 +79,10 @@ export const API_PLATFORM_FIELDS: Record<ApiPlatform, { key: string; label: stri
 /** 플랫폼별 API 저장 시 필수 필드 */
 export const API_REQUIRED_FIELDS: Record<ApiPlatform, string[]> = {
   meta_ads: ['account_id', 'access_token'],
-  google_ads: ['client_id', 'client_secret', 'developer_token', 'customer_id', 'refresh_token'],
+  // google_ads: 같은 MCC 하위 다중 클라이언트 운영을 위해 customer_id 만 필수.
+  //   나머지(client_id, client_secret, developer_token, refresh_token, login_customer_id)는
+  //   비우면 process.env.GOOGLE_ADS_* 로 자동 fallback. lib/services/googleAds.ts:buildCustomer 참고.
+  google_ads: ['customer_id'],
   tiktok_ads: ['advertiser_id', 'access_token'],
   naver_ads: ['customer_id', 'access_license', 'secret_key'],
   kakao_ads: ['ad_account_id', 'access_token'],

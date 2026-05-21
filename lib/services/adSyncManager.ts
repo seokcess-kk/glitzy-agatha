@@ -39,6 +39,8 @@ interface ClientApiConfig {
 export interface SyncOptions {
   /** true 면 광고 소재(ad) 레벨 통계 호출을 건너뛴다 — 백필 timeout 회피용 */
   skipAdLevel?: boolean
+  /** 지정 시 해당 매체만 동기화 (예: ['google_ads']) — 백필 UI 매체 선택용 */
+  platforms?: ApiPlatform[]
 }
 
 async function syncPlatform(
@@ -465,7 +467,13 @@ export async function syncClient(
     logger.error('client_api_configs 조회 실패', error, { clientId })
   }
 
-  const validConfigs = (configs || []) as unknown as ClientApiConfig[]
+  let validConfigs = (configs || []) as unknown as ClientApiConfig[]
+
+  // 매체 필터 적용 — 백필 UI 에서 특정 매체만 선택한 경우
+  if (options?.platforms && options.platforms.length > 0) {
+    const allow = new Set(options.platforms)
+    validConfigs = validConfigs.filter(c => allow.has(c.platform as ApiPlatform))
+  }
 
   if (validConfigs.length > 0) {
     // 설정된 매체 병렬 동기화

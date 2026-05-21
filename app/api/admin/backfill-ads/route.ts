@@ -4,6 +4,7 @@ import { apiError, apiSuccess, type AuthUser } from '@/lib/api-middleware'
 import { authOptions } from '@/lib/auth'
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
+import { isApiPlatform, type ApiPlatform } from '@/lib/platform'
 
 const logger = createLogger('BackfillAds')
 
@@ -51,6 +52,13 @@ export async function POST(req: Request) {
   const endDate = typeof body.endDate === 'string' ? body.endDate : ''
   const skipAdLevel = body.skipAdLevel === true
 
+  // 선택 매체 필터 (예: ['google_ads', 'adn_ads']). 미지정/빈배열 = 전체.
+  let platforms: ApiPlatform[] | undefined
+  if (Array.isArray(body.platforms)) {
+    platforms = body.platforms.filter((p: unknown): p is ApiPlatform => isApiPlatform(p))
+    if (platforms.length === 0) platforms = undefined
+  }
+
   if (!clientId || isNaN(clientId) || !startDate || !endDate) {
     return apiError('clientId(숫자), startDate, endDate 필수', 400)
   }
@@ -71,7 +79,7 @@ export async function POST(req: Request) {
   if (diffDays < 0) return apiError('시작일이 종료일보다 늦습니다.', 400)
   if (diffDays > 90) return apiError('최대 90일까지 가능합니다.', 400)
 
-  logger.info('Backfill 시작', { clientId, startDate, endDate, days: diffDays + 1, skipAdLevel })
+  logger.info('Backfill 시작', { clientId, startDate, endDate, days: diffDays + 1, skipAdLevel, platforms })
 
   try {
     const allResults: { date: string; platform: string; count: number; error: string | null }[] = []
@@ -80,7 +88,7 @@ export async function POST(req: Request) {
       const currentDate = new Date(d)
       const dateStr = getKstDateString(currentDate)
 
-      const results = await syncClient(clientId, currentDate, { skipAdLevel })
+      const results = await syncClient(clientId, currentDate, { skipAdLevel, platforms })
 
       for (const r of results) {
         allResults.push({

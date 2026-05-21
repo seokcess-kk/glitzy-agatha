@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { subDays, startOfDay } from 'date-fns'
 import { DateRange } from 'react-day-picker'
 import { Loader2 } from 'lucide-react'
@@ -15,8 +15,10 @@ import {
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import { DateRangePicker } from '@/components/dashboard/date-range-picker'
 import { getKstDateString } from '@/lib/date'
+import { API_PLATFORM_LABELS, type ApiPlatform } from '@/lib/platform'
 
 interface Props {
   open: boolean
@@ -50,6 +52,42 @@ export default function BackfillDialog({ open, onOpenChange, clientId, clientNam
   const [response, setResponse] = useState<BackfillResponse | null>(null)
   // 기본 true (캠페인 레벨만 — 빠른 처리). 광고 소재 분석이 필요하면 OFF
   const [skipAdLevel, setSkipAdLevel] = useState(true)
+  // 활성 연동 매체 목록 + 선택 상태 (기본: 모두 선택)
+  const [availablePlatforms, setAvailablePlatforms] = useState<ApiPlatform[]>([])
+  const [platformsLoading, setPlatformsLoading] = useState(false)
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<ApiPlatform>>(new Set())
+
+  // 다이얼로그 열릴 때 클라이언트 활성 매체 목록 로딩 + 전체 선택
+  useEffect(() => {
+    if (!open) return
+    setPlatformsLoading(true)
+    fetch(`/api/ads/configured-platforms?client_id=${clientId}`)
+      .then(r => (r.ok ? r.json() : { platforms: [] }))
+      .then(d => {
+        const list: ApiPlatform[] = Array.isArray(d?.platforms) ? d.platforms : []
+        setAvailablePlatforms(list)
+        setSelectedPlatforms(new Set(list))
+      })
+      .catch(() => {
+        setAvailablePlatforms([])
+        setSelectedPlatforms(new Set())
+      })
+      .finally(() => setPlatformsLoading(false))
+  }, [open, clientId])
+
+  const togglePlatform = (p: ApiPlatform) => {
+    setSelectedPlatforms(prev => {
+      const next = new Set(prev)
+      if (next.has(p)) next.delete(p)
+      else next.add(p)
+      return next
+    })
+  }
+  const toggleAll = () => {
+    setSelectedPlatforms(prev =>
+      prev.size === availablePlatforms.length ? new Set() : new Set(availablePlatforms),
+    )
+  }
 
   const startDateStr = dateRange.from ? getKstDateString(dateRange.from) : ''
   const endDateStr = dateRange.to ? getKstDateString(dateRange.to) : ''
@@ -68,6 +106,10 @@ export default function BackfillDialog({ open, onOpenChange, clientId, clientNam
       toast.error('최대 90일까지 가능합니다.')
       return
     }
+    if (availablePlatforms.length > 0 && selectedPlatforms.size === 0) {
+      toast.error('백필할 매체를 1개 이상 선택해주세요.')
+      return
+    }
 
     setRunning(true)
     setResponse(null)
@@ -80,6 +122,7 @@ export default function BackfillDialog({ open, onOpenChange, clientId, clientNam
           startDate: startDateStr,
           endDate: endDateStr,
           skipAdLevel,
+          platforms: Array.from(selectedPlatforms),
         }),
       })
 
@@ -169,6 +212,46 @@ export default function BackfillDialog({ open, onOpenChange, clientId, clientNam
               <p className="text-xs text-amber-600 dark:text-amber-500">
                 ⚠ 14일 이상은 timeout 가능성이 있습니다. 7~10일 단위로 나눠서 진행을 권장합니다.
               </p>
+            )}
+          </div>
+
+          {/* 매체 선택 */}
+          <div className="space-y-2 rounded-md border border-border p-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">매체 선택</Label>
+              {availablePlatforms.length > 0 && (
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  disabled={running}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {selectedPlatforms.size === availablePlatforms.length ? '전체 해제' : '전체 선택'}
+                </button>
+              )}
+            </div>
+            {platformsLoading ? (
+              <p className="text-xs text-muted-foreground">매체 목록 불러오는 중...</p>
+            ) : availablePlatforms.length === 0 ? (
+              <p className="text-xs text-amber-600 dark:text-amber-500">
+                활성 연동된 매체가 없습니다. admin → API 설정에서 활성화 후 다시 시도하세요.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                {availablePlatforms.map(p => (
+                  <label
+                    key={p}
+                    className="flex items-center gap-2 text-sm cursor-pointer select-none"
+                  >
+                    <Checkbox
+                      checked={selectedPlatforms.has(p)}
+                      onCheckedChange={() => togglePlatform(p)}
+                      disabled={running}
+                    />
+                    <span className="text-foreground/80">{API_PLATFORM_LABELS[p] || p}</span>
+                  </label>
+                ))}
+              </div>
             )}
           </div>
 

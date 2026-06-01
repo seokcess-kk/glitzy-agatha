@@ -2,7 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { getKstDateString } from '@/lib/date'
 import { isDemoViewer, getDemoTrend } from '@/lib/demo-data'
-import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
+import { countsMediaConversions } from '@/lib/inflow'
 import { fetchManualInflows } from '@/lib/manual-inflow'
 
 const DAYS = 28 // 최근 4주
@@ -97,9 +97,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     const entry = dayMap.get(key)
     if (!entry) continue
     entry.spend += Number(row.spend_amount)
-    const platform = row.platform
-    // media_conversion / combined 매체만 conversions 합산 (lead_webhook 매체는 이중 집계 방지)
-    if (isApiPlatform(platform) && PLATFORM_INFLOW_DEFAULTS[platform] !== 'lead_webhook') {
+    // 매체 전환 합산 여부 — 단일 헬퍼로 판단 (lead_webhook 매체는 이중 집계 방지)
+    if (countsMediaConversions(row.platform)) {
       entry.mediaConversions += Number(row.conversions || 0)
     }
   }

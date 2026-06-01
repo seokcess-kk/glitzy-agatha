@@ -1,8 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
-import { resolveInflowSourceForChannel, computeInflowCount, fetchInflowOverrides } from '@/lib/inflow'
-import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
+import { resolveInflowSourceForChannel, computeInflowCount, fetchInflowOverrides, countsMediaConversions } from '@/lib/inflow'
 import { getKstDateString } from '@/lib/date'
 import { isDemoViewer, getDemoCampaigns } from '@/lib/demo-data'
 
@@ -136,12 +135,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     spendByCampaign[campaignKey].spend += Number(row.spend_amount) || 0
     spendByCampaign[campaignKey].clicks += Number(row.clicks) || 0
     spendByCampaign[campaignKey].impressions += Number(row.impressions) || 0
-    // 매체 전환 합산 — media_conversion / combined 모드 매체 (lead_webhook 매체는 이중 집계 방지)
-    //   override 가 있으면 그 값 기준 (resolveInflowSourceForChannel 과 동일)
-    const effSource = isApiPlatform(row.platform)
-      ? (inflowOverrides[row.platform] ?? PLATFORM_INFLOW_DEFAULTS[row.platform])
-      : null
-    if (effSource !== null && effSource !== 'lead_webhook') {
+    // 매체 전환 합산 여부 — 단일 헬퍼로 판단 (override 포함, lead_webhook 매체는 이중 집계 방지)
+    if (countsMediaConversions(row.platform, inflowOverrides)) {
       spendByCampaign[campaignKey].mediaConversions += Number(row.conversions) || 0
     }
   }

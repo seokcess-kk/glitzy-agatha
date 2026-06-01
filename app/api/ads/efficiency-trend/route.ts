@@ -2,7 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiError, apiSuccess } from '@/lib/api-middleware'
 import { isDemoViewer, getDemoEfficiencyTrend } from '@/lib/demo-data'
 import { getKstDateString } from '@/lib/date'
-import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
+import { countsMediaConversions } from '@/lib/inflow'
 import { fetchManualInflows } from '@/lib/manual-inflow'
 
 const DEFAULT_DAYS = 28
@@ -109,8 +109,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     entry.spend += Number(row.spend_amount)
     entry.clicks += Number(row.clicks || 0)
     entry.impressions += Number(row.impressions || 0)
-    // media_conversion / combined 매체만 conversions 합산 (lead_webhook 매체는 이중 집계 방지)
-    if (isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] !== 'lead_webhook') {
+    // 매체 전환 합산 여부 — 단일 헬퍼로 판단 (lead_webhook 매체는 이중 집계 방지)
+    if (countsMediaConversions(row.platform)) {
       entry.mediaConversions += Number(row.conversions || 0)
     }
   }

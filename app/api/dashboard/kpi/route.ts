@@ -4,7 +4,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { getKstDateString, getKstDayStartISO } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { isDemoViewer, getDemoKpi } from '@/lib/demo-data'
-import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
+import { countsMediaConversions } from '@/lib/inflow'
 import { fetchManualInflows, indexManualInflows } from '@/lib/manual-inflow'
 
 const logger = createLogger('DashboardKpi')
@@ -82,9 +82,8 @@ async function fetchMetrics(
   //   combined: 자체 랜딩 + 매체 전환 둘 다 (Meta 등)
   //   이중 집계 방지: lead_webhook 모드 플랫폼은 leads 테이블로만 카운트, conversions 무시
   const mediaConversionsTotal = (adStatsRes.data || []).reduce((sum, r) => {
-    const platform = r.platform
-    if (!isApiPlatform(platform)) return sum
-    if (PLATFORM_INFLOW_DEFAULTS[platform] === 'lead_webhook') return sum
+    // 매체 전환 합산 여부 — 단일 헬퍼로 판단 (lead_webhook 매체는 이중 집계 방지)
+    if (!countsMediaConversions(r.platform)) return sum
     return sum + Number(r.conversions || 0)
   }, 0)
 

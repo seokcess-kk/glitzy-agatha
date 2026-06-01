@@ -3,8 +3,8 @@ import { withClientFilter, ClientContext, applyClientFilter, apiSuccess, apiErro
 import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
-import { apiToCreativePlatform, getSourceLabel, PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
-import { resolveInflowSourceForChannel, computeInflowCount, fetchInflowOverrides } from '@/lib/inflow'
+import { apiToCreativePlatform, getSourceLabel } from '@/lib/platform'
+import { resolveInflowSourceForChannel, computeInflowCount, fetchInflowOverrides, countsMediaConversions } from '@/lib/inflow'
 import { isDemoViewer, getDemoChannel } from '@/lib/demo-data'
 import { fetchManualInflows, indexManualInflows, getManualBoostForChannel } from '@/lib/manual-inflow'
 
@@ -126,12 +126,8 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       adByChannel[channel].spend += Number(row.spend_amount) || 0
       adByChannel[channel].clicks += Number(row.clicks) || 0
       adByChannel[channel].impressions += Number(row.impressions) || 0
-      // 매체 전환 — media_conversion / combined 모드 플랫폼만 (lead_webhook 매체는 이중 집계 방지)
-      //   override 가 있으면 그 값으로 판단 (resolveInflowSourceForChannel 과 동일 기준 유지)
-      const effSource = isApiPlatform(row.platform)
-        ? (inflowOverrides[row.platform] ?? PLATFORM_INFLOW_DEFAULTS[row.platform])
-        : null
-      const hasMediaConv = effSource !== null && effSource !== 'lead_webhook'
+      // 매체 전환 합산 여부 — 단일 헬퍼로 판단 (override 포함, lead_webhook 매체는 이중 집계 방지)
+      const hasMediaConv = countsMediaConversions(row.platform, inflowOverrides)
       if (hasMediaConv) {
         adByChannel[channel].mediaConversions += Number(row.conversions) || 0
       }

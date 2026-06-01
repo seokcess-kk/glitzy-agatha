@@ -2,7 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
 import { sourceToChannel } from '@/lib/platform'
-import { resolveInflowSourceForChannel, computeInflowCount } from '@/lib/inflow'
+import { resolveInflowSourceForChannel, computeInflowCount, fetchInflowOverrides } from '@/lib/inflow'
 import { getKstDateString } from '@/lib/date'
 import { isDemoViewer, getDemoChannel } from '@/lib/demo-data'
 import { fetchManualInflows, indexManualInflows, getManualBoostForChannel } from '@/lib/manual-inflow'
@@ -76,6 +76,9 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }),
   ])
   const manualInflowIndex = indexManualInflows(manualInflowRows)
+
+  // 클라이언트별 inflow_source override (단일 클라이언트 선택 시에만 — 전체조회는 기본값)
+  const inflowOverrides = clientId ? await fetchInflowOverrides(supabase, clientId) : {}
 
   // 채널별 리드 집계 — 플랫폼 단위 통합 (Meta, Google 등)
   const leadsByChannel: Record<string, Set<number>> = {}
@@ -151,7 +154,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       const impressions = impressionsByChannel[ch] || 0
 
       // 채널별 inflow source — 검색광고(Naver 등) 매체 전환 기반, 나머지 폼/웹훅 기반
-      const inflowSource = resolveInflowSourceForChannel(ch)
+      const inflowSource = resolveInflowSourceForChannel(ch, inflowOverrides)
       const manualBoost = getManualBoostForChannel(manualInflowIndex, ch)
       const inflowCount = computeInflowCount(actualLeads, mediaConversions, inflowSource, manualBoost)
 

@@ -24,6 +24,7 @@ function fmtShort(iso: string) {
 }
 
 interface AdStatRecord {
+  client_id: number | null
   campaign_id: string | null
   campaign_name: string | null
   platform: string | null
@@ -124,12 +125,16 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Aggregate by campaign_name across all dates
+  // Aggregate by client_id + platform + campaign_id across all dates.
+  //   campaign_name 단독 집계는 전체조회(superadmin)에서 클라이언트/매체 간 동일
+  //   캠페인명(예: ADN 은 campaign_id=campaign_name 한글)을 병합하므로 복합키 사용.
   const aggregated = useMemo<CampaignRow[]>(() => {
     const map = new Map<string, CampaignRow>()
 
     for (const record of rawData) {
-      const key = record.campaign_name || '(미설정)'
+      const campId = record.campaign_id || record.campaign_name || '(미설정)'
+      const displayName = record.campaign_name || record.campaign_id || '(미설정)'
+      const key = `${record.client_id ?? ''}|${record.platform ?? ''}|${campId}`
       // 매체 전환 합산 — media_conversion 또는 combined 모드 매체.
       //   lead_webhook 모드 매체만 conversions 무시 (이중 집계 방지).
       const inflowMode = isApiPlatform(record.platform ?? '')
@@ -143,11 +148,9 @@ export default function CampaignRankingTable({ startDate, endDate, platformFilte
         existing.clicks += record.clicks || 0
         existing.impressions += record.impressions || 0
         existing.mediaConversions += convAdd
-        if (!existing.platform && record.platform) existing.platform = record.platform
-        if (!existing.campaign_id && record.campaign_id) existing.campaign_id = record.campaign_id
       } else {
         map.set(key, {
-          campaign_name: key,
+          campaign_name: displayName,
           campaign_id: record.campaign_id || null,
           platform: record.platform || null,
           spend: Number(record.spend_amount) || 0,

@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { timingSafeEqual } from 'crypto'
 import { authOptions } from './auth'
-import { getClientId } from './session'
+import { getClientId, ClientAccessError } from './session'
 import { SessionUser } from './security'
 import { serverSupabase } from './supabase'
 import { isDemoViewer } from './demo-data'
@@ -114,7 +114,13 @@ export function withClientFilter(handler: ClientHandler) {
     const demoBlock = blockDemoWrite(req, user)
     if (demoBlock) return demoBlock
 
-    const clientId = await getClientId(req.url)
+    let clientId: number | null
+    try {
+      clientId = await getClientId(req.url)
+    } catch (e) {
+      if (e instanceof ClientAccessError) return apiError(e.message, e.status)
+      throw e
+    }
 
     // agency_staff가 client_id 미지정 시: 배정된 클라이언트 목록을 제공
     let assignedClientIds: number[] | null = null
@@ -157,7 +163,13 @@ export function withClientAdmin(handler: ClientAdminHandler) {
     const demoBlock = blockDemoWrite(req, user)
     if (demoBlock) return demoBlock
 
-    const clientId = await getClientId(req.url)
+    let clientId: number | null
+    try {
+      clientId = await getClientId(req.url)
+    } catch (e) {
+      if (e instanceof ClientAccessError) return apiError(e.message, e.status)
+      throw e
+    }
     return handler(req, { user, clientId, assignedClientIds: null })
   }
 }

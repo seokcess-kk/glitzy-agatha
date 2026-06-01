@@ -1,7 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withClientFilter, ClientContext, applyClientFilter, apiSuccess } from '@/lib/api-middleware'
 import { normalizeChannel } from '@/lib/channel'
-import { resolveInflowSourceForChannel, computeInflowCount } from '@/lib/inflow'
+import { resolveInflowSourceForChannel, computeInflowCount, fetchInflowOverrides } from '@/lib/inflow'
 import { PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
 import { getKstDateString } from '@/lib/date'
 import { isDemoViewer, getDemoCampaigns } from '@/lib/demo-data'
@@ -122,6 +122,9 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     }
   }
 
+  // 클라이언트별 inflow_source override (단일 클라이언트 선택 시에만 — 전체조회는 기본값)
+  const inflowOverrides = clientId ? await fetchInflowOverrides(supabase, clientId) : {}
+
   // 광고 지출 집계 (campaign_name 또는 campaign_id 기준)
   //   + 매체 전환수 (media_conversion 모드 플랫폼만) 합산
   const spendByCampaign: Record<string, { spend: number; clicks: number; impressions: number; mediaConversions: number }> = {}
@@ -134,7 +137,11 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     spendByCampaign[campaignKey].clicks += Number(row.clicks) || 0
     spendByCampaign[campaignKey].impressions += Number(row.impressions) || 0
     // 매체 전환 합산 — media_conversion / combined 모드 매체 (lead_webhook 매체는 이중 집계 방지)
-    if (isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] !== 'lead_webhook') {
+    //   override 가 있으면 그 값 기준 (resolveInflowSourceForChannel 과 동일)
+    const effSource = isApiPlatform(row.platform)
+      ? (inflowOverrides[row.platform] ?? PLATFORM_INFLOW_DEFAULTS[row.platform])
+      : null
+    if (effSource !== null && effSource !== 'lead_webhook') {
       spendByCampaign[campaignKey].mediaConversions += Number(row.conversions) || 0
     }
   }
@@ -164,7 +171,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       const adData = spendByCampaign[stat.campaign] || { spend: 0, clicks: 0, impressions: 0, mediaConversions: 0 }
       const spend = adData.spend
       const mediaConversions = adData.mediaConversions
-      const inflowSource = resolveInflowSourceForChannel(stat.channel)
+      const inflowSource = resolveInflowSourceForChannel(stat.channel, inflowOverrides)
       const inflowCount = computeInflowCount(actualLeads, mediaConversions, inflowSource)
       const revenue = revenueByCampaign[stat.campaign] || 0
       const payingContacts = payingContactsByCampaign[stat.campaign]?.size || 0

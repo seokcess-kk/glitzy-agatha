@@ -4,7 +4,7 @@ import { normalizeChannel } from '@/lib/channel'
 import { getKstDateString } from '@/lib/date'
 import { createLogger } from '@/lib/logger'
 import { apiToCreativePlatform, getSourceLabel, PLATFORM_INFLOW_DEFAULTS, isApiPlatform } from '@/lib/platform'
-import { resolveInflowSourceForChannel, computeInflowCount } from '@/lib/inflow'
+import { resolveInflowSourceForChannel, computeInflowCount, fetchInflowOverrides } from '@/lib/inflow'
 import { isDemoViewer, getDemoChannel } from '@/lib/demo-data'
 import { fetchManualInflows, indexManualInflows, getManualBoostForChannel } from '@/lib/manual-inflow'
 
@@ -98,6 +98,9 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
     ])
     const manualInflowIndex = indexManualInflows(manualInflowRows)
 
+    // 클라이언트별 inflow_source override (단일 클라이언트 선택 시에만 — 전체조회는 기본값)
+    const inflowOverrides = clientId ? await fetchInflowOverrides(supabase, clientId) : {}
+
     if (adStatsRes.error) {
       logger.error('광고 통계 조회 실패', adStatsRes.error, { clientId })
       return apiError('광고 통계 조회 중 오류가 발생했습니다.', 500)
@@ -124,7 +127,11 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
       adByChannel[channel].clicks += Number(row.clicks) || 0
       adByChannel[channel].impressions += Number(row.impressions) || 0
       // 매체 전환 — media_conversion / combined 모드 플랫폼만 (lead_webhook 매체는 이중 집계 방지)
-      const hasMediaConv = isApiPlatform(row.platform) && PLATFORM_INFLOW_DEFAULTS[row.platform] !== 'lead_webhook'
+      //   override 가 있으면 그 값으로 판단 (resolveInflowSourceForChannel 과 동일 기준 유지)
+      const effSource = isApiPlatform(row.platform)
+        ? (inflowOverrides[row.platform] ?? PLATFORM_INFLOW_DEFAULTS[row.platform])
+        : null
+      const hasMediaConv = effSource !== null && effSource !== 'lead_webhook'
       if (hasMediaConv) {
         adByChannel[channel].mediaConversions += Number(row.conversions) || 0
       }
@@ -188,7 +195,7 @@ export const GET = withClientFilter(async (req: Request, { user, clientId, assig
         const adData = adByChannel[channel] || { spend: 0, clicks: 0, impressions: 0, mediaConversions: 0 }
         const { spend, clicks, impressions, mediaConversions } = adData
         const actualLeads = leadsByChannel[channel] || 0
-        const inflowSource = resolveInflowSourceForChannel(channel)
+        const inflowSource = resolveInflowSourceForChannel(channel, inflowOverrides)
         const manualBoost = getManualBoostForChannel(manualInflowIndex, channel)
         const inflowCount = computeInflowCount(actualLeads, mediaConversions, inflowSource, manualBoost)
         const revenue = revenueByChannel[channel] || 0

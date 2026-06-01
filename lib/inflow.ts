@@ -12,12 +12,50 @@
  * 클라이언트별 override 는 client_api_configs.config.inflow_source (선택).
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   type ApiPlatform,
   type InflowSource,
   PLATFORM_INFLOW_DEFAULTS,
   isApiPlatform,
 } from '@/lib/platform'
+import { decryptApiConfig } from '@/lib/crypto'
+
+/** 매체별 inflow_source override 맵 (client_api_configs.config.inflow_source). */
+export type InflowOverrideMap = Partial<Record<ApiPlatform, InflowSource>>
+
+const VALID_INFLOW_SOURCES: InflowSource[] = ['lead_webhook', 'media_conversion', 'combined']
+
+/**
+ * 단일 클라이언트의 client_api_configs.config.inflow_source override 맵을 조회.
+ * - config 는 암호화 저장(평문 JSON 폴백)이라 decryptApiConfig 로 복호화 후 읽는다.
+ * - 전체조회(clientId 없음)에서는 클라이언트별 override 가 모호하므로 호출하지 않고 기본값 사용.
+ * - 설정이 없거나 inflow_source 미지정이면 빈 맵 → 기존 PLATFORM_INFLOW_DEFAULTS 동작과 동일.
+ */
+export async function fetchInflowOverrides(
+  supabase: SupabaseClient,
+  clientId: number,
+): Promise<InflowOverrideMap> {
+  const { data, error } = await supabase
+    .from('client_api_configs')
+    .select('platform, config')
+    .eq('client_id', clientId)
+  if (error || !data) return {}
+
+  const map: InflowOverrideMap = {}
+  for (const row of data as { platform: string; config: unknown }[]) {
+    if (!isApiPlatform(row.platform)) continue
+    const cfg =
+      typeof row.config === 'string'
+        ? decryptApiConfig(row.config)
+        : (row.config as Record<string, unknown> | null)
+    const src = cfg?.inflow_source
+    if (typeof src === 'string' && VALID_INFLOW_SOURCES.includes(src as InflowSource)) {
+      map[row.platform as ApiPlatform] = src as InflowSource
+    }
+  }
+  return map
+}
 
 /**
  * 매체별 inflow source 결정.
@@ -83,8 +121,11 @@ export function channelToApiPlatform(channel: string): ApiPlatform | null {
  * 채널명으로 inflow source 결정 (PLATFORM_INFLOW_DEFAULTS 폴백).
  * 매핑 안 되는 채널(예: 'Organic', 'Unknown')은 'lead_webhook' 폴백.
  */
-export function resolveInflowSourceForChannel(channel: string): InflowSource {
+export function resolveInflowSourceForChannel(
+  channel: string,
+  overrides?: InflowOverrideMap,
+): InflowSource {
   const platform = channelToApiPlatform(channel)
   if (!platform) return 'lead_webhook'
-  return PLATFORM_INFLOW_DEFAULTS[platform]
+  return overrides?.[platform] ?? PLATFORM_INFLOW_DEFAULTS[platform]
 }

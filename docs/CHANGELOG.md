@@ -2,6 +2,13 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 공통 데이터 패칭 훅 useClientData 도입 (2026-06-01)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-06-01 | feat: `hooks/use-client-data.ts` (신규) — 범용 클라이언트 데이터 패칭 훅 `useClientData<T>(path, params?, { enabled })`. 컴포넌트마다 반복되던 의식(useState loading/error/data + useEffect fetch + `?client_id=` 수동 부착 + 에러 처리)을 한 seam 으로 모음. `selectedClientId` 를 ClientContext 에서 내부적으로 읽어 자동 부착(호출처 누출 제거), 빈 파라미터 생략, 파라미터/클라이언트 변경 시 AbortController 로 이전 요청 취소(race 방지), 에러 시 이전 data 유지. 동작은 기존 raw fetch 와 동일(재시도/타임아웃은 seam 정착 후 한 곳에서 fetchJSON 으로 상향 가능 — 현재 미적용) |
+| 2026-06-01 | refactor: `components/customers/contact-tab.tsx` 를 `useClientData` 로 이전(첫 채택 사례). fetchContacts 의식 + `useClient`/selectedClientId 수동 부착 제거, 동작 불변. 나머지 컴포넌트(ads/*, customers/lead-tab, erp-documents/*)는 점진 채택 예정(opt-in) |
+
 ## 데이터 신뢰성 개선 — client_id 검증 강화 / 캠페인 복합키 / inflow_source override 배선 (2026-06-01)
 
 | 날짜 | 내용 |

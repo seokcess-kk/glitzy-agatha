@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useClient } from '@/components/ClientContext'
+import { useClientData } from '@/hooks/use-client-data'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,11 +19,6 @@ import { ChannelBadge } from '@/components/common'
 import { formatDate } from '@/lib/date'
 
 export function ContactTab() {
-  const { selectedClientId } = useClient()
-
-  const [contacts, setContacts] = useState<any[]>([])
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -38,25 +33,13 @@ export function ContactTab() {
     return () => clearTimeout(timer)
   }, [search])
 
-  const fetchContacts = useCallback(() => {
-    setLoading(true)
-    const params = new URLSearchParams()
-    if (selectedClientId) params.set('client_id', String(selectedClientId))
-    if (debouncedSearch) params.set('search', debouncedSearch)
-    params.set('page', String(page))
-    params.set('per_page', String(perPage))
-
-    fetch(`/api/customers/contacts?${params.toString()}`)
-      .then(r => r.json())
-      .then(d => {
-        setContacts(d.data || [])
-        setTotal(d.total || 0)
-      })
-      .catch(() => { })
-      .finally(() => setLoading(false))
-  }, [selectedClientId, debouncedSearch, page])
-
-  useEffect(() => { fetchContacts() }, [fetchContacts])
+  // 공통 데이터 패칭 훅 — client_id 자동 부착 + loading/abort 처리 (기존 raw fetch 와 동작 동일)
+  const { data, loading } = useClientData<{ data: any[]; total: number }>(
+    '/api/customers/contacts',
+    { search: debouncedSearch, page, per_page: perPage },
+  )
+  const contacts = data?.data ?? []
+  const total = data?.total ?? 0
 
   const totalPages = Math.ceil(total / perPage)
 

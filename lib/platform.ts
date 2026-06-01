@@ -103,7 +103,7 @@ export type InflowSource = 'lead_webhook' | 'media_conversion' | 'combined'
 
 export const PLATFORM_INFLOW_DEFAULTS: Record<ApiPlatform, InflowSource> = {
   meta_ads: 'combined', // Meta: 자체 랜딩(actualLeads) + 픽셀/Lead Ads 전환(conversions) 합산
-  google_ads: 'lead_webhook',
+  google_ads: 'media_conversion', // 검색/PMax 등 자체 랜딩폼 없이 Google 전환추적 기반으로 측정
   tiktok_ads: 'lead_webhook',
   naver_ads: 'media_conversion', // 검색광고: 자체 랜딩 없음, NPLA 전환추적 기반
   kakao_ads: 'lead_webhook',

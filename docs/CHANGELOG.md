@@ -2,6 +2,12 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## Google Ads 매체 전환이 인입에 집계되지 않던 버그 수정 (2026-06-01)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-06-01 | fix: `lib/platform.ts` `PLATFORM_INFLOW_DEFAULTS.google_ads` 를 `'lead_webhook'` → `'media_conversion'` 변경. Google Ads 전환은 `fetchGoogleAds()` 로 `ad_campaign_stats.conversions` 에 정상 수집·저장되고 있었으나, 인입 집계 시 `lead_webhook` 모드라 매체 전환수가 0 으로 무시되어 KPI 총 인입·매체별 비교·캠페인 순위 어디에도 표시되지 않던 문제. 검색/PMax 등 자체 랜딩폼이 없는 Google 트래픽을 네이버 SA/ADN 과 동일하게 매체 전환 기반으로 집계하도록 통일. 중앙 상수 1곳 변경으로 `dashboard/{kpi,campaign,trend}`·`ads/{platform-summary,efficiency-trend,day-analysis,creatives-performance,stats}`·`cron/send-reports`·`campaign-ranking-table` 전 경로 일괄 반영. ⚠️ 자체 폼 리드(utm_source=google)로 인입을 잡던 다른 클라이언트가 있다면 인입 수치가 매체 전환 기준으로 전환됨 |
+
 ## 통화 표시 소수점 잔존 버그 일괄 수정 (2026-05-20)
 
 | 날짜 | 내용 |

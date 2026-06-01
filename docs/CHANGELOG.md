@@ -2,6 +2,12 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 광고 통계 upsert onConflict 키 단일화 (2026-06-01)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-06-01 | refactor: `lib/services/ad-upsert.ts` (신규) `adStatsOnConflict(idColumn, hasClientId)` — `ad_campaign_stats`/`ad_group_stats`/`ad_stats` 의 partial unique index 키(`[client_id,]platform,<id>,stat_date`) 생성을 단일 함수로 모음. 그동안 5개 매체 서비스(meta/google/tiktok/naver/adn)에 동일 ternary 가 11회 복붙되던 DB 스키마 불변식을 한 곳으로 통합(locality) — 인덱스 설계 변경 시 1곳만 수정. **동작 100% 불변**(동일 키 문자열 생성, 빌드 검증). 광고 동기화 아키텍처 deepening(어댑터 seam) 의 안전한 1차 슬라이스 — fetch 런타임 흐름을 바꾸는 깊은 재구성은 실 자격증명/DB 로 검증 가능한 환경에서 별도 진행 |
+
 ## 공통 데이터 패칭 훅 useClientData 도입 (2026-06-01)
 
 | 날짜 | 내용 |

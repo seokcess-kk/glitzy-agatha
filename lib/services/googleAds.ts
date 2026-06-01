@@ -2,6 +2,7 @@ import { GoogleAdsApi } from 'google-ads-api'
 import { serverSupabase } from '@/lib/supabase'
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
+import { adStatsOnConflict } from './ad-upsert'
 
 const SERVICE_NAME = 'GoogleAds'
 const logger = createLogger(SERVICE_NAME)
@@ -135,9 +136,7 @@ export async function fetchGoogleAds(date = new Date(), options?: GoogleAdsOptio
         client_id: options?.clientId || null,
       }))
 
-      const onConflict = options?.clientId
-        ? 'client_id,platform,campaign_id,stat_date'
-        : 'platform,campaign_id,stat_date'
+      const onConflict = adStatsOnConflict('campaign_id', !!options?.clientId)
       const { error } = await supabase
         .from('ad_campaign_stats')
         .upsert(rows, { onConflict })
@@ -228,9 +227,7 @@ export async function fetchGoogleAdStats(date = new Date(), options?: GoogleAdsO
       return { platform: 'google_ads', count: 0 }
     }
 
-    const onConflict = options?.clientId
-      ? 'client_id,platform,ad_id,stat_date'
-      : 'platform,ad_id,stat_date'
+    const onConflict = adStatsOnConflict('ad_id', !!options?.clientId)
     const { error } = await supabase
       .from('ad_stats')
       .upsert(adRows, { onConflict })

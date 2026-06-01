@@ -3,6 +3,7 @@ import { fetchWithRetry } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
 import { encryptApiConfig, decryptApiConfig } from '@/lib/crypto'
+import { adStatsOnConflict } from './ad-upsert'
 
 const SERVICE_NAME = 'TikTokAds'
 const logger = createLogger(SERVICE_NAME)
@@ -209,9 +210,7 @@ export async function fetchTikTokAds(date = new Date(), options?: TikTokAdsOptio
         client_id: options?.clientId || null,
       }))
 
-      const onConflict = options?.clientId
-        ? 'client_id,platform,campaign_id,stat_date'
-        : 'platform,campaign_id,stat_date'
+      const onConflict = adStatsOnConflict('campaign_id', !!options?.clientId)
       const { error } = await supabase
         .from('ad_campaign_stats')
         .upsert(dbRows, { onConflict })
@@ -275,9 +274,7 @@ export async function fetchTikTokAdStats(date = new Date(), options?: TikTokAdsO
       utm_content: null,
     }))
 
-    const onConflict = options?.clientId
-      ? 'client_id,platform,ad_id,stat_date'
-      : 'platform,ad_id,stat_date'
+    const onConflict = adStatsOnConflict('ad_id', !!options?.clientId)
     const { error } = await supabase
       .from('ad_stats')
       .upsert(dbRows, { onConflict })

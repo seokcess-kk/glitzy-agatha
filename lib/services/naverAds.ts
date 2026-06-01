@@ -12,6 +12,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { fetchWithRetry } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
+import { adStatsOnConflict } from './ad-upsert'
 
 const SERVICE_NAME = 'NaverAds'
 const logger = createLogger(SERVICE_NAME)
@@ -618,9 +619,7 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
       }
     })
 
-    const onConflict = options?.clientId
-      ? 'client_id,platform,campaign_id,stat_date'
-      : 'platform,campaign_id,stat_date'
+    const onConflict = adStatsOnConflict('campaign_id', !!options?.clientId)
 
     const { error } = await supabase.from('ad_campaign_stats').upsert(dbRows, { onConflict })
 
@@ -648,9 +647,7 @@ export async function fetchNaverAds(date = new Date(), options?: NaverAdsOptions
     }))
 
     if (groupDbRows.length > 0) {
-      const groupOnConflict = options?.clientId
-        ? 'client_id,platform,adgroup_id,stat_date'
-        : 'platform,adgroup_id,stat_date'
+      const groupOnConflict = adStatsOnConflict('adgroup_id', !!options?.clientId)
       const { error: groupError } = await supabase
         .from('ad_group_stats')
         .upsert(groupDbRows, { onConflict: groupOnConflict })
@@ -814,9 +811,7 @@ export async function fetchNaverAdStats(date = new Date(), options?: NaverAdsOpt
       }
     })
 
-    const onConflict = options?.clientId
-      ? 'client_id,platform,ad_id,stat_date'
-      : 'platform,ad_id,stat_date'
+    const onConflict = adStatsOnConflict('ad_id', !!options?.clientId)
 
     const { error } = await supabase.from('ad_stats').upsert(dbRows, { onConflict })
 

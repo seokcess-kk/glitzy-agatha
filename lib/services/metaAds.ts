@@ -2,6 +2,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { fetchWithRetry } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
+import { adStatsOnConflict } from './ad-upsert'
 
 const SERVICE_NAME = 'MetaAds'
 const logger = createLogger(SERVICE_NAME)
@@ -101,9 +102,7 @@ export async function fetchMetaAds(date = new Date(), options?: MetaAdsOptions) 
       }))
 
       // client_id가 NULL이면 partial unique index 사용 (폴백 모드)
-      const onConflict = options?.clientId
-        ? 'client_id,platform,campaign_id,stat_date'
-        : 'platform,campaign_id,stat_date'
+      const onConflict = adStatsOnConflict('campaign_id', !!options?.clientId)
       const { error } = await supabase
         .from('ad_campaign_stats')
         .upsert(rows, { onConflict })
@@ -269,9 +268,7 @@ export async function fetchMetaAdStats(date = new Date(), options?: MetaAdsOptio
       client_id: options?.clientId || null,
     }))
 
-    const onConflict = options?.clientId
-      ? 'client_id,platform,ad_id,stat_date'
-      : 'platform,ad_id,stat_date'
+    const onConflict = adStatsOnConflict('ad_id', !!options?.clientId)
     const { error } = await supabase
       .from('ad_stats')
       .upsert(rows, { onConflict })

@@ -15,6 +15,7 @@ import { serverSupabase } from '@/lib/supabase'
 import { fetchWithRetry } from '@/lib/api-client'
 import { createLogger } from '@/lib/logger'
 import { getKstDateString } from '@/lib/date'
+import { adStatsOnConflict } from './ad-upsert'
 
 const SERVICE_NAME = 'AdnAds'
 const logger = createLogger(SERVICE_NAME)
@@ -188,9 +189,7 @@ export async function fetchAdnAds(date: Date = new Date(), options?: AdnAdsOptio
     }))
 
     if (campaignDbRows.length > 0) {
-      const onConflict = options?.clientId
-        ? 'client_id,platform,campaign_id,stat_date'
-        : 'platform,campaign_id,stat_date'
+      const onConflict = adStatsOnConflict('campaign_id', !!options?.clientId)
       const { error } = await supabase.from('ad_campaign_stats').upsert(campaignDbRows, { onConflict })
       if (error) {
         logger.error('ad_campaign_stats upsert 실패', error, { clientId: options?.clientId })
@@ -213,9 +212,7 @@ export async function fetchAdnAds(date: Date = new Date(), options?: AdnAdsOptio
     }))
 
     if (groupDbRows.length > 0) {
-      const groupOnConflict = options?.clientId
-        ? 'client_id,platform,adgroup_id,stat_date'
-        : 'platform,adgroup_id,stat_date'
+      const groupOnConflict = adStatsOnConflict('adgroup_id', !!options?.clientId)
       const { error: groupError } = await supabase
         .from('ad_group_stats')
         .upsert(groupDbRows, { onConflict: groupOnConflict })

@@ -2,6 +2,22 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 데이터 신뢰성 개선 — client_id 검증 강화 / 캠페인 복합키 / inflow_source override 배선 (2026-06-01)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-06-01 | fix: `lib/session.ts` `getClientId` — `?client_id=X` 가 명시됐으나 무효/비활성/미배정이면 조용히 `null`(전체조회)로 떨어지던 것을 `ClientAccessError`(400/403) throw 로 변경. `lib/api-middleware.ts` `withClientFilter`/`withClientAdmin` 가 잡아 응답. 잘못된/오래된 선택이 "데이터 없음"이 아니라 "전체 데이터"로 표시되던 신뢰성 리스크 차단. 파라미터 미지정(=의도적 전체보기)은 기존대로 null 유지. demo_viewer 는 fixture 라 기존 동작 유지 |
+| 2026-06-01 | fix: `components/ads/campaign-ranking-table.tsx` 캠페인 집계 키를 `campaign_name` 단독 → `client_id + platform + campaign_id` 복합키로 변경. 전체조회(superadmin)에서 클라이언트/매체 간 동일 캠페인명(특히 ADN 은 campaign_id=campaign_name 한글)이 한 행으로 병합되던 문제 해소. 표시명은 campaign_name 유지 |
+| 2026-06-01 | feat: `lib/inflow.ts` — `resolveInflowSourceForChannel(channel, overrides?)` 에 override 인자 추가 + `fetchInflowOverrides(supabase, clientId)` 신설(`client_api_configs.config.inflow_source` 복호화 읽기, 유효값 검증). 그동안 주석만 있고 미구현이던 클라이언트별 inflow_source override 를 실제 배선. `ads/platform-summary` · `dashboard/channel` · `dashboard/campaign` 3개 채널 집계 라우트에 적용(매체전환 누적 게이트도 override 반영해 정합화). **단일 클라이언트 선택 시에만 적용, 전체조회는 기본값** — 설정값이 없으면 기존 `PLATFORM_INFLOW_DEFAULTS` 와 100% 동일 동작. ⚠️ 설정 UI 미구현(값 입력 수단 별도 필요) |
+
+## 전 매체 N일 Rolling Resync — 전환 지연 자동 보정 (2026-06-01)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-06-01 | feat: `lib/services/adSyncManager.ts` `resyncNaverCampaigns` 를 `resyncPlatformCampaigns(platform, daysBack=14)` 로 일반화 + `fetchCampaignsForPlatform`(매체별 캠페인 레벨 fetch 매핑, ENV 폴백 포함) 헬퍼 추가. 광고 매체의 전환 지연(클릭 후 며칠~몇 주 뒤 소급 집계) 때문에 메인 cron(sync-ads) 어제치 1회 동기화 후 과거 전환수가 갱신 안 되던 문제를 전 매체로 보정. 캠페인 레벨만(ad 레벨 제외 — timeout 회피, 인입/전환 KPI는 캠페인 레벨 집계로 충분), upsert 멱등 |
+| 2026-06-01 | feat: 매체별 resync cron route 4개 신설 — `app/api/cron/sync-{meta,google,tiktok,adn}-resync`. 각 `resyncPlatformCampaigns('<platform>', 14)` 호출. `sync-naver-resync` 는 `resyncPlatformCampaigns('naver_ads', 21)` 로 변경(추적기간 20일 고려해 네이버만 21일 유지). `CRON_SECRET` 인증 + 실패 시 `sendErrorAlert`. 매체별 cron 격리로 한 매체 API 장애가 다른 매체 resync 에 영향 없음 |
+| 2026-06-01 | feat: `vercel.json` cron 4개 추가 — meta(UTC 22:15)/google(22:30)/tiktok(22:45)/adn(22:50), KST 07:15~07:50. 메인 sync-ads(KST 06:00) 이후·send-reports(KST 08:00) 이전 시차 실행으로 리포트가 보정된 데이터를 반영. cron 총 7개(Vercel Pro 40개 제한 내). 설계: `docs/superpowers/specs/2026-06-01-all-media-rolling-resync-design.md` |
+
 ## ADN 인입을 매체 전환 + 리드 합산(combined)으로 변경 (2026-06-01)
 
 | 날짜 | 내용 |

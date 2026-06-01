@@ -7,6 +7,17 @@
 
 ---
 
+## 전 매체 N일 Rolling Resync — 전환 지연 자동 보정 (2026-06-01)
+
+| # | 작업 | 핵심 내용 | 날짜 |
+|---|------|----------|------|
+| R-1 | `resyncNaverCampaigns` → `resyncPlatformCampaigns` 일반화 | `lib/services/adSyncManager.ts` — 매체 공통 N일 캠페인 레벨 resync + `fetchCampaignsForPlatform` 헬퍼(매체별 캠페인 fetch 매핑). 전환 지연으로 어제치 1회 동기화 후 과거 전환수가 갱신 안 되던 문제를 전 매체로 확대 보정. ad 레벨 제외(timeout 회피), upsert 멱등 | 06-01 |
+| R-2 | 매체별 resync cron 4개 신설 | `sync-{meta,google,tiktok,adn}-resync` route + `vercel.json` cron(KST 07:15~07:50 시차). `sync-naver-resync` 는 21일 유지(추적기간 20일). 매체별 격리 — 한 매체 장애가 전체에 영향 없음 | 06-01 |
+
+설계 문서: [docs/superpowers/specs/2026-06-01-all-media-rolling-resync-design.md](superpowers/specs/2026-06-01-all-media-rolling-resync-design.md)
+
+---
+
 ## ADN(Across DN) 매체 추가 (2026-05-14)
 
 | # | 작업 | 핵심 내용 | 날짜 |

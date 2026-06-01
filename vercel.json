@@ -10,6 +10,22 @@
       "schedule": "0 22 * * *"
     },
     {
+      "path": "/api/cron/sync-meta-resync",
+      "schedule": "15 22 * * *"
+    },
+    {
+      "path": "/api/cron/sync-google-resync",
+      "schedule": "30 22 * * *"
+    },
+    {
+      "path": "/api/cron/sync-tiktok-resync",
+      "schedule": "45 22 * * *"
+    },
+    {
+      "path": "/api/cron/sync-adn-resync",
+      "schedule": "50 22 * * *"
+    },
+    {
       "path": "/api/cron/send-reports",
       "schedule": "0 23 * * *"
     }

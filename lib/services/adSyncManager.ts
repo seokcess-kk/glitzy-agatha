@@ -312,28 +312,90 @@ export async function syncAllClients(date: Date = new Date()): Promise<SyncResul
 }
 
 /**
- * 네이버 SA 캠페인 레벨 N일 rolling resync
+ * 매체별 캠페인 레벨 fetch 매핑 (resync 전용 — ad/소재 레벨 제외)
+ * decrypted 있으면 클라이언트 opts, 없으면 ENV 폴백으로 호출.
+ */
+function fetchCampaignsForPlatform(
+  platform: ApiPlatform,
+  date: Date,
+  decrypted?: Record<string, unknown>,
+  clientId?: number,
+): Promise<{ platform: string; count: number; error?: string }> {
+  switch (platform) {
+    case 'meta_ads':
+      return decrypted
+        ? fetchMetaAds(date, {
+            clientId,
+            accountId: decrypted.account_id as string,
+            accessToken: decrypted.access_token as string,
+          })
+        : fetchMetaAds(date)
+    case 'google_ads':
+      return decrypted
+        ? fetchGoogleAds(date, {
+            clientId,
+            oauthClientId: decrypted.client_id as string,
+            oauthClientSecret: decrypted.client_secret as string,
+            developerToken: decrypted.developer_token as string,
+            customerId: decrypted.customer_id as string,
+            refreshToken: decrypted.refresh_token as string,
+            loginCustomerId: decrypted.login_customer_id as string | undefined,
+          })
+        : fetchGoogleAds(date)
+    case 'tiktok_ads':
+      return decrypted
+        ? fetchTikTokAds(date, {
+            clientId,
+            advertiserId: decrypted.advertiser_id as string,
+            accessToken: decrypted.access_token as string,
+          })
+        : fetchTikTokAds(date)
+    case 'naver_ads':
+      return decrypted
+        ? fetchNaverAds(date, {
+            clientId,
+            customerId: decrypted.customer_id as string,
+            accessLicense: decrypted.access_license as string,
+            secretKey: decrypted.secret_key as string,
+          })
+        : fetchNaverAds(date)
+    case 'adn_ads':
+      return decrypted
+        ? fetchAdnAds(date, { clientId, apiKey: decrypted.api_key as string })
+        : fetchAdnAds(date)
+    default:
+      return Promise.resolve({ platform, count: 0, error: `Unknown platform: ${platform}` })
+  }
+}
+
+/**
+ * 매체 공통 캠페인 레벨 N일 rolling resync
  *
- * 네이버 전환추적(convCnt)은 전환추적기간(최대 20일) 내 후행 전환이 반영되므로,
- * 어제 한 번 동기화로는 과거 날짜 convCnt 가 시간이 지나도 갱신되지 않는다.
- * 매일 최근 N일치 캠페인 통계를 재동기화해 후행 보정을 자동화한다.
+ * 광고 매체의 전환은 클릭 후 며칠~몇 주 뒤 소급 집계(전환 지연)되므로,
+ * 메인 cron(sync-ads)의 어제치 1회 동기화만으로는 과거 날짜 전환수가
+ * 시간이 지나도 갱신되지 않는다. 매일 최근 N일치 캠페인 통계를 재동기화해
+ * 후행 보정을 자동화한다. (네이버는 추적기간 20일 고려해 호출부에서 21일 지정)
  *
- * - 광고(ad) 레벨은 제외 (5000+ 소재 시 timeout 위험 — 1차 범위 밖)
- * - 클라이언트 순차, 날짜 순차 처리 (네이버 rate limit 보수적 운영)
+ * - 광고(ad) 레벨은 제외 (소재 多 시 timeout 위험 — 인입/전환 KPI는 캠페인 레벨로 집계 충분)
+ * - 클라이언트 순차, 날짜 순차 처리 (매체 rate limit 보수적 운영)
  * - upsert 이므로 멱등성 보장 (stat_date UNIQUE 키로 덮어쓰기)
  */
-export async function resyncNaverCampaigns(daysBack = 21): Promise<SyncResult[]> {
+export async function resyncPlatformCampaigns(
+  platform: ApiPlatform,
+  daysBack = 14,
+): Promise<SyncResult[]> {
   const supabase = serverSupabase()
   const allResults: SyncResult[] = []
+  const label = API_PLATFORM_LABELS[platform]
 
   const { data: configs, error } = await supabase
     .from('client_api_configs')
     .select('id, client_id, platform, config, is_active, clients(name)')
-    .eq('platform', 'naver_ads')
+    .eq('platform', platform)
     .eq('is_active', true)
 
   if (error) {
-    logger.error('client_api_configs (naver_ads) 조회 실패', error)
+    logger.error(`client_api_configs (${platform}) 조회 실패`, error)
   }
 
   const validConfigs = (configs || []) as unknown as ClientApiConfig[]
@@ -348,10 +410,10 @@ export async function resyncNaverCampaigns(daysBack = 21): Promise<SyncResult[]>
 
   // 설정 없으면 환경변수 폴백
   if (validConfigs.length === 0) {
-    logger.info('네이버 resync — client_api_configs 없음, 환경변수 폴백')
+    logger.info(`${platform} resync — client_api_configs 없음, 환경변수 폴백`)
     for (const d of dates) {
       try {
-        const result = await fetchNaverAds(d)
+        const result = await fetchCampaignsForPlatform(platform, d)
         allResults.push({
           clientId: null,
           clientName: '환경변수 폴백',
@@ -363,7 +425,7 @@ export async function resyncNaverCampaigns(daysBack = 21): Promise<SyncResult[]>
         allResults.push({
           clientId: null,
           clientName: '환경변수 폴백',
-          platform: 'naver_ads',
+          platform: label,
           count: 0,
           error: err instanceof Error ? err.message : String(err),
         })
@@ -379,29 +441,22 @@ export async function resyncNaverCampaigns(daysBack = 21): Promise<SyncResult[]>
       : decryptApiConfig(cfg.config)
 
     if (!decrypted) {
-      logger.error('네이버 resync 설정 복호화 실패', new Error('decryptApiConfig returned null'), {
+      logger.error(`${platform} resync 설정 복호화 실패`, new Error('decryptApiConfig returned null'), {
         clientId: cfg.client_id,
       })
       allResults.push({
         clientId: cfg.client_id,
         clientName,
-        platform: API_PLATFORM_LABELS.naver_ads,
+        platform: label,
         count: 0,
         error: 'Config decryption failed',
       })
       continue
     }
 
-    const naverOpts = {
-      clientId: cfg.client_id,
-      customerId: decrypted.customer_id as string,
-      accessLicense: decrypted.access_license as string,
-      secretKey: decrypted.secret_key as string,
-    }
-
     for (const d of dates) {
       try {
-        const result = await fetchNaverAds(d, naverOpts)
+        const result = await fetchCampaignsForPlatform(platform, d, decrypted as Record<string, unknown>, cfg.client_id)
         allResults.push({
           clientId: cfg.client_id,
           clientName,
@@ -413,7 +468,7 @@ export async function resyncNaverCampaigns(daysBack = 21): Promise<SyncResult[]>
         allResults.push({
           clientId: cfg.client_id,
           clientName,
-          platform: API_PLATFORM_LABELS.naver_ads,
+          platform: label,
           count: 0,
           error: err instanceof Error ? err.message : String(err),
         })
@@ -421,7 +476,7 @@ export async function resyncNaverCampaigns(daysBack = 21): Promise<SyncResult[]>
     }
   }
 
-  logger.info('네이버 resync 완료', {
+  logger.info(`${platform} resync 완료`, {
     daysBack,
     clients: validConfigs.length,
     totalResults: allResults.length,

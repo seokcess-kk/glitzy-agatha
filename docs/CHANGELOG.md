@@ -2,6 +2,12 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## ADN 인입을 매체 전환 + 리드 합산(combined)으로 변경 (2026-06-01)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-06-01 | fix: `lib/platform.ts` `PLATFORM_INFLOW_DEFAULTS.adn_ads` 를 `'media_conversion'` → `'combined'` 변경. ADN 은 디스플레이 네트워크지만 자체 랜딩페이지 리드(utm_source=adn)와 매체 전환(`conv_cnt`)을 함께 운영하므로, 매체 전환만 세던 기존 방식은 실제 리드를 누락. Meta 와 동일하게 `리드 + 매체 전환` 합산으로 통일. 중앙 상수 1곳 변경으로 `dashboard/{kpi,channel,campaign,trend}`·`ads/{platform-summary,efficiency-trend,day-analysis,creatives-performance}`·`campaign-ranking-table` 전 경로 자동 반영(모두 `combined` 분기 기존 보유). `send-reports` 글로벌 SMS 는 의도적 중복제거 설계상 combined 매체 전환을 제외(Meta 와 동일) — 리드는 actualLeads 에 포함됨. ⚠️ DB전환을 `manual_inflows` 로 수동 보정해온 클라이언트는, 동일 전환이 리드로도 잡히면 이중 집계되므로 수동 보정값 제거 필요 |
+
 ## Google Ads 매체 전환이 인입에 집계되지 않던 버그 수정 (2026-06-01)
 
 | 날짜 | 내용 |

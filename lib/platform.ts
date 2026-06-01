@@ -108,7 +108,7 @@ export const PLATFORM_INFLOW_DEFAULTS: Record<ApiPlatform, InflowSource> = {
   naver_ads: 'media_conversion', // 검색광고: 자체 랜딩 없음, NPLA 전환추적 기반
   kakao_ads: 'lead_webhook',
   dable_ads: 'lead_webhook',
-  adn_ads: 'media_conversion', // ADN: 디스플레이 네트워크, conv_cnt 매체 전환 기반
+  adn_ads: 'combined', // ADN: 디스플레이 네트워크. 매체 전환(conv_cnt) + 자체 랜딩 리드 합산
 }
 
 export const INFLOW_SOURCE_LABELS: Record<InflowSource, string> = {

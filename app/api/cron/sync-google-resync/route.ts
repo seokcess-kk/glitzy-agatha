@@ -14,7 +14,7 @@ export const maxDuration = 300
  * 메인 cron(sync-ads)의 어제치 1회 동기화만으로는 과거 날짜 전환수가
  * 갱신되지 않는다. 매일 최근 14일치 캠페인 통계를 재동기화한다.
  *
- * 스케줄: vercel.json — UTC 22:30 (KST 07:30), 메인 cron 이후 시차 실행
+ * 스케줄: vercel.json — UTC 00:30 (KST 09:30), 메인 cron(KST 08:00) 이후 시차 실행
  */
 export async function GET(req: Request) {
   if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {

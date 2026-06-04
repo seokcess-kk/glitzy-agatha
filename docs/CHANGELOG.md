@@ -2,6 +2,13 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 광고 sync 시각 조정 + 리포트 기능 제거 (2026-06-04)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-06-04 | chore(cron): 메인 광고 동기화 `sync-ads` 시각을 KST 06:00 → **08:00**(UTC 21:00 → 23:00)로 이동. KST 06:00은 전일자가 끝난 지 6시간뿐이라 Meta/Google 등 매체 API가 전날 비용/전환을 미확정한 상태가 많아 "오전 확인 시 전일자 누락"으로 보이던 문제 완화. 매체별 rolling resync 5종(naver/meta/google/tiktok/adn)도 메인 이후 순서 유지를 위해 KST 07시대 → **09:00~09:50**(UTC 00:00~00:50)로 동반 이동 |
+| 2026-06-04 | refactor: 리포트(`send-reports`) 기능 제거. `app/api/cron/send-reports` cron 라우트 + `vercel.json` cron 항목 삭제(실제 SMS 발송은 스텁 상태로 미사용), 미사용 설정 API `app/api/admin/clients/[id]/report-settings` 삭제(프론트 호출처 없음), `lib/error-alert.ts` 의 `weekly_report_fail` ErrorType 제거(호출처 없음), admin/clients 알림 다이얼로그 설명 문구에서 "리포트 발송 설정" 제거. `client_notify_settings` 의 `weekly_report` 행은 orphan 데이터로 남으나 읽는 코드가 없어 무해 — 별도 마이그레이션 미수행 |
+
 ## 광고 통계 upsert onConflict 키 단일화 (2026-06-01)
 
 | 날짜 | 내용 |

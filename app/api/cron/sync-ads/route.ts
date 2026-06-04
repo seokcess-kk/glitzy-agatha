@@ -9,7 +9,7 @@ const logger = createLogger('CronSyncAds')
 
 export const maxDuration = 300
 
-// Vercel Cron이 매일 새벽 3시에 호출 (vercel.json 참고)
+// Vercel Cron이 매일 KST 08:00 (UTC 23:00)에 호출 (vercel.json 참고)
 export async function GET(req: Request) {
   // Vercel Cron 인증 확인
   if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {

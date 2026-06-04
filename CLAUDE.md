@@ -125,8 +125,8 @@ npm run test         # Jest 단위 테스트
 
 | 경로 | 스케줄 | 용도 |
 |------|--------|------|
-| `/api/cron/sync-ads` | 매일 06:00 KST (UTC 21:00) | 광고 데이터 동기화 |
-| `/api/cron/send-reports` | 매일 08:00 KST (UTC 23:00) | 성과 리포트 SMS |
+| `/api/cron/sync-ads` | 매일 08:00 KST (UTC 23:00) | 광고 데이터 동기화 (전일자) |
+| `/api/cron/sync-{naver,meta,google,tiktok,adn}-resync` | 매일 09:00~09:50 KST (UTC 00:00~00:50) | 매체별 N일 rolling resync (전환 지연 보정) |
 
 ## 참조 문서
 

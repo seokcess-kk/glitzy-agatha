@@ -14,7 +14,7 @@ export const maxDuration = 300
  * 과거 날짜 수치가 시간이 지나서 증가할 수 있다. 메인 cron(sync-ads)은
  * 어제 하루만 동기화하므로 별도로 최근 21일치를 매일 재동기화한다.
  *
- * 스케줄: vercel.json — UTC 22:00 (KST 07:00), 메인 cron 1시간 후
+ * 스케줄: vercel.json — UTC 00:00 (KST 09:00), 메인 cron(KST 08:00) 이후
  */
 export async function GET(req: Request) {
   if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {

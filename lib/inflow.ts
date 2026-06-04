@@ -135,9 +135,6 @@ export function resolveInflowSourceForChannel(
  *   media_conversion / combined → true,  lead_webhook → false,  비-API platform → false.
  * 그동안 각 라우트가 `isApiPlatform(p) && PLATFORM_INFLOW_DEFAULTS[p] !== 'lead_webhook'`
  * 를 인라인 재구현하던 게이트 술어를 한 곳으로 모은 것. override 도 동일 기준으로 반영.
- *
- * 주의: cron/send-reports 의 글로벌 집계는 의도적으로 다른 기준(combined 매체전환 제외 —
- * 리드가 actualLeads 에 이미 포함되어 이중집계 방지)을 쓰므로 이 헬퍼를 적용하지 않는다.
  */
 export function countsMediaConversions(
   platform: string,

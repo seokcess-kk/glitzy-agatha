@@ -509,7 +509,7 @@ export default function ClientsPage() {
           <DialogHeader>
             <DialogTitle>클라이언트 설정 - {notifyTarget?.name}</DialogTitle>
             <DialogDescription className="text-xs">
-              알림톡 수신 번호와 리포트 발송 설정을 관리합니다.
+              알림톡 수신 번호를 관리합니다.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

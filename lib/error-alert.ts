@@ -16,7 +16,6 @@ type ErrorType =
   | 'press_sync_fail'
   | 'db_connection_fail'
   | 'meta_capi_fail'
-  | 'weekly_report_fail'
   | 'ads_anomaly'
 
 // 쿨다운 (메모리 Map — 동일 인스턴스 내 연쇄 에러 중복 방지)

@@ -2,6 +2,14 @@
 
 규칙 추가/수정 시 날짜와 사유를 기록. 불필요해진 규칙은 삭제하되 이력에 사유 남길 것.
 
+## 광고 소재 updated_at 에러 수정 + 첨부파일 Storage orphan 정리 (2026-06-09)
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-06-09 | fix: 광고 소재 수정·활성화 토글이 `Could not find the 'updated_at' column of 'ad_creatives' in the schema cache` 로 전부 실패하던 버그 수정. `PUT /api/admin/ad-creatives/[id]` 가 항상 `updated_at` 을 set 하는데 초기 스키마와 후속 보강 마이그레이션 모두에서 컬럼이 누락. `supabase/migrations/20260609_ad_creatives_updated_at.sql` 신설 — 다른 갱신 테이블(`client_api_configs`/`manual_inflows`)과 동일하게 `updated_at TIMESTAMPTZ DEFAULT NOW()` 보강(idempotent). ⚠️ Supabase SQL Editor 에서 수동 실행 필요 |
+| 2026-06-09 | fix: `ad_creatives` 첨부파일 Storage(`creatives` 버킷) orphan 누적 차단. 기존엔 소재 삭제/파일 교체/업로드 후 취소 시 버킷 객체가 영구 잔존(`landing_pages` 는 이미 정리하던 패턴). `lib/creative-storage.ts` (신규) `removeCreativeFileIfUnreferenced(supabase, fileName, excludeId?)` — 다른 소재가 같은 `file_name` 을 참조(복사본 공유)하지 않을 때만 삭제(ref-count), 안전 경로 정규식 가드, best-effort. DELETE(삭제 후 정리)·PUT(파일 교체/제거 시 기존 객체 정리)·upload 라우트 DELETE 메서드(미저장 업로드 취소 정리) 3곳에 적용 |
+| 2026-06-09 | feat: `app/(dashboard)/admin/ad-creatives/page.tsx` — 미저장 업로드 추적(`pendingUploadRef`). 업로드 후 다이얼로그 취소/파일 교체/clearFile 시 새 DELETE 엔드포인트로 storage 정리, 저장 성공 시 추적 해제(정식 반영분은 보존). 편집 시 기존 파일을 비우는 케이스는 서버 PUT 이 정리 |
+
 ## 광고 sync 시각 조정 + 리포트 기능 제거 (2026-06-04)
 
 | 날짜 | 내용 |

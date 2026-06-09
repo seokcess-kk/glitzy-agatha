@@ -1,6 +1,7 @@
 import { serverSupabase } from '@/lib/supabase'
 import { withSuperAdmin, apiError, apiSuccess } from '@/lib/api-middleware'
 import { sanitizeString } from '@/lib/security'
+import { removeCreativeFileIfUnreferenced } from '@/lib/creative-storage'
 
 const ALLOWED_TYPES: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -49,17 +50,29 @@ export const POST = withSuperAdmin(async (req: Request) => {
       return apiError('업로드 URL 생성 실패: ' + error.message, 500)
     }
 
-    const { data: urlData } = supabase.storage
-      .from(BUCKET)
-      .getPublicUrl(path)
-
+    // 공개 URL 은 프론트가 file_name 으로 직접 조립(getCreativeUrl)하므로 응답에 포함하지 않음
     return apiSuccess({
       signedUrl: data.signedUrl,
       fileName: path,
-      publicUrl: urlData.publicUrl,
     })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e)
     return apiError('업로드 URL 생성 실패: ' + message, 500)
+  }
+})
+
+// 저장되지 않은(취소된) 업로드 파일 정리 — 어떤 소재도 참조하지 않을 때만 삭제
+export const DELETE = withSuperAdmin(async (req: Request) => {
+  try {
+    const { fileName } = await req.json()
+    if (!fileName || typeof fileName !== 'string') {
+      return apiError('fileName이 필요합니다.', 400)
+    }
+    const supabase = serverSupabase()
+    await removeCreativeFileIfUnreferenced(supabase, fileName)
+    return apiSuccess({ deleted: true })
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e)
+    return apiError('파일 정리 실패: ' + message, 500)
   }
 })

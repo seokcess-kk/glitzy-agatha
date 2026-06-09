@@ -83,6 +83,8 @@ export default function AdCreativesPage() {
   const router = useRouter()
   const user = session?.user
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // 이번 세션에서 업로드했지만 아직 저장되지 않은 storage 경로 (취소/교체 시 정리)
+  const pendingUploadRef = useRef<string | null>(null)
 
   const [adCreatives, setAdCreatives] = useState<AdCreative[]>([])
   const [landingPages, setLandingPages] = useState<LandingPage[]>([])
@@ -137,6 +139,19 @@ export default function AdCreativesPage() {
 
   useEffect(() => { fetchData() }, [])
 
+  // 저장되지 않은 업로드 파일을 storage 에서 정리 (best-effort)
+  const deletePendingUpload = async (path: string) => {
+    try {
+      await fetch('/api/admin/ad-creatives/upload', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: path }),
+      })
+    } catch {
+      /* best-effort — 실패해도 무시 */
+    }
+  }
+
   const handleFileUpload = async (file: File) => {
     setUploading(true)
     try {
@@ -156,6 +171,12 @@ export default function AdCreativesPage() {
         body: file,
       })
       if (!uploadRes.ok) throw new Error('파일 업로드 실패')
+
+      // 이번 세션에서 이전에 올린 미저장 파일이 있으면 교체 — 직전 파일 정리
+      if (pendingUploadRef.current && pendingUploadRef.current !== urlData.fileName) {
+        void deletePendingUpload(pendingUploadRef.current)
+      }
+      pendingUploadRef.current = urlData.fileName
 
       setForm(f => ({ ...f, file_name: urlData.fileName, file_type: file.type }))
       // 미리보기
@@ -201,6 +222,12 @@ export default function AdCreativesPage() {
 
   const clearFile = () => {
     if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl)
+    // 이번 세션에서 새로 올린 미저장 파일이면 storage 에서도 제거
+    // (기존 소재의 파일을 비우는 경우는 저장 시 서버 PUT 이 정리)
+    if (pendingUploadRef.current) {
+      void deletePendingUpload(pendingUploadRef.current)
+      pendingUploadRef.current = null
+    }
     setForm(f => ({ ...f, file_name: null, file_type: null }))
     setPreviewUrl(null)
     setPreviewType(null)
@@ -241,6 +268,8 @@ export default function AdCreativesPage() {
         const err = await res.json()
         throw new Error(err.error)
       }
+      // 저장 완료 → 업로드 파일이 정식 반영됨. 추적 해제(닫힘 시 삭제 방지)
+      pendingUploadRef.current = null
       resetForm()
       setDialogOpen(false)
       toast.success(editing ? '광고 소재가 수정되었습니다.' : '광고 소재가 등록되었습니다.')
@@ -376,6 +405,11 @@ export default function AdCreativesPage() {
       <PageHeader icon={Image} title="광고 소재" description="광고 소재 등록 및 UTM 파라미터 관리" />
 
       <Dialog open={dialogOpen} onOpenChange={(open) => {
+        // 저장 없이 닫으면 이번 세션에서 올린 미저장 파일 정리
+        if (!open && pendingUploadRef.current) {
+          void deletePendingUpload(pendingUploadRef.current)
+          pendingUploadRef.current = null
+        }
         setDialogOpen(open)
         if (!open) resetForm()
       }}>

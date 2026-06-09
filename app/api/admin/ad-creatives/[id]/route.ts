@@ -5,6 +5,7 @@ import { buildUtmUrl } from '@/lib/utm'
 import { createLogger } from '@/lib/logger'
 import { archiveBeforeDelete } from '@/lib/archive'
 import { creativeToApiPlatform } from '@/lib/platform'
+import { removeCreativeFileIfUnreferenced } from '@/lib/creative-storage'
 
 const logger = createLogger('AdCreatives')
 
@@ -53,10 +54,10 @@ export const PUT = withSuperAdmin(async (req: Request) => {
 
   const supabase = serverSupabase()
 
-  // 기존 데이터 확인 (현재 매핑값도 함께 — 양자택일 검증에 사용)
+  // 기존 데이터 확인 (현재 매핑값도 함께 — 양자택일 검증 + 파일 교체 정리에 사용)
   const { data: existing } = await supabase
     .from('ad_creatives')
-    .select('id, client_id, landing_page_id, external_url')
+    .select('id, client_id, landing_page_id, external_url, file_name')
     .eq('id', creativeId)
     .single()
 
@@ -178,6 +179,11 @@ export const PUT = withSuperAdmin(async (req: Request) => {
 
   if (error) return apiError(error.message, 500)
 
+  // 파일이 교체/제거된 경우 기존 Storage 객체 정리 (다른 소재가 공유하지 않을 때만)
+  if (file_name !== undefined && existing.file_name && updateData.file_name !== existing.file_name) {
+    await removeCreativeFileIfUnreferenced(supabase, existing.file_name as string, creativeId)
+  }
+
   // utm_links 자동 업데이트 (실패해도 메인 응답에 영향 없음)
   try {
     const baseUrl = data?.landing_page_id
@@ -244,10 +250,10 @@ export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
 
   const supabase = serverSupabase()
 
-  // 존재 여부 확인
+  // 존재 여부 확인 (file_name 은 Storage 정리에 사용)
   const { data: existing } = await supabase
     .from('ad_creatives')
-    .select('id')
+    .select('id, file_name')
     .eq('id', creativeId)
     .single()
 
@@ -262,5 +268,9 @@ export const DELETE = withSuperAdmin(async (req: Request, { user }) => {
     .eq('id', creativeId)
 
   if (error) return apiError(error.message, 500)
+
+  // DB 삭제 성공 후 Storage 파일 정리 (다른 소재가 공유하지 않을 때만)
+  await removeCreativeFileIfUnreferenced(supabase, existing.file_name as string | null, creativeId)
+
   return apiSuccess({ deleted: true })
 })
